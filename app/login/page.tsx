@@ -19,7 +19,7 @@ export default function LoginPage() {
         <CmsMark />
         <h1 className="text-xl font-semibold tracking-tight">CMS</h1>
         <p className="text-sm text-[var(--cms-muted)]">
-          Sign in with a magic link sent to your email.
+          Sign in with email and password. Magic link is optional.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-[var(--cms-muted)]">Loading…</p>}>

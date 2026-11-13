@@ -2,6 +2,7 @@
 
 1. **Cursor rules** enforce mandatory behavior:
    - [`.cursor/rules/cms-mandatory.mdc`](../.cursor/rules/cms-mandatory.mdc) (`globs: CMS/**/*`).
+   - [`.cursor/rules/cms-tables.mdc`](../.cursor/rules/cms-tables.mdc) — every data table needs search, filter, and sorting.
 
 2. **Human-readable source of truth:** **`AGENT_CODING_GUIDE.md`**.
 

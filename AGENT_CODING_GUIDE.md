@@ -12,6 +12,7 @@ Use this document when writing or changing code in **CMS**. Prefer matching patt
 - **Keys:** Browser and SSR clients use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never ship service-role / secret keys to the client.
 - **Auth:** Email magic link. Redirect: `/auth/callback`.
 - **Dashboard:** `/dashboard` is a signed-in placeholder until features are added.
+- **Tables:** Every data table must have **search**, at least one **filter**, and **sortable headers**. Use `TableControls` / `SortTh` (`components/table.tsx`) and `lib/utils/table.ts`. Create/edit on a table page opens in a modal.
 
 ---
 

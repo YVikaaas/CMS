@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/app/providers/AuthProvider";
+import { CurrentUserProvider } from "@/app/providers/CurrentUserProvider";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import "./globals.css";
 
@@ -42,8 +43,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <Toaster richColors position="top-center" />
+            <CurrentUserProvider>
+              {children}
+              <Toaster richColors position="top-center" />
+            </CurrentUserProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
