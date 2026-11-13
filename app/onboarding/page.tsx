@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { completeOnboarding } from "@/lib/services";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
 import { NameInput, PhoneInput } from "@/components/fields";
+import { fieldClass, fieldErrorClass } from "@/components/Modal";
 import { nameError, phoneError } from "@/lib/utils/validation";
 
 export default function OnboardingPage() {
@@ -14,25 +15,24 @@ export default function OnboardingPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ fullName?: string; phone?: string }>({});
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const nextErrors: { fullName?: string; phone?: string } = {};
     const nameErr = nameError(fullName, "Full name");
-    if (nameErr) {
-      toast.error(nameErr);
-      return;
-    }
+    if (nameErr) nextErrors.fullName = nameErr;
     const phoneErr = phoneError(phone);
-    if (phoneErr) {
-      toast.error(phoneErr);
+    if (phoneErr) nextErrors.phone = phoneErr;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Fill the highlighted fields.");
       return;
     }
-    const name = fullName.trim();
-    const phoneValue = phone.trim();
     setSaving(true);
     const { data, error } = await completeOnboarding({
-      fullName: name,
-      phone: phoneValue,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
     });
     setSaving(false);
     if (error || !data) {
@@ -44,44 +44,58 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12">
-      <div className="mb-8 flex flex-col items-center gap-3">
-        <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--cms-action)] text-xl font-semibold text-white">
-          C
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight">Your details</h1>
-        <p className="max-w-sm text-center text-sm text-[var(--cms-muted)]">
-          Name and phone are required before you can use CMS.
-        </p>
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)] p-8 shadow-[var(--ops-shadow-card)]">
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] text-xl font-semibold text-white">
+            C
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">Your details</h1>
+          <p className="max-w-sm text-center text-sm text-[var(--ops-text-muted)]">
+            Name and phone are required before you can use CMS.
+          </p>
+        </div>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--ops-text)]">
+            Full name
+            <NameInput
+              required
+              value={fullName}
+              onChange={(value) => {
+                setFullName(value);
+                setFieldErrors((prev) => ({ ...prev, fullName: undefined }));
+              }}
+              className={fieldErrors.fullName ? fieldErrorClass : fieldClass}
+              autoComplete="name"
+            />
+            {fieldErrors.fullName ? (
+              <span className="text-xs font-normal text-[var(--ops-danger)]">{fieldErrors.fullName}</span>
+            ) : null}
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--ops-text)]">
+            Phone
+            <PhoneInput
+              required
+              value={phone}
+              onChange={(value) => {
+                setPhone(value);
+                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
+              className={fieldErrors.phone ? fieldErrorClass : fieldClass}
+            />
+            {fieldErrors.phone ? (
+              <span className="text-xs font-normal text-[var(--ops-danger)]">{fieldErrors.phone}</span>
+            ) : null}
+          </label>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg bg-[var(--ops-primary)] text-sm font-semibold text-white hover:bg-[var(--ops-primary-hover)] disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Continue"}
+          </button>
+        </form>
       </div>
-      <form onSubmit={onSubmit} className="flex w-full max-w-sm flex-col gap-4">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
-          Full name
-          <NameInput
-            required
-            value={fullName}
-            onChange={setFullName}
-            className="h-11 rounded-lg border border-[var(--cms-line)] bg-white px-3 text-base font-normal outline-none focus:border-[var(--cms-action)]"
-            autoComplete="name"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
-          Phone
-          <PhoneInput
-            required
-            value={phone}
-            onChange={setPhone}
-            className="h-11 rounded-lg border border-[var(--cms-line)] bg-white px-3 text-base font-normal outline-none focus:border-[var(--cms-action)]"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={saving}
-          className="h-11 rounded-lg bg-[var(--cms-action)] text-sm font-semibold text-white hover:bg-[var(--cms-action-hover)] disabled:opacity-60"
-        >
-          {saving ? "Saving…" : "Continue"}
-        </button>
-      </form>
     </main>
   );
 }

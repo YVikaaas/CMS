@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Modal, fieldClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
-import { SortTh, TableControls } from "@/components/table";
+import { SortTh } from "@/components/table";
+import {
+  ChipFilter,
+  PageHeader,
+  SoftButton,
+  SoftSearch,
+} from "@/components/ops";
 import {
   archiveSport,
   createSport,
@@ -29,6 +35,7 @@ export default function SportsPage() {
     key: "name",
     dir: "asc",
   });
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; code?: string }>({});
 
   const load = async () => {
     const { data, error } = await listSports();
@@ -44,17 +51,18 @@ export default function SportsPage() {
     setOpen(false);
     setEditingId(null);
     setForm(empty);
+    setFieldErrors({});
   };
 
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
+    const nextErrors: { name?: string; code?: string } = {};
     const sportNameErr = nameError(form.name, "Name");
-    if (sportNameErr) {
-      toast.error(sportNameErr);
-      return;
-    }
-    if (!editingId && form.code.trim().length !== 3) {
-      toast.error("A 3-letter code is required.");
+    if (sportNameErr) nextErrors.name = sportNameErr;
+    if (!editingId && form.code.trim().length !== 3) nextErrors.code = "A 3-letter code is required.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Fill the highlighted fields.");
       return;
     }
     setSaving(true);
@@ -92,47 +100,45 @@ export default function SportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Masters · Sport</h1>
-          <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Global sport catalog. Basketball is seeded.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setForm(empty);
-            setOpen(true);
-          }}
-          className="h-10 shrink-0 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white"
-        >
-          Add sport
-        </button>
+      <PageHeader
+        title="Sport"
+        hint="Global sport catalog."
+        action={
+          <SoftButton
+            variant="primary"
+            onClick={() => {
+              setEditingId(null);
+              setForm(empty);
+              setFieldErrors({});
+              setOpen(true);
+            }}
+          >
+            Add sport
+          </SoftButton>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SoftSearch
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name or code"
+        />
+        <ChipFilter
+          ariaLabel="Mode"
+          value={modeFilter}
+          onChange={setModeFilter}
+          options={[
+            { value: "team", label: "Team" },
+            { value: "solo", label: "Solo" },
+            { value: "both", label: "Both" },
+          ]}
+        />
       </div>
 
-      <TableControls search={search} onSearch={setSearch} placeholder="Search name or code">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Mode
-          <select
-            value={modeFilter}
-            onChange={(event) =>
-              setModeFilter(event.target.value as "" | SportEventMode)
-            }
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="team">Team</option>
-            <option value="solo">Solo</option>
-            <option value="both">Both</option>
-          </select>
-        </label>
-      </TableControls>
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
+          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
             <tr>
               <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
               <SortTh label="Code" column="code" sort={sort} onSort={setSort} />
@@ -147,9 +153,8 @@ export default function SportsPage() {
                 <td className="px-4 py-3">{row.code}</td>
                 <td className="px-4 py-3 capitalize">{row.eventMode}</td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    className="mr-3 text-[var(--cms-action)]"
+                  <SoftButton
+                    className="mr-2"
                     onClick={() => {
                       setEditingId(row.id);
                       setForm({
@@ -157,14 +162,14 @@ export default function SportsPage() {
                         code: row.code,
                         eventMode: row.eventMode,
                       });
+                      setFieldErrors({});
                       setOpen(true);
                     }}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-red-600"
+                  </SoftButton>
+                  <SoftButton
+                    variant="danger"
                     onClick={async () => {
                       if (!confirm("Archive this sport?")) return;
                       const { error } = await archiveSport(row.id);
@@ -173,7 +178,7 @@ export default function SportsPage() {
                     }}
                   >
                     Archive
-                  </button>
+                  </SoftButton>
                 </td>
               </tr>
             ))}
@@ -194,7 +199,11 @@ export default function SportsPage() {
             Name
             <NameInput
               value={form.name}
-              onChange={(value) => setForm((f) => ({ ...f, name: value }))}
+              onChange={(value) => {
+                setForm((f) => ({ ...f, name: value }));
+                setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -203,10 +212,11 @@ export default function SportsPage() {
               value={form.code}
               disabled={Boolean(editingId)}
               maxLength={3}
-              onChange={(event) =>
-                setForm((f) => ({ ...f, code: event.target.value.toUpperCase() }))
-              }
-              className={`${fieldClass} uppercase disabled:bg-slate-50`}
+              onChange={(event) => {
+                setForm((f) => ({ ...f, code: event.target.value.toUpperCase() }));
+                setFieldErrors((prev) => ({ ...prev, code: undefined }));
+              }}
+              className={`${fieldErrors.code ? fieldErrorClass : fieldClass} uppercase disabled:bg-[var(--ops-board-muted)]`}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -224,20 +234,12 @@ export default function SportsPage() {
             </select>
           </label>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-10 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-            >
+            <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Add sport"}
-            </button>
-            <button
-              type="button"
-              onClick={close}
-              className="h-10 rounded-lg border border-[var(--cms-line)] px-4 text-sm"
-            >
+            </SoftButton>
+            <SoftButton type="button" onClick={close}>
               Cancel
-            </button>
+            </SoftButton>
           </div>
         </form>
       </Modal>

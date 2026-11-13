@@ -52,7 +52,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "my-8 w-full cursor-auto rounded-2xl bg-white p-5 shadow-xl",
+          "my-8 w-full max-h-[min(92dvh,52rem)] cursor-auto overflow-y-auto rounded-2xl bg-[var(--ops-surface)] p-5 shadow-[var(--ops-shadow-modal)]",
           xl ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-lg",
         )}
         onClick={(event) => event.stopPropagation()}
@@ -73,5 +73,5 @@ export function Modal({
   );
 }
 
-export const fieldClass =
-  "h-10 rounded-lg border border-[var(--cms-line)] px-3 text-sm outline-none focus:border-[var(--cms-action)]";
+export const fieldClass = "ops-control w-full";
+export const fieldErrorClass = "ops-control ops-control-error w-full";

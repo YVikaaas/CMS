@@ -10,9 +10,13 @@ Use this document when writing or changing code in **CMS**. Prefer matching patt
 
 - **Supabase:** CMS project `nawznuthyvhmcheevkbf` only. Do not point this app at any other database.
 - **Keys:** Browser and SSR clients use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never ship service-role / secret keys to the client.
-- **Auth:** Email magic link. Redirect: `/auth/callback`.
-- **Dashboard:** `/dashboard` is a signed-in placeholder until features are added.
-- **Tables:** Every data table must have **search**, at least one **filter**, and **sortable headers**. Use `TableControls` / `SortTh` (`components/table.tsx`) and `lib/utils/table.ts`. Create/edit on a table page opens in a modal.
+- **Auth:** Email magic link + password + onboarding. Redirect: `/auth/callback`. No phone OTP.
+- **Dashboard:** Numbered command steps from `getDashboardSummary`. Links land on the first hop of each flow (championship sports, fixtures sports board, scoring/results with filters empty).
+- **Tables (catalog):** Masters Sport / Category keep CRUD tables. Search + at least one filter + sortable headers (`SoftSearch` / `ChipFilter` / `SortTh` + `lib/utils/table.ts`). Create/edit opens in a modal. On Save, mark every invalid field with `fieldErrorClass` (red outline) and a short toast — do not toast-only.
+- **Ops UI:** Tablet-first desk. **Design system:** [`.interface-design/system.md`](./.interface-design/system.md) (tokens, kit, screen patterns). Tokens in `app/globals.css` (`--ops-*`, primary `#2559db`). Shared kit: `components/ops/` (`SoftButton`, `SoftCard`, `EventFilters`, `SplitWorkspace`, …). CSS press (150ms) only — no Framer Motion. Do not copy GMS-only desks (call room, BIB, kit, verification, medals, event-code loaders, weight classes).
+- **Floor filters:** Fixtures, Scoring, and Results share `sessionStorage` key `cms.eventFilter` via `lib/utils/eventFilter.ts`. Chips are **Sport → Gender → Age** (age = category). Fixtures uses `unlockInOrder`: Gender stays disabled until Sport, Age until Gender; category cards wait until Age is set. Scoring/Results keep All as unselected and stay empty until all three are picked. Scoring round chips have no All — one round stays selected.
+- **Setup hops:** Championships stay nested pages (list → sports → categories → teams → members). Each page is the next board, with `StepCrumbs`. Do not flatten into one workspace.
+- **Nav:** Dashboard, then Floor (Fixtures / Scoring / Results), Setup (Championships), Catalog (Sport / Category). Floor and dashboard wait on a selected championship; masters stay ungated.
 
 ---
 

@@ -1,29 +1,54 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { fieldClass } from "@/components/Modal";
-import { ScoreMatchModal } from "@/components/ScoreMatchModal";
-import { SortTh, TableControls } from "@/components/table";
+import { ScoreMatchBoard } from "@/components/ScoreMatchBoard";
+import {
+  ChipFilter,
+  EmptyState,
+  EventFilters,
+  PageHeader,
+  SoftButton,
+  SoftCard,
+  SplitWorkspace,
+  StatusBadge,
+} from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { listChampionshipMatches } from "@/lib/services";
-import type { FixtureMatch, FixtureMatchStatus } from "@/lib/types/cms";
-import { displayScore, playerScoresPath } from "@/lib/utils/fixtures";
-import { compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import type { FixtureMatch, Sport } from "@/lib/types/cms";
+import {
+  emptyEventFilter,
+  isEventFilterSelected,
+  matchPassesEventFilter,
+  type EventFilterValue,
+} from "@/lib/utils/eventFilter";
+import { displayScore } from "@/lib/utils/fixtures";
 
-export default function ScoringPage() {
+function statusTone(status: FixtureMatch["status"]) {
+  if (status === "completed") return "success" as const;
+  if (status === "in_progress") return "warning" as const;
+  if (status === "cancelled" || status === "no_show") return "danger" as const;
+  if (status === "scheduled") return "primary" as const;
+  return "neutral" as const;
+}
+
+function ScoringDesk() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const matchQuery = searchParams.get("match");
   const { selected, loading } = useChampionship();
+  const [filter, setFilter] = useState<EventFilterValue | null>(null);
+  const [sport, setSport] = useState<Sport | null>(null);
   const [matches, setMatches] = useState<FixtureMatch[]>([]);
   const [ready, setReady] = useState(false);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"" | FixtureMatchStatus>("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [sort, setSort] = useState<SortState<"category" | "round" | "teams" | "score" | "status">>({
-    key: "category",
-    dir: "asc",
-  });
-  const [scoreMatch, setScoreMatch] = useState<FixtureMatch | null>(null);
+  const [roundLabel, setRoundLabel] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(matchQuery);
+  const [playerPane, setPlayerPane] = useState(false);
+
+  const activeFilter = filter ?? emptyEventFilter(selected?.id ?? "");
+  const filtersReady = isEventFilterSelected(activeFilter);
 
   const load = useCallback(async () => {
     if (!selected) {
@@ -41,156 +66,141 @@ export default function ScoringPage() {
     if (!loading) void load();
   }, [loading, load]);
 
-  const categories = useMemo(() => {
-    return [...new Set(matches.map((row) => row.categoryLabel).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    );
-  }, [matches]);
+  useEffect(() => {
+    if (matchQuery) setSelectedMatchId(matchQuery);
+  }, [matchQuery]);
 
-  const visible = useMemo(() => {
-    const filtered = matches.filter((row) => {
-      if (statusFilter && row.status !== statusFilter) return false;
-      if (categoryFilter && row.categoryLabel !== categoryFilter) return false;
-      return matchesQuery(search, row.team1Name, row.team2Name, row.categoryLabel);
+  const categoryMatches = useMemo(() => {
+    if (!filtersReady) return [];
+    return matches.filter((row) => {
+      if (row.status === "cancelled") return false;
+      return matchPassesEventFilter(row, activeFilter, sport?.name);
     });
-    return [...filtered].sort((a, b) => {
-      if (sort.key === "round") return compareText(a.roundLabel, b.roundLabel, sort.dir);
-      if (sort.key === "teams") {
-        return compareText(
-          `${a.team1Name} vs ${a.team2Name}`,
-          `${b.team1Name} vs ${b.team2Name}`,
-          sort.dir,
-        );
-      }
-      if (sort.key === "score") return compareText(displayScore(a), displayScore(b), sort.dir);
-      if (sort.key === "status") return compareText(a.status, b.status, sort.dir);
-      return compareText(a.categoryLabel, b.categoryLabel, sort.dir);
-    });
-  }, [matches, search, statusFilter, categoryFilter, sort]);
+  }, [filtersReady, activeFilter, sport, matches]);
+
+  const rounds = useMemo(() => {
+    const labels = [...new Set(categoryMatches.map((row) => row.roundLabel))];
+    return labels;
+  }, [categoryMatches]);
+
+  useEffect(() => {
+    if (rounds.length === 0) {
+      setRoundLabel("");
+      return;
+    }
+    if (!roundLabel || !rounds.includes(roundLabel)) setRoundLabel(rounds[0]!);
+  }, [roundLabel, rounds]);
+
+  const queue = useMemo(
+    () => categoryMatches.filter((row) => row.roundLabel === roundLabel),
+    [categoryMatches, roundLabel],
+  );
+
+  const selectedMatch = queue.find((row) => row.id === selectedMatchId) ?? categoryMatches.find((row) => row.id === selectedMatchId) ?? null;
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--cms-muted)]">Loading…</p>;
+    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
   }
   if (!selected) {
     return (
-      <div className="rounded-2xl border border-[var(--cms-line)] bg-white p-8">
-        <h1 className="text-lg font-semibold">Scoring</h1>
-        <p className="mt-2 text-sm text-[var(--cms-muted)]">
-          Select a championship to manage fixtures.
-        </p>
-        <Link
-          href="/championships"
-          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white"
-        >
-          Championship management
-        </Link>
-      </div>
+      <EmptyState
+        title="Select a championship"
+        action={
+          <Link href="/championships">
+            <SoftButton variant="primary">Championships</SoftButton>
+          </Link>
+        }
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">{selected.name} · Scoring</h1>
-        <p className="mt-1 text-sm text-[var(--cms-muted)]">
-          Enter match scores here. Fixtures are for the draw. Results is the public board.
-        </p>
-      </div>
-
-      <TableControls search={search} onSearch={setSearch} placeholder="Search team or category">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Status
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "" | FixtureMatchStatus)}
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="in_progress">In progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Category
-          <select
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-      </TableControls>
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
-            <tr>
-              <SortTh label="Category" column="category" sort={sort} onSort={setSort} />
-              <SortTh label="Round" column="round" sort={sort} onSort={setSort} />
-              <SortTh label="Teams" column="teams" sort={sort} onSort={setSort} />
-              <SortTh label="Score" column="score" sort={sort} onSort={setSort} />
-              <SortTh label="Status" column="status" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr key={row.id} className="border-t border-[var(--cms-line)]">
-                <td className="px-4 py-3 font-medium">{row.categoryLabel}</td>
-                <td className="px-4 py-3">{row.roundLabel}</td>
-                <td className="px-4 py-3">
-                  {row.team1Name} vs {row.team2Name}
-                </td>
-                <td className="px-4 py-3">{displayScore(row)}</td>
-                <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={playerScoresPath(row.id)}
-                    className="mr-3 text-[var(--cms-action)]"
-                  >
-                    Player scores
-                  </Link>
-                  {row.status === "cancelled" ? null : (
-                    <button
-                      type="button"
-                      className="text-[var(--cms-action)]"
-                      onClick={() => setScoreMatch(row)}
-                    >
-                      Score
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[var(--cms-muted)]">
-                  {matches.length === 0 ? "No matches yet." : "No matching matches."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-
-      <ScoreMatchModal
-        open={Boolean(scoreMatch)}
-        match={scoreMatch}
-        onClose={() => setScoreMatch(null)}
-        onSaved={() => {
-          setScoreMatch(null);
-          void load();
+      <PageHeader title="Scoring" hint="Pick sport, gender, then age. Then pick a round and a match." />
+      <EventFilters
+        championshipId={selected.id}
+        onlyWithExistingFixture
+        onChange={(value, meta) => {
+          setFilter({ ...value });
+          setSport(meta.sport);
         }}
       />
+      {!filtersReady ? (
+        <EmptyState title="Pick sport, then gender, then age" hint="The scoreboard waits until the category is selected." />
+      ) : (
+        <>
+      {rounds.length > 0 ? (
+        <ChipFilter
+          ariaLabel="Rounds"
+          showAll={false}
+          allowEmpty={false}
+          value={roundLabel}
+          onChange={(value) => {
+            if (value) setRoundLabel(value);
+          }}
+          options={rounds.map((label) => ({ value: label, label }))}
+        />
+      ) : null}
+      <SplitWorkspace
+            splitAt="md"
+            queue={
+              <>
+                <p className="text-sm font-semibold">Matches</p>
+                {queue.length === 0 ? (
+                  <p className="text-sm text-[var(--ops-text-muted)]">No matches for this filter.</p>
+                ) : (
+                  queue.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMatchId(row.id);
+                        setPlayerPane(false);
+                        router.replace(`/gameplay/scoring?match=${row.id}`);
+                      }}
+                      className={`rounded-xl border px-3 py-3 text-left ${
+                        selectedMatchId === row.id
+                          ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
+                          : "border-[var(--ops-line)] bg-white hover:bg-[var(--ops-board-muted)]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold">{row.team1Name} vs {row.team2Name}</p>
+                        <StatusBadge tone={statusTone(row.status)}>
+                          {row.status.replace("_", " ")}
+                        </StatusBadge>
+                      </div>
+                      <p className="mt-1 text-sm text-[var(--ops-text-muted)]">{displayScore(row)}</p>
+                    </button>
+                  ))
+                )}
+              </>
+            }
+            board={
+              selectedMatch ? (
+                <SoftCard>
+                  <ScoreMatchBoard
+                    key={selectedMatch.id}
+                    match={selectedMatch}
+                    initialPane={playerPane ? "players" : "score"}
+                    onSaved={() => void load()}
+                  />
+                </SoftCard>
+              ) : (
+                <EmptyState title="Select a match" hint="The scoreboard opens here." />
+              )
+            }
+          />
+        </>
+      )}
     </div>
+  );
+}
+
+export default function ScoringPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>}>
+      <ScoringDesk />
+    </Suspense>
   );
 }

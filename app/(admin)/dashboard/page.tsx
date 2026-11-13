@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
+import { EmptyState, PageHeader, SoftButton, SoftCard } from "@/components/ops";
 import { getDashboardSummary } from "@/lib/services";
 import type { DashboardSummary } from "@/lib/types/cms";
 
@@ -19,23 +20,20 @@ export default function DashboardPage() {
   }, [selected]);
 
   if (loading) {
-    return <p className="text-sm text-[var(--cms-muted)]">Loading…</p>;
+    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
   }
 
   if (!selected) {
     return (
-      <div className="rounded-2xl border border-[var(--cms-line)] bg-white p-8">
-        <h1 className="text-lg font-semibold">Dashboard</h1>
-        <p className="mt-2 text-sm text-[var(--cms-muted)]">
-          Create a championship to get started.
-        </p>
-        <Link
-          href="/championships"
-          className="mt-4 inline-flex h-10 items-center rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white"
-        >
-          Championship management
-        </Link>
-      </div>
+      <EmptyState
+        title="Create a championship to get started"
+        hint="Setup starts with a championship, then sports, then the floor."
+        action={
+          <Link href="/championships">
+            <SoftButton variant="primary">Championships</SoftButton>
+          </Link>
+        }
+      />
     );
   }
 
@@ -45,25 +43,58 @@ export default function DashboardPage() {
     { label: "Teams", value: summary?.teamCount ?? "—" },
   ];
 
+  const steps = [
+    {
+      n: "1",
+      title: "Assign sports",
+      hint: "Offer sports, then categories, then teams.",
+      href: `/championships/${selected.id}/sports`,
+    },
+    {
+      n: "2",
+      title: "Create draws",
+      hint: "Pick a sport, then a category, then the match workspace.",
+      href: "/gameplay/fixtures",
+    },
+    {
+      n: "3",
+      title: "Score matches",
+      hint: "Sport → gender → age, then the scoreboard.",
+      href: "/gameplay/scoring",
+    },
+    {
+      n: "4",
+      title: "Publish results",
+      hint: "Same filters. Round columns of live and completed matches.",
+      href: "/gameplay/results",
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">{selected.name}</h1>
-        <p className="mt-1 text-sm text-[var(--cms-muted)]">
-          {selected.location || "No location"}{" "}
-          {selected.startDate ? `· ${selected.startDate}` : ""}
-          {selected.endDate ? ` – ${selected.endDate}` : ""}
-        </p>
-      </div>
+      <PageHeader
+        title={selected.name}
+        hint={`${selected.location || "No location"}${selected.startDate ? ` · ${selected.startDate}` : ""}${selected.endDate ? ` – ${selected.endDate}` : ""}`}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         {cards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-[var(--cms-line)] bg-white p-5"
-          >
-            <p className="text-sm text-[var(--cms-muted)]">{card.label}</p>
+          <SoftCard key={card.label}>
+            <p className="text-sm text-[var(--ops-text-muted)]">{card.label}</p>
             <p className="mt-2 text-2xl font-semibold">{card.value}</p>
-          </div>
+          </SoftCard>
+        ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {steps.map((step) => (
+          <Link key={step.n} href={step.href}>
+            <SoftCard interactive>
+              <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
+                Step {step.n}
+              </p>
+              <p className="mt-1 font-semibold">{step.title}</p>
+              <p className="mt-1 text-sm text-[var(--ops-text-muted)]">{step.hint}</p>
+            </SoftCard>
+          </Link>
         ))}
       </div>
     </div>

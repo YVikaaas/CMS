@@ -294,5 +294,5 @@ export function detectWinnerFromPoints(
 }
 
 export function playerScoresPath(matchId: string): string {
-  return `/gameplay/scoring/${matchId}/players`;
+  return `/gameplay/scoring?match=${matchId}`;
 }

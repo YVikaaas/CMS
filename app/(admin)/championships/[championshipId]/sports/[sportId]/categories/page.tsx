@@ -4,9 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Crumbs } from "@/components/crumbs";
-import { Modal, fieldClass } from "@/components/Modal";
-import { SortTh, TableControls } from "@/components/table";
+import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import {
+  ChipFilter,
+  EmptyState,
+  PageHeader,
+  SoftButton,
+  SoftCard,
+  SoftSearch,
+  SoftSelect,
+  StatusBadge,
+  StepCrumbs,
+} from "@/components/ops";
 import { useScopedChampionship } from "../../../../useScopedChampionship";
 import {
   addChampionshipEvent,
@@ -16,8 +25,15 @@ import {
   removeChampionshipEvent,
 } from "@/lib/services";
 import type { Category, ChampionshipOffering, Gender, Sport } from "@/lib/types/cms";
+import {
+  applyAge,
+  applyGender,
+  applySport,
+  emptyEventFilter,
+  writeEventFilter,
+} from "@/lib/utils/eventFilter";
 import { categoryLabel } from "@/lib/utils/labels";
-import { compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import { compareText, matchesQuery } from "@/lib/utils/table";
 
 export default function ChampionshipCategoriesPage() {
   const router = useRouter();
@@ -29,13 +45,10 @@ export default function ChampionshipCategoriesPage() {
   const [offerings, setOfferings] = useState<ChampionshipOffering[]>([]);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<"" | Gender>("");
-  const [sort, setSort] = useState<SortState<"name" | "gender" | "age">>({
-    key: "name",
-    dir: "asc",
-  });
   const [formOpen, setFormOpen] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ categoryId?: string }>({});
 
   const load = useCallback(async () => {
     const [sportRes, catRes, offerRes] = await Promise.all([
@@ -70,154 +83,127 @@ export default function ChampionshipCategoriesPage() {
   const visible = useMemo(() => {
     const filtered = assigned.filter((category) => {
       if (genderFilter && category.gender !== genderFilter) return false;
-      return matchesQuery(
-        search,
-        categoryLabel(category),
-        category.ageGroup,
-        category.gender,
-      );
+      return matchesQuery(search, categoryLabel(category), category.ageGroup, category.gender);
     });
-    return [...filtered].sort((a, b) => {
-      if (sort.key === "gender") return compareText(a.gender, b.gender, sort.dir);
-      if (sort.key === "age") return compareText(a.ageGroup, b.ageGroup, sort.dir);
-      return compareText(categoryLabel(a), categoryLabel(b), sort.dir);
-    });
-  }, [assigned, search, genderFilter, sort]);
+    return [...filtered].sort((a, b) => compareText(categoryLabel(a), categoryLabel(b), "asc"));
+  }, [assigned, search, genderFilter]);
 
   if (loading) {
-    return <p className="text-sm text-[var(--cms-muted)]">Loading…</p>;
+    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
   }
   if (!championship) {
     return (
-      <div className="rounded-2xl border border-[var(--cms-line)] bg-white p-8">
-        <h1 className="text-lg font-semibold">Championship not found</h1>
-        <Link href="/championships" className="mt-4 inline-block text-sm text-[var(--cms-action)]">
-          Back to championships
-        </Link>
-      </div>
+      <EmptyState
+        title="Championship not found"
+        action={
+          <Link href="/championships">
+            <SoftButton variant="primary">Back to championships</SoftButton>
+          </Link>
+        }
+      />
     );
   }
 
   const sportsHref = `/championships/${championshipId}/sports`;
 
+  const openCategory = (category: Category) => {
+    let next = applySport(emptyEventFilter(championshipId), sportId);
+    next = applyGender(next, category.gender);
+    next = applyAge(next, category.ageGroup, [category]);
+    writeEventFilter(next);
+    router.push(`${sportsHref}/${sportId}/categories/${category.id}/teams`);
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      <Crumbs
+      <StepCrumbs
         items={[
           { href: "/championships", label: "Championships" },
           { href: sportsHref, label: championship.name },
           { label: sport?.name ?? "Sport" },
         ]}
       />
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">
-            {championship.name} · {sport?.name ?? "Sport"} · Category
-          </h1>
-          <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Click a category to open its teams.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          disabled={!offering || available.length === 0}
-          className="h-10 shrink-0 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          Add category
-        </button>
-      </div>
+      <PageHeader
+        title="Categories"
+        hint="Pick a category, then add teams."
+        action={
+          <SoftButton
+            variant="primary"
+            onClick={() => setFormOpen(true)}
+            disabled={!offering || available.length === 0}
+          >
+            Add category
+          </SoftButton>
+        }
+      />
 
       {!offering ? (
-        <p className="text-sm text-[var(--cms-muted)]">
-          Assign this sport first on the{" "}
-          <Link href={sportsHref} className="text-[var(--cms-action)]">
-            Sport
-          </Link>{" "}
-          page.
-        </p>
+        <EmptyState
+          title="Assign this sport first"
+          action={
+            <Link href={sportsHref}>
+              <SoftButton variant="primary">Sports</SoftButton>
+            </Link>
+          }
+        />
       ) : null}
 
-      <TableControls search={search} onSearch={setSearch} placeholder="Search category">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Gender
-          <select
-            value={genderFilter}
-            onChange={(event) => setGenderFilter(event.target.value as "" | Gender)}
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </label>
-      </TableControls>
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
-            <tr>
-              <SortTh label="Category" column="name" sort={sort} onSort={setSort} />
-              <SortTh label="Gender" column="gender" sort={sort} onSort={setSort} />
-              <SortTh label="Age" column="age" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium">Roster</th>
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((category) => (
-              <tr
-                key={category.id}
-                className="cursor-pointer border-t border-[var(--cms-line)]"
-                onClick={() =>
-                  router.push(
-                    `/championships/${championshipId}/sports/${sportId}/categories/${category.id}/teams`,
-                  )
-                }
-              >
-                <td className="px-4 py-3 font-medium text-[var(--cms-action)]">
-                  {categoryLabel(category)}
-                </td>
-                <td className="px-4 py-3 capitalize">{category.gender}</td>
-                <td className="px-4 py-3">{category.ageGroup}</td>
-                <td className="px-4 py-3">
-                  {category.teamSize}–{category.maxTeamSize}
-                </td>
-                <td
-                  className="px-4 py-3 text-right"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    className="text-red-600"
-                    onClick={async () => {
-                      if (!confirm(`Remove ${categoryLabel(category)}?`)) return;
-                      const { error } = await removeChampionshipEvent(
-                        championshipId,
-                        category.id,
-                      );
-                      if (error) toast.error(error.message);
-                      else {
-                        toast.success("Category removed.");
-                        await load();
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-[var(--cms-muted)]">
-                  {assigned.length === 0 ? "No categories yet." : "No matching categories."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      <div className="flex flex-wrap items-center gap-3">
+        <SoftSearch
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search category"
+        />
+        <ChipFilter
+          ariaLabel="Gender"
+          value={genderFilter}
+          onChange={setGenderFilter}
+          options={[
+            { value: "male", label: "Boys" },
+            { value: "female", label: "Girls" },
+          ]}
+        />
       </div>
+
+      {visible.length === 0 ? (
+        <EmptyState
+          title={assigned.length === 0 ? "No categories yet" : "No matching categories"}
+          hint="Add a category to continue."
+        />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((category) => (
+            <SoftCard key={category.id} interactive onClick={() => openCategory(category)}>
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-semibold">{categoryLabel(category)}</p>
+                <StatusBadge>{category.ageGroup}</StatusBadge>
+              </div>
+              <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
+                Roster {category.teamSize}–{category.maxTeamSize}
+              </p>
+              <div
+                className="mt-4 flex justify-end"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <SoftButton
+                  variant="danger"
+                  onClick={async () => {
+                    if (!confirm(`Remove ${categoryLabel(category)}?`)) return;
+                    const { error } = await removeChampionshipEvent(championshipId, category.id);
+                    if (error) toast.error(error.message);
+                    else {
+                      toast.success("Category removed.");
+                      await load();
+                    }
+                  }}
+                >
+                  Remove
+                </SoftButton>
+              </div>
+            </SoftCard>
+          ))}
+        </div>
+      )}
 
       <Modal open={formOpen} title="Add category" onClose={() => setFormOpen(false)}>
         <form
@@ -225,7 +211,8 @@ export default function ChampionshipCategoriesPage() {
           onSubmit={async (event) => {
             event.preventDefault();
             if (!categoryId) {
-              toast.error("Category is required.");
+              setFieldErrors({ categoryId: "Required" });
+              toast.error("Fill the highlighted fields.");
               return;
             }
             setSaving(true);
@@ -237,15 +224,19 @@ export default function ChampionshipCategoriesPage() {
             }
             toast.success("Category assigned.");
             setFormOpen(false);
+            setFieldErrors({});
             await load();
           }}
         >
           <label className="flex flex-col gap-1 text-sm font-medium">
             Category
-            <select
+            <SoftSelect
               value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
-              className={fieldClass}
+              onChange={(event) => {
+                setCategoryId(event.target.value);
+                setFieldErrors({});
+              }}
+              className={fieldErrors.categoryId ? fieldErrorClass : fieldClass}
             >
               {available.length === 0 ? (
                 <option value="">No unused categories for this sport</option>
@@ -256,23 +247,15 @@ export default function ChampionshipCategoriesPage() {
                   </option>
                 ))
               )}
-            </select>
+            </SoftSelect>
           </label>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving || !categoryId}
-              className="h-10 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-            >
+            <SoftButton type="submit" variant="primary" loading={saving} disabled={!categoryId}>
               Add category
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              className="h-10 rounded-lg border border-[var(--cms-line)] px-4 text-sm"
-            >
+            </SoftButton>
+            <SoftButton type="button" onClick={() => setFormOpen(false)}>
               Cancel
-            </button>
+            </SoftButton>
           </div>
         </form>
       </Modal>

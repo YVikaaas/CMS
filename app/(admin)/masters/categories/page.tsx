@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Modal, fieldClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
-import { SortTh, TableControls } from "@/components/table";
+import { SortTh } from "@/components/table";
+import { ChipFilter, PageHeader, SoftButton, SoftSearch, SoftSelect } from "@/components/ops";
 import {
   archiveCategory,
   createCategory,
@@ -41,6 +42,7 @@ export default function CategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ sportId?: string; name?: string; ageGroup?: string }>({});
 
   const load = async () => {
     const [sportsRes, catsRes] = await Promise.all([listSports(), listCategories()]);
@@ -87,17 +89,19 @@ export default function CategoriesPage() {
     setOpen(false);
     setEditingId(null);
     setForm((current) => ({ ...empty, sportId: current.sportId || sports[0]?.id || "" }));
+    setFieldErrors({});
   };
 
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.sportId || !form.ageGroup.trim()) {
-      toast.error("Sport and age group are required.");
-      return;
-    }
+    const nextErrors: { sportId?: string; name?: string; ageGroup?: string } = {};
+    if (!form.sportId) nextErrors.sportId = "Required";
+    if (!form.ageGroup.trim()) nextErrors.ageGroup = "Required";
     const categoryNameErr = nameError(form.name, "Name");
-    if (categoryNameErr) {
-      toast.error(categoryNameErr);
+    if (categoryNameErr) nextErrors.name = categoryNameErr;
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Fill the highlighted fields.");
       return;
     }
     setSaving(true);
@@ -131,62 +135,55 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Masters · Category</h1>
-          <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Categories under a sport (for example Boys U14).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setForm({
-              ...empty,
-              sportId: filterSport || sports[0]?.id || "",
-            });
-            setOpen(true);
-          }}
-          className="h-10 shrink-0 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white"
-        >
-          Add category
-        </button>
+      <PageHeader
+        title="Category"
+        hint="Categories under a sport (for example Boys U14)."
+        action={
+          <SoftButton
+            variant="primary"
+            onClick={() => {
+              setEditingId(null);
+              setForm({
+                ...empty,
+                sportId: filterSport || sports[0]?.id || "",
+              });
+              setFieldErrors({});
+              setOpen(true);
+            }}
+          >
+            Add category
+          </SoftButton>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SoftSearch
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search category or sport"
+        />
+        <SoftSelect value={filterSport} onChange={(event) => setFilterSport(event.target.value)}>
+          <option value="">All sports</option>
+          {sports.map((sport) => (
+            <option key={sport.id} value={sport.id}>
+              {sport.name}
+            </option>
+          ))}
+        </SoftSelect>
+        <ChipFilter
+          ariaLabel="Gender"
+          value={genderFilter}
+          onChange={setGenderFilter}
+          options={[
+            { value: "male", label: "Boys" },
+            { value: "female", label: "Girls" },
+          ]}
+        />
       </div>
 
-      <TableControls search={search} onSearch={setSearch} placeholder="Search category or sport">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Sport
-          <select
-            value={filterSport}
-            onChange={(event) => setFilterSport(event.target.value)}
-            className={fieldClass}
-          >
-            <option value="">All sports</option>
-            {sports.map((sport) => (
-              <option key={sport.id} value={sport.id}>
-                {sport.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Gender
-          <select
-            value={genderFilter}
-            onChange={(event) => setGenderFilter(event.target.value as "" | Gender)}
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </label>
-      </TableControls>
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
+          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
             <tr>
               <SortTh label="Category" column="category" sort={sort} onSort={setSort} />
               <SortTh label="Sport" column="sport" sort={sort} onSort={setSort} />
@@ -203,9 +200,8 @@ export default function CategoriesPage() {
                   {row.teamSize}/{row.maxTeamSize}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    className="mr-3 text-[var(--cms-action)]"
+                  <SoftButton
+                    className="mr-2"
                     onClick={() => {
                       setEditingId(row.id);
                       setForm({
@@ -217,14 +213,14 @@ export default function CategoriesPage() {
                         teamSize: row.teamSize,
                         maxTeamSize: row.maxTeamSize,
                       });
+                      setFieldErrors({});
                       setOpen(true);
                     }}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-red-600"
+                  </SoftButton>
+                  <SoftButton
+                    variant="danger"
                     onClick={async () => {
                       if (!confirm("Archive this category?")) return;
                       const { error } = await archiveCategory(row.id);
@@ -233,7 +229,7 @@ export default function CategoriesPage() {
                     }}
                   >
                     Archive
-                  </button>
+                  </SoftButton>
                 </td>
               </tr>
             ))}
@@ -262,8 +258,11 @@ export default function CategoriesPage() {
             <select
               value={form.sportId}
               disabled={Boolean(editingId)}
-              onChange={(event) => setForm((f) => ({ ...f, sportId: event.target.value }))}
-              className={`${fieldClass} disabled:bg-slate-50`}
+              onChange={(event) => {
+                setForm((f) => ({ ...f, sportId: event.target.value }));
+                setFieldErrors((prev) => ({ ...prev, sportId: undefined }));
+              }}
+              className={`${fieldErrors.sportId ? fieldErrorClass : fieldClass} disabled:bg-[var(--ops-board-muted)]`}
             >
               {sports.map((sport) => (
                 <option key={sport.id} value={sport.id}>
@@ -276,7 +275,11 @@ export default function CategoriesPage() {
             Name
             <NameInput
               value={form.name}
-              onChange={(value) => setForm((f) => ({ ...f, name: value }))}
+              onChange={(value) => {
+                setForm((f) => ({ ...f, name: value }));
+                setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -297,8 +300,11 @@ export default function CategoriesPage() {
             <input
               value={form.ageGroup}
               placeholder="U14"
-              onChange={(event) => setForm((f) => ({ ...f, ageGroup: event.target.value }))}
-              className={fieldClass}
+              onChange={(event) => {
+                setForm((f) => ({ ...f, ageGroup: event.target.value }));
+                setFieldErrors((prev) => ({ ...prev, ageGroup: undefined }));
+              }}
+              className={fieldErrors.ageGroup ? fieldErrorClass : fieldClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -337,21 +343,13 @@ export default function CategoriesPage() {
               className={fieldClass}
             />
           </label>
-          <div className="sm:col-span-2 flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-10 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-            >
+          <div className="flex gap-2 sm:col-span-2">
+            <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Add category"}
-            </button>
-            <button
-              type="button"
-              onClick={close}
-              className="h-10 rounded-lg border border-[var(--cms-line)] px-4 text-sm"
-            >
+            </SoftButton>
+            <SoftButton type="button" onClick={close}>
               Cancel
-            </button>
+            </SoftButton>
           </div>
         </form>
       </Modal>

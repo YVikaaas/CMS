@@ -4,10 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Crumbs } from "@/components/crumbs";
-import { Modal, fieldClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
-import { SortTh, TableControls } from "@/components/table";
+import {
+  ChipFilter,
+  EmptyState,
+  PageHeader,
+  SoftButton,
+  SoftCard,
+  SoftSearch,
+  StatusBadge,
+  StepCrumbs,
+} from "@/components/ops";
 import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
 import {
   archiveTeam,
@@ -20,7 +28,7 @@ import {
 } from "@/lib/services";
 import type { Category, CscOption, Gender, Sport, Team, TeamMemberInput } from "@/lib/types/cms";
 import { categoryLabel } from "@/lib/utils/labels";
-import { compareNumber, compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import { compareText, matchesQuery } from "@/lib/utils/table";
 import { nameError, optionalNameError, phoneError } from "@/lib/utils/validation";
 
 const emptyMember = (gender: Gender = "male"): TeamMemberInput => ({
@@ -55,16 +63,13 @@ export default function ChampionshipCategoryTeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
   const [rosterFilter, setRosterFilter] = useState<"" | "complete" | "short">("");
-  const [sort, setSort] = useState<SortState<"name" | "org" | "members">>({
-    key: "name",
-    dir: "asc",
-  });
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [members, setMembers] = useState<TeamMemberInput[]>([emptyMember()]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
 
   const sport = sports.find((item) => item.id === sportId) ?? null;
   const category = categories.find((item) => item.id === categoryId) ?? null;
@@ -106,6 +111,7 @@ export default function ChampionshipCategoryTeamsPage() {
     setTeamName("");
     setOrgName("");
     setMembers(padMembers([], minMembers, maxMembers, memberGender));
+    setFieldErrors({});
   };
 
   const closeForm = () => {
@@ -122,6 +128,7 @@ export default function ChampionshipCategoryTeamsPage() {
     setEditingId(team.id);
     setTeamName(team.name);
     setOrgName(team.orgName ?? "");
+    setFieldErrors({});
     setFormOpen(true);
   };
 
@@ -131,32 +138,28 @@ export default function ChampionshipCategoryTeamsPage() {
       toast.error("Category is not assigned to this championship.");
       return;
     }
+    const nextErrors: Record<string, string> = {};
     const teamErr = nameError(teamName, "Team name");
-    if (teamErr) {
-      toast.error(teamErr);
-      return;
-    }
+    if (teamErr) nextErrors.teamName = teamErr;
     const orgErr = optionalNameError(orgName, "Organization");
-    if (orgErr) {
-      toast.error(orgErr);
+    if (orgErr) nextErrors.orgName = orgErr;
+    if (!editingId) {
+      members.forEach((member, index) => {
+        const memberNameErr = nameError(member.name, "Member name");
+        if (memberNameErr) nextErrors[`memberName-${index}`] = memberNameErr;
+        const memberPhoneErr = phoneError(member.phone, "Member phone");
+        if (memberPhoneErr) nextErrors[`memberPhone-${index}`] = memberPhoneErr;
+      });
+    }
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Fill the highlighted fields.");
       return;
     }
     if (!editingId) {
       if (members.length < minMembers || members.length > maxMembers) {
         toast.error(`This category needs ${minMembers} to ${maxMembers} members.`);
         return;
-      }
-      for (const member of members) {
-        const memberNameErr = nameError(member.name, "Member name");
-        if (memberNameErr) {
-          toast.error(memberNameErr);
-          return;
-        }
-        const memberPhoneErr = phoneError(member.phone, "Member phone");
-        if (memberPhoneErr) {
-          toast.error(memberPhoneErr);
-          return;
-        }
       }
       const keys = members.map(
         (member) => `${member.name.trim().toLowerCase()}|${member.phone.trim()}`,
@@ -195,24 +198,22 @@ export default function ChampionshipCategoryTeamsPage() {
       if (rosterFilter === "short" && team.memberCount >= team.teamSize) return false;
       return matchesQuery(search, team.name, team.orgName);
     });
-    return [...filtered].sort((a, b) => {
-      if (sort.key === "org") return compareText(a.orgName, b.orgName, sort.dir);
-      if (sort.key === "members") return compareNumber(a.memberCount, b.memberCount, sort.dir);
-      return compareText(a.name, b.name, sort.dir);
-    });
-  }, [teams, search, rosterFilter, sort]);
+    return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
+  }, [teams, search, rosterFilter]);
 
   if (loading) {
-    return <p className="text-sm text-[var(--cms-muted)]">Loading…</p>;
+    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
   }
   if (!championship) {
     return (
-      <div className="rounded-2xl border border-[var(--cms-line)] bg-white p-8">
-        <h1 className="text-lg font-semibold">Championship not found</h1>
-        <Link href="/championships" className="mt-4 inline-block text-sm text-[var(--cms-action)]">
-          Back to championships
-        </Link>
-      </div>
+      <EmptyState
+        title="Championship not found"
+        action={
+          <Link href="/championships">
+            <SoftButton variant="primary">Back to championships</SoftButton>
+          </Link>
+        }
+      />
     );
   }
 
@@ -220,7 +221,7 @@ export default function ChampionshipCategoryTeamsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Crumbs
+      <StepCrumbs
         items={[
           { href: "/championships", label: "Championships" },
           { href: sportsHref, label: championship.name },
@@ -228,88 +229,74 @@ export default function ChampionshipCategoryTeamsPage() {
           { label: categoryTitle },
         ]}
       />
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">
-            {championship.name} · {sport?.name ?? "Sport"} · {categoryTitle} · Teams
-          </h1>
-          <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Click a team to open its members. Roster must be {minMembers}–{maxMembers} members.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          disabled={!csc}
-          className="h-10 shrink-0 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          Add team
-        </button>
-      </div>
+      <PageHeader
+        title="Teams"
+        hint={`Roster must be ${minMembers}–${maxMembers} members. Click a team for members.`}
+        action={
+          <SoftButton variant="primary" onClick={openCreate} disabled={!csc}>
+            Add team
+          </SoftButton>
+        }
+      />
 
       {!csc ? (
-        <p className="text-sm text-[var(--cms-muted)]">
-          Assign this category first on the{" "}
-          <Link href={categoriesHref} className="text-[var(--cms-action)]">
-            Category
-          </Link>{" "}
-          page.
-        </p>
+        <EmptyState
+          title="Assign this category first"
+          action={
+            <Link href={categoriesHref}>
+              <SoftButton variant="primary">Categories</SoftButton>
+            </Link>
+          }
+        />
       ) : null}
 
-      <TableControls search={search} onSearch={setSearch} placeholder="Search team or organization">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Roster
-          <select
-            value={rosterFilter}
-            onChange={(event) =>
-              setRosterFilter(event.target.value as "" | "complete" | "short")
-            }
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="complete">Complete</option>
-            <option value="short">Short</option>
-          </select>
-        </label>
-      </TableControls>
+      <div className="flex flex-wrap items-center gap-3">
+        <SoftSearch
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search team or organization"
+        />
+        <ChipFilter
+          ariaLabel="Roster"
+          value={rosterFilter}
+          onChange={setRosterFilter}
+          options={[
+            { value: "complete", label: "Complete" },
+            { value: "short", label: "Short" },
+          ]}
+        />
+      </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
-            <tr>
-              <SortTh label="Team" column="name" sort={sort} onSort={setSort} />
-              <SortTh label="Organization" column="org" sort={sort} onSort={setSort} />
-              <SortTh label="Members" column="members" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((team) => (
-              <tr
+      {visible.length === 0 ? (
+        <EmptyState title={teams.length === 0 ? "No teams yet" : "No matching teams"} />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((team) => {
+            const complete = team.memberCount >= team.teamSize;
+            return (
+              <SoftCard
                 key={team.id}
-                className="cursor-pointer border-t border-[var(--cms-line)]"
+                interactive
                 onClick={() => router.push(`${categoriesHref}/${categoryId}/teams/${team.id}/members`)}
               >
-                <td className="px-4 py-3 font-medium text-[var(--cms-action)]">{team.name}</td>
-                <td className="px-4 py-3 text-[var(--cms-muted)]">{team.orgName || "—"}</td>
-                <td className="px-4 py-3">
-                  {team.memberCount}/{team.teamSize}–{team.maxTeamSize}
-                </td>
-                <td
-                  className="px-4 py-3 text-right"
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{team.name}</p>
+                    <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
+                      {team.orgName || "No organization"}
+                    </p>
+                  </div>
+                  <StatusBadge tone={complete ? "success" : "warning"}>
+                    {team.memberCount}/{team.maxTeamSize}
+                  </StatusBadge>
+                </div>
+                <div
+                  className="mt-4 flex justify-end gap-2"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <button
-                    type="button"
-                    className="mr-3 text-[var(--cms-action)]"
-                    onClick={() => openEdit(team)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-red-600"
+                  <SoftButton onClick={() => openEdit(team)}>Edit</SoftButton>
+                  <SoftButton
+                    variant="danger"
                     onClick={async () => {
                       if (!confirm(`Delete ${team.name}?`)) return;
                       const { error } = await archiveTeam(team.id);
@@ -318,20 +305,13 @@ export default function ChampionshipCategoryTeamsPage() {
                     }}
                   >
                     Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-[var(--cms-muted)]">
-                  {teams.length === 0 ? "No teams yet." : "No matching teams."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                  </SoftButton>
+                </div>
+              </SoftCard>
+            );
+          })}
+        </div>
+      )}
 
       <Modal
         open={formOpen}
@@ -342,20 +322,33 @@ export default function ChampionshipCategoryTeamsPage() {
         <form onSubmit={onSave} className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Team name
-            <NameInput value={teamName} onChange={setTeamName} />
+            <NameInput
+              value={teamName}
+              onChange={(value) => {
+                setTeamName(value);
+                setFieldErrors((prev) => ({ ...prev, teamName: undefined }));
+              }}
+              className={fieldErrors.teamName ? fieldErrorClass : fieldClass}
+            />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Organization
-            <NameInput value={orgName} onChange={setOrgName} />
+            <NameInput
+              value={orgName}
+              onChange={(value) => {
+                setOrgName(value);
+                setFieldErrors((prev) => ({ ...prev, orgName: undefined }));
+              }}
+              className={fieldErrors.orgName ? fieldErrorClass : fieldClass}
+            />
           </label>
           {!editingId ? (
             <>
-              <div className="sm:col-span-2 flex items-center justify-between">
+              <div className="flex items-center justify-between sm:col-span-2">
                 <p className="text-sm font-medium">
                   Members ({minMembers}–{maxMembers}, all {memberGender})
                 </p>
-                <button
-                  type="button"
+                <SoftButton
                   disabled={members.length >= maxMembers}
                   onClick={() =>
                     setMembers((current) =>
@@ -364,68 +357,63 @@ export default function ChampionshipCategoryTeamsPage() {
                         : [...current, emptyMember(memberGender)],
                     )
                   }
-                  className="text-sm font-medium text-[var(--cms-action)] disabled:opacity-40"
                 >
                   Add member
-                </button>
+                </SoftButton>
               </div>
               {members.map((member, index) => (
                 <div
                   key={index}
-                  className="sm:col-span-2 grid gap-3 rounded-xl border border-[var(--cms-line)] p-3 sm:grid-cols-2"
+                  className="grid gap-3 rounded-xl border border-[var(--ops-line)] p-3 sm:col-span-2 sm:grid-cols-2"
                 >
                   <label className="flex flex-col gap-1 text-sm font-medium">
                     Name
                     <NameInput
                       value={member.name}
-                      onChange={(value) =>
+                      onChange={(value) => {
                         setMembers((current) =>
                           current.map((row, i) => (i === index ? { ...row, name: value } : row)),
-                        )
-                      }
+                        );
+                        setFieldErrors((prev) => ({ ...prev, [`memberName-${index}`]: undefined }));
+                      }}
+                      className={fieldErrors[`memberName-${index}`] ? fieldErrorClass : fieldClass}
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium">
                     Phone
                     <PhoneInput
                       value={member.phone}
-                      onChange={(value) =>
+                      onChange={(value) => {
                         setMembers((current) =>
                           current.map((row, i) => (i === index ? { ...row, phone: value } : row)),
-                        )
-                      }
+                        );
+                        setFieldErrors((prev) => ({ ...prev, [`memberPhone-${index}`]: undefined }));
+                      }}
+                      className={fieldErrors[`memberPhone-${index}`] ? fieldErrorClass : fieldClass}
                     />
                   </label>
                   {members.length > minMembers ? (
-                    <button
-                      type="button"
-                      className="sm:col-span-2 justify-self-end text-sm text-red-600"
+                    <SoftButton
+                      variant="ghost"
+                      className="justify-self-end sm:col-span-2"
                       onClick={() =>
                         setMembers((current) => current.filter((_, i) => i !== index))
                       }
                     >
                       Remove
-                    </button>
+                    </SoftButton>
                   ) : null}
                 </div>
               ))}
             </>
           ) : null}
-          <div className="sm:col-span-2 flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-10 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-            >
+          <div className="flex gap-2 sm:col-span-2">
+            <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Add team"}
-            </button>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="h-10 rounded-lg border border-[var(--cms-line)] px-4 text-sm"
-            >
+            </SoftButton>
+            <SoftButton type="button" onClick={closeForm}>
               Cancel
-            </button>
+            </SoftButton>
           </div>
         </form>
       </Modal>

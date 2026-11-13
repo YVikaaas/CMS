@@ -11,7 +11,9 @@ Pure helpers and cross-cutting utilities live under `lib/utils/`. **Do not** dup
 | `routes.ts` | `safeNextPathAfterLogin`, `isPublicPath`, onboarding/waiting path helpers. Default after login is `/dashboard`. |
 | `slug.ts` | `slugify` for championship slugs. |
 | `labels.ts` | `categoryLabel` — Boys/Girls + age group. |
-| `nav.ts` | `ADMIN_NAV` sidebar items with page roles for later enforcement. |
+| `nav.ts` | `ADMIN_NAV` (Dashboard + Floor / Setup / Catalog), `NAV_SECTIONS`, `pathTitle`, `needsChampionship`, `isNavItemActive`. |
+| `eventFilter.ts` | Shared Floor filters: `cms.eventFilter` in `sessionStorage` (`sportId`, `gender`, `ageGroup`, `categoryId`). Empty string = All (not selected). `isEventFilterSelected` is sport+gender+age. Apply helpers, offered CSC lists, pass helpers, event identity labels. Fixtures EventFilters use `unlockInOrder`. |
 | `table.ts` | `toggleSort`, `matchesQuery`, `compareText`, `compareNumber` for table search/sort. |
 | `fixtures.ts` | Fixture round labels/order, format labels, knockout presets, round validation, datetime-local helpers, 1/2/3 basket scoring, player-score path, score line / winner / results-board helpers. |
+| `resultsBoard.ts` | Public-style results board helpers: match id/when labels, score visibility, knockout column layout and connector paths. |
 | `validation.ts` | Name = letters only; phone = 10 digits starting with 6–9. Score points/fouls = digits only. |

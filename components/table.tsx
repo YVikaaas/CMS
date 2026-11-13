@@ -53,7 +53,7 @@ export function SortTh<K extends string>({
       <button
         type="button"
         onClick={() => onSort(toggleSort(sort, column))}
-        className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-slate-100 hover:text-slate-900"
+        className="inline-flex min-h-[var(--ops-touch-min)] items-center gap-1 rounded-md px-1 py-0.5 hover:bg-[var(--ops-surface-hover)] hover:text-[var(--ops-text)]"
       >
         {label}
         <span className="text-[10px] text-slate-400" aria-hidden>

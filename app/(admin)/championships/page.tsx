@@ -3,9 +3,17 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Modal, fieldClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
-import { SortTh, TableControls } from "@/components/table";
+import {
+  ChipFilter,
+  EmptyState,
+  PageHeader,
+  SoftButton,
+  SoftCard,
+  SoftSearch,
+  StatusBadge,
+} from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
   archiveChampionship,
@@ -13,7 +21,7 @@ import {
   updateChampionship,
 } from "@/lib/services";
 import type { Championship, CompetitionStatus } from "@/lib/types/cms";
-import { compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import { compareText, matchesQuery } from "@/lib/utils/table";
 import { nameError } from "@/lib/utils/validation";
 
 const emptyForm = {
@@ -21,6 +29,12 @@ const emptyForm = {
   location: "",
   startDate: "",
   endDate: "",
+};
+
+const statusTone: Record<CompetitionStatus, "warning" | "success" | "neutral"> = {
+  draft: "warning",
+  active: "success",
+  archived: "neutral",
 };
 
 export default function ChampionshipsPage() {
@@ -32,14 +46,12 @@ export default function ChampionshipsPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | CompetitionStatus>("");
-  const [sort, setSort] = useState<SortState<"name" | "dates" | "location" | "status">>({
-    key: "name",
-    dir: "asc",
-  });
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string }>({});
 
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setFieldErrors({});
     setFormOpen(true);
   };
 
@@ -51,6 +63,7 @@ export default function ChampionshipsPage() {
       startDate: row.startDate ?? "",
       endDate: row.endDate ?? "",
     });
+    setFieldErrors({});
     setFormOpen(true);
   };
 
@@ -58,6 +71,7 @@ export default function ChampionshipsPage() {
     setFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+    setFieldErrors({});
   };
 
   const openChampionship = (row: Championship) => {
@@ -68,8 +82,10 @@ export default function ChampionshipsPage() {
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
     const champNameErr = nameError(form.name, "Name");
-    if (champNameErr) {
-      toast.error(champNameErr);
+    const nextErrors = champNameErr ? { name: champNameErr } : {};
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Fill the highlighted fields.");
       return;
     }
     setSaving(true);
@@ -110,112 +126,81 @@ export default function ChampionshipsPage() {
       if (statusFilter && row.status !== statusFilter) return false;
       return matchesQuery(search, row.name, row.location, row.status);
     });
-    return [...filtered].sort((a, b) => {
-      if (sort.key === "dates") return compareText(a.startDate, b.startDate, sort.dir);
-      if (sort.key === "location") return compareText(a.location, b.location, sort.dir);
-      if (sort.key === "status") return compareText(a.status, b.status, sort.dir);
-      return compareText(a.name, b.name, sort.dir);
-    });
-  }, [championships, search, statusFilter, sort]);
+    return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
+  }, [championships, search, statusFilter]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Championship management</h1>
-          <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Click a championship to open its sports, then categories, then teams.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="h-10 shrink-0 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white"
-        >
-          New championship
-        </button>
+      <PageHeader
+        title="Championships"
+        hint="Pick a championship, then assign sports."
+        action={
+          <SoftButton variant="primary" onClick={openCreate}>
+            New championship
+          </SoftButton>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SoftSearch
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name or location"
+        />
+        <ChipFilter
+          ariaLabel="Status"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "draft", label: "Draft" },
+            { value: "active", label: "Active" },
+            { value: "archived", label: "Archived" },
+          ]}
+        />
       </div>
 
-      <TableControls
-        search={search}
-        onSearch={setSearch}
-        placeholder="Search name or location"
-      >
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Status
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as "" | CompetitionStatus)
-            }
-            className={fieldClass}
-          >
-            <option value="">All</option>
-            <option value="draft">Draft</option>
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-          </select>
-        </label>
-      </TableControls>
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--cms-line)] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-[var(--cms-muted)]">
-            <tr>
-              <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
-              <SortTh label="Dates" column="dates" sort={sort} onSort={setSort} />
-              <SortTh label="Location" column="location" sort={sort} onSort={setSort} />
-              <SortTh label="Status" column="status" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr
-                key={row.id}
-                className="cursor-pointer border-t border-[var(--cms-line)]"
-                onClick={() => openChampionship(row)}
+      {visible.length === 0 ? (
+        <EmptyState
+          title={championships.length === 0 ? "No championships yet" : "No matching championships"}
+          hint="Create a championship to start assigning sports."
+        />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((row) => (
+            <SoftCard
+              key={row.id}
+              interactive
+              selected={selectedId === row.id}
+              onClick={() => openChampionship(row)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{row.name}</p>
+                  <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
+                    {row.location || "No location"}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--ops-text-muted)]">
+                    {row.startDate || "—"}
+                    {row.endDate ? ` – ${row.endDate}` : ""}
+                  </p>
+                </div>
+                <StatusBadge tone={statusTone[row.status]}>{row.status}</StatusBadge>
+              </div>
+              <div
+                className="mt-4 flex justify-end gap-2"
+                onClick={(event) => event.stopPropagation()}
               >
-                <td className="px-4 py-3 font-medium text-[var(--cms-action)]">{row.name}</td>
-                <td className="px-4 py-3 text-[var(--cms-muted)]">
-                  {row.startDate || "—"}
-                  {row.endDate ? ` – ${row.endDate}` : ""}
-                </td>
-                <td className="px-4 py-3 text-[var(--cms-muted)]">{row.location || "—"}</td>
-                <td className="px-4 py-3 capitalize text-[var(--cms-muted)]">{row.status}</td>
-                <td
-                  className="px-4 py-3 text-right"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    className="mr-3 text-[var(--cms-action)]"
-                    onClick={() => openEdit(row)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-red-600"
-                    onClick={() => void onArchive(row.id)}
-                  >
-                    Archive
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-[var(--cms-muted)]">
-                  {championships.length === 0
-                    ? "No championships yet."
-                    : "No matching championships."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                <SoftButton size="default" onClick={() => openEdit(row)}>
+                  Edit
+                </SoftButton>
+                <SoftButton variant="danger" onClick={() => void onArchive(row.id)}>
+                  Archive
+                </SoftButton>
+              </div>
+            </SoftCard>
+          ))}
+        </div>
+      )}
 
       <Modal
         open={formOpen}
@@ -227,7 +212,11 @@ export default function ChampionshipsPage() {
             Name
             <NameInput
               value={form.name}
-              onChange={(value) => setForm((f) => ({ ...f, name: value }))}
+              onChange={(value) => {
+                setForm((f) => ({ ...f, name: value }));
+                setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -256,21 +245,13 @@ export default function ChampionshipsPage() {
               className={fieldClass}
             />
           </label>
-          <div className="sm:col-span-2 flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="h-10 rounded-lg bg-[var(--cms-action)] px-4 text-sm font-semibold text-white disabled:opacity-60"
-            >
+          <div className="flex gap-2 sm:col-span-2">
+            <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Create"}
-            </button>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="h-10 rounded-lg border border-[var(--cms-line)] px-4 text-sm"
-            >
+            </SoftButton>
+            <SoftButton type="button" onClick={closeForm}>
               Cancel
-            </button>
+            </SoftButton>
           </div>
         </form>
       </Modal>

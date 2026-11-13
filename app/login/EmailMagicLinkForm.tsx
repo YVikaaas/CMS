@@ -11,8 +11,7 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-const inputClass =
-  "h-11 rounded-lg border border-[var(--cms-line)] bg-white px-3 text-base font-normal outline-none focus:border-[var(--cms-action)]";
+const inputClass = "ops-control w-full text-base";
 
 export default function EmailMagicLinkForm() {
   const searchParams = useSearchParams();
@@ -101,7 +100,7 @@ export default function EmailMagicLinkForm() {
             setEmail(event.target.value);
             if (fieldError) setFieldError(null);
           }}
-          className={cn(inputClass, fieldError && "border-2 border-red-500")}
+          className={cn(inputClass, fieldError && "ops-control-error")}
           placeholder="you@example.com"
         />
       </label>
@@ -123,7 +122,7 @@ export default function EmailMagicLinkForm() {
       <button
         type="submit"
         disabled={busy !== null}
-        className="h-11 rounded-lg bg-[var(--cms-action)] text-sm font-semibold text-white hover:bg-[var(--cms-action-hover)] disabled:opacity-60"
+        className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg bg-[var(--ops-primary)] text-sm font-semibold text-white hover:bg-[var(--ops-primary-hover)] disabled:opacity-60"
       >
         {busy === "password" ? "Signing in…" : "Sign in"}
       </button>
@@ -132,7 +131,7 @@ export default function EmailMagicLinkForm() {
         type="button"
         disabled={busy !== null}
         onClick={() => void onSendLink()}
-        className="h-11 rounded-lg border border-[var(--cms-line)] text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg border border-[var(--ops-line)] text-sm font-medium text-[var(--ops-text)] hover:bg-[var(--ops-surface-hover)] disabled:opacity-60"
       >
         {busy === "link" ? "Sending…" : "Send magic link instead"}
       </button>
