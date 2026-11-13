@@ -78,6 +78,8 @@ export type FixtureParticipantResult =
   | "no_show"
   | "qualified";
 export type MatchWinner = "1" | "2" | "draw";
+export type BasketPoints = 1 | 2 | 3;
+export type ScoringMode = "totals" | "players" | "both";
 
 export type CscOption = {
   id: string;
@@ -122,6 +124,7 @@ export type Fixture = {
 export type FixtureMatch = {
   id: string;
   fixtureId: string;
+  championshipId: string;
   roundId: string;
   roundType: FixtureRoundType;
   roundLabel: string;
@@ -145,6 +148,17 @@ export type FixtureMatch = {
   team2Fouls: number | null;
   team2ResultStatus: FixtureParticipantResult;
   scoreLine: string;
+  scoringMode: ScoringMode;
+};
+
+export type MatchScoreEvent = {
+  id: string;
+  matchId: string;
+  teamId: string;
+  teamMemberId: string;
+  teamMemberName: string;
+  points: BasketPoints;
+  createdAt: string;
 };
 
 export type Team = {

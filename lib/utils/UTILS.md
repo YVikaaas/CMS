@@ -13,5 +13,5 @@ Pure helpers and cross-cutting utilities live under `lib/utils/`. **Do not** dup
 | `labels.ts` | `categoryLabel` — Boys/Girls + age group. |
 | `nav.ts` | `ADMIN_NAV` sidebar items with page roles for later enforcement. |
 | `table.ts` | `toggleSort`, `matchesQuery`, `compareText`, `compareNumber` for table search/sort. |
-| `fixtures.ts` | Fixture round labels/order, format labels, knockout presets, round validation, datetime-local helpers, score line / winner helpers. |
+| `fixtures.ts` | Fixture round labels/order, format labels, knockout presets, round validation, datetime-local helpers, 1/2/3 basket scoring, player-score path, score line / winner / results-board helpers. |
 | `validation.ts` | Name = letters only; phone = 10 digits starting with 6–9. Score points/fouls = digits only. |

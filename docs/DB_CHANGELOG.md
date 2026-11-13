@@ -7,6 +7,7 @@ Append **one row per change** at the **top** of the table (newest first).
 
 | Date | Area | Summary | Migration / reference |
 | ---- | ---- | ------- | --------------------- |
+| 2026-11-13 | Gameplay | `fixture_match_score_event`: one row per basket (1/2/3) by a team member on a match. Admin RLS. Member must belong to a live match side. | `fixture_match_score_event` |
 | 2026-11-03 | Gameplay | RPC `save_fixture_match_scores(p_match_id, p_scores jsonb)`. Admin-only. Writes participant score / score_detail / result_status. Does not set match status. | `save_fixture_match_scores` |
 | 2026-11-03 | Gameplay | Fixture tree: one live draw per CSC. Formats `league_knockout` and `bracket_elimination`. Rounds, matches, two team sides. Admin RLS. | `gameplay_fixtures` |
 | 2026-11-03 | Teams | Seeded 4 mock Boys U16 teams with members in BB Championship December. | `seed_mock_teams_u16_boys` |

@@ -2,17 +2,24 @@ import { createClient } from "@/lib/supabase/client";
 import { categoryLabel } from "@/lib/utils/labels";
 import {
   formatScoreLine,
+  isBasketPoints,
   isFixtureRoundType,
   isLeagueRound,
   MATCH_STATUSES,
+  officialTeamPoints,
   parseParticipantResult,
   parseScoreDetail,
+  parseScoringMode,
   roundLabel,
   roundNumber,
   sortRoundTypes,
+  sumPlayerPoints,
+  detectWinnerFromPoints,
   validateFixtureRounds,
+  winnerFromResults,
 } from "@/lib/utils/fixtures";
 import type {
+  BasketPoints,
   Fixture,
   FixtureFormatType,
   FixtureMatch,
@@ -22,7 +29,10 @@ import type {
   FixtureRoundType,
   FixtureStatus,
   Gender,
+  MatchScoreEvent,
   MatchWinner,
+  ScoringMode,
+  ServiceError,
   ServiceResult,
 } from "@/lib/types/cms";
 import { toServiceError } from "./errors";
@@ -303,6 +313,8 @@ export async function archiveFixture(id: string): Promise<ServiceResult<true>> {
     if (matchesError) return { data: null, error: toServiceError(matchesError) };
     const matchIds = (matches ?? []).map((row) => row.id);
     if (matchIds.length > 0) {
+      const eventsError = await archiveScoreEventsForMatches(matchIds, now);
+      if (eventsError) return { data: null, error: eventsError };
       const { error: sidesError } = await supabase
         .from("fixture_match_participant")
         .update({ deleted_at: now })
@@ -392,6 +404,7 @@ function toMatch(row: MatchRow, fixture?: Fixture | null): FixtureMatch | null {
   return {
     id: row.id,
     fixtureId: round.fixture_id,
+    championshipId: fixture?.championshipId ?? "",
     roundId: round.id,
     roundType: round.round_type,
     roundLabel: round.round_label,
@@ -415,6 +428,7 @@ function toMatch(row: MatchRow, fixture?: Fixture | null): FixtureMatch | null {
     team2Fouls: detail2.fouls,
     team2ResultStatus: parseParticipantResult(side2.result_status),
     scoreLine: (side1.score ?? "").trim(),
+    scoringMode: parseScoringMode(side1.score_detail),
   };
 }
 
@@ -462,7 +476,12 @@ export async function listChampionshipMatches(
         if (!draft) return null;
         const fixture = byId.get(draft.fixtureId);
         if (!fixture) return null;
-        return { ...draft, categoryLabel: fixture.categoryLabel, sportName: fixture.sportName };
+        return {
+          ...draft,
+          championshipId: fixture.championshipId,
+          categoryLabel: fixture.categoryLabel,
+          sportName: fixture.sportName,
+        };
       })
       .filter((row): row is FixtureMatch => Boolean(row)),
     error: null,
@@ -497,6 +516,162 @@ function resultsForWinner(
   return ["pending", "pending"];
 }
 
+type ScoreEventRow = {
+  id: string;
+  fixture_match_id: string;
+  team_id: string;
+  team_member_id: string;
+  points: number;
+  created_at: string;
+  member: { name: string } | { name: string }[] | null;
+};
+
+function toScoreEvent(row: ScoreEventRow): MatchScoreEvent | null {
+  if (!isBasketPoints(row.points)) return null;
+  return {
+    id: row.id,
+    matchId: row.fixture_match_id,
+    teamId: row.team_id,
+    teamMemberId: row.team_member_id,
+    teamMemberName: unwrap(row.member)?.name ?? "",
+    points: row.points,
+    createdAt: row.created_at,
+  };
+}
+
+async function archiveScoreEventsForMatches(
+  matchIds: string[],
+  now: string,
+): Promise<ServiceError | null> {
+  if (matchIds.length === 0) return null;
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("fixture_match_score_event")
+    .update({ deleted_at: now })
+    .in("fixture_match_id", matchIds)
+    .is("deleted_at", null);
+  return error ? toServiceError(error) : null;
+}
+
+export async function listMatchScoreEvents(
+  matchId: string,
+): Promise<ServiceResult<MatchScoreEvent[]>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("fixture_match_score_event")
+    .select(
+      "id, fixture_match_id, team_id, team_member_id, points, created_at, member:team_member_id (name)",
+    )
+    .eq("fixture_match_id", matchId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) return { data: null, error: toServiceError(error) };
+  return {
+    data: (data ?? [])
+      .map((row) => toScoreEvent(row as unknown as ScoreEventRow))
+      .filter((row): row is MatchScoreEvent => Boolean(row)),
+    error: null,
+  };
+}
+
+async function refreshTotalsFromEvents(
+  match: FixtureMatch,
+  scoringMode: ScoringMode,
+  fouls?: { team1Fouls: number; team2Fouls: number },
+): Promise<ServiceResult<FixtureMatch>> {
+  const events = await listMatchScoreEvents(match.id);
+  if (events.error || !events.data) return { data: null, error: events.error };
+  return saveMatchScore({
+    matchId: match.id,
+    team1Points: officialTeamPoints({
+      mode: scoringMode,
+      typed: match.team1Points ?? 0,
+      eventSum: sumPlayerPoints(events.data, match.team1Id),
+      hasEvents: events.data.some((event) => event.teamId === match.team1Id),
+    }),
+    team2Points: officialTeamPoints({
+      mode: scoringMode,
+      typed: match.team2Points ?? 0,
+      eventSum: sumPlayerPoints(events.data, match.team2Id),
+      hasEvents: events.data.some((event) => event.teamId === match.team2Id),
+    }),
+    team1Fouls: fouls?.team1Fouls ?? match.team1Fouls ?? 0,
+    team2Fouls: fouls?.team2Fouls ?? match.team2Fouls ?? 0,
+    winner: winnerFromMatch(match),
+    scoringMode,
+    complete: false,
+  });
+}
+
+function winnerFromMatch(match: FixtureMatch): MatchWinner | null {
+  return winnerFromResults(match.team1ResultStatus, match.team2ResultStatus);
+}
+
+export async function addMatchScoreEvent(input: {
+  matchId: string;
+  teamId: string;
+  teamMemberId: string;
+  points: BasketPoints;
+  scoringMode: ScoringMode;
+  team1Fouls?: number;
+  team2Fouls?: number;
+}): Promise<ServiceResult<FixtureMatch>> {
+  if (!isBasketPoints(input.points)) {
+    return { data: null, error: { message: "Points must be 1, 2, or 3." } };
+  }
+  const current = await getFixtureMatch(input.matchId);
+  if (current.error || !current.data) return current;
+  const match = current.data;
+  if (match.status === "cancelled") {
+    return { data: null, error: { message: "Cancelled matches cannot be scored." } };
+  }
+  if (input.teamId !== match.team1Id && input.teamId !== match.team2Id) {
+    return { data: null, error: { message: "Team is not in this match." } };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("fixture_match_score_event").insert({
+    fixture_match_id: input.matchId,
+    team_id: input.teamId,
+    team_member_id: input.teamMemberId,
+    points: input.points,
+    created_by: user?.id ?? null,
+  });
+  if (error) return { data: null, error: toServiceError(error) };
+  return refreshTotalsFromEvents(match, input.scoringMode, {
+    team1Fouls: input.team1Fouls ?? match.team1Fouls ?? 0,
+    team2Fouls: input.team2Fouls ?? match.team2Fouls ?? 0,
+  });
+}
+
+export async function archiveMatchScoreEvent(
+  id: string,
+  scoringMode: ScoringMode,
+  fouls?: { team1Fouls: number; team2Fouls: number },
+): Promise<ServiceResult<FixtureMatch>> {
+  const supabase = createClient();
+  const { data: row, error: currentError } = await supabase
+    .from("fixture_match_score_event")
+    .select("id, fixture_match_id, deleted_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (currentError) return { data: null, error: toServiceError(currentError) };
+  if (!row || row.deleted_at) {
+    return { data: null, error: { message: "Score entry was not found." } };
+  }
+  const { error } = await supabase
+    .from("fixture_match_score_event")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { data: null, error: toServiceError(error) };
+  const current = await getFixtureMatch(row.fixture_match_id as string);
+  if (current.error || !current.data) return current;
+  return refreshTotalsFromEvents(current.data, scoringMode, fouls);
+}
+
 export async function saveMatchScore(input: {
   matchId: string;
   team1Points: number;
@@ -504,6 +679,7 @@ export async function saveMatchScore(input: {
   team1Fouls: number;
   team2Fouls: number;
   winner: MatchWinner | null;
+  scoringMode?: ScoringMode;
   complete: boolean;
 }): Promise<ServiceResult<FixtureMatch>> {
   const current = await getFixtureMatch(input.matchId);
@@ -513,26 +689,48 @@ export async function saveMatchScore(input: {
     return { data: null, error: { message: "Cancelled matches cannot be scored." } };
   }
 
-  const points = [input.team1Points, input.team2Points, input.team1Fouls, input.team2Fouls];
+  const scoringMode = input.scoringMode ?? match.scoringMode ?? "both";
+  const events = await listMatchScoreEvents(match.id);
+  if (events.error || !events.data) return { data: null, error: events.error };
+  const team1Points = officialTeamPoints({
+    mode: scoringMode,
+    typed: input.team1Points,
+    eventSum: sumPlayerPoints(events.data, match.team1Id),
+    hasEvents: events.data.some((event) => event.teamId === match.team1Id),
+  });
+  const team2Points = officialTeamPoints({
+    mode: scoringMode,
+    typed: input.team2Points,
+    eventSum: sumPlayerPoints(events.data, match.team2Id),
+    hasEvents: events.data.some((event) => event.teamId === match.team2Id),
+  });
+
+  const points = [team1Points, team2Points, input.team1Fouls, input.team2Fouls];
   if (points.some((value) => !Number.isInteger(value) || value < 0)) {
     return { data: null, error: { message: "Points and fouls must be whole numbers." } };
   }
 
-  if (input.winner === "draw" && !isLeagueRound(match.roundType)) {
+  const league = isLeagueRound(match.roundType);
+  let winner = input.winner;
+  if (input.complete && !winner) {
+    winner = detectWinnerFromPoints(team1Points, team2Points, league);
+  }
+  if (winner === "draw" && !league) {
     return { data: null, error: { message: "Knockout matches cannot be a draw." } };
   }
-  if (input.complete && isLeagueRound(match.roundType) && !input.winner) {
-    return { data: null, error: { message: "Pick a winner or draw before completing." } };
-  }
-  if (input.complete && !isLeagueRound(match.roundType) && input.winner !== "1" && input.winner !== "2") {
+  if (input.complete && !winner) {
     return {
       data: null,
-      error: { message: "Pick a winner before completing a knockout match." },
+      error: {
+        message: league
+          ? "Pick a winner or draw before completing."
+          : "Scores are tied. Pick a winner before completing a knockout match.",
+      },
     };
   }
 
-  const [result1, result2] = resultsForWinner(input.winner);
-  const score = formatScoreLine(input.team1Points, input.team2Points);
+  const [result1, result2] = resultsForWinner(winner);
+  const score = formatScoreLine(team1Points, team2Points);
   const supabase = createClient();
   const { error } = await supabase.rpc("save_fixture_match_scores", {
     p_match_id: input.matchId,
@@ -540,13 +738,23 @@ export async function saveMatchScore(input: {
       {
         participant_id: match.team1ParticipantId,
         score,
-        score_detail: { score: input.team1Points, fouls: input.team1Fouls, sport: "Basketball" },
+        score_detail: {
+          score: team1Points,
+          fouls: input.team1Fouls,
+          sport: "Basketball",
+          scoring_mode: scoringMode,
+        },
         result_status: result1,
       },
       {
         participant_id: match.team2ParticipantId,
         score,
-        score_detail: { score: input.team2Points, fouls: input.team2Fouls, sport: "Basketball" },
+        score_detail: {
+          score: team2Points,
+          fouls: input.team2Fouls,
+          sport: "Basketball",
+          scoring_mode: scoringMode,
+        },
         result_status: result2,
       },
     ],
@@ -738,6 +946,8 @@ export async function updateMatch(
 export async function archiveMatch(id: string): Promise<ServiceResult<true>> {
   const supabase = createClient();
   const now = new Date().toISOString();
+  const eventsError = await archiveScoreEventsForMatches([id], now);
+  if (eventsError) return { data: null, error: eventsError };
   const { error: sidesError } = await supabase
     .from("fixture_match_participant")
     .update({ deleted_at: now })

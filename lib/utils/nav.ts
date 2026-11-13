@@ -20,6 +20,7 @@ export const ADMIN_NAV: NavItem[] = [
     children: [
       { href: "/gameplay/fixtures", label: "Fixtures", pageRole: "gameplay.manage" },
       { href: "/gameplay/scoring", label: "Scoring", pageRole: "gameplay.manage" },
+      { href: "/gameplay/results", label: "Results", pageRole: "gameplay.manage" },
     ],
   },
   {

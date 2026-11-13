@@ -106,14 +106,17 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `getFixture(id)` | — | `ServiceResult<Fixture>` | Includes rounds. |
 | `createFixture({ cscId, formatType, rounds, startDate, endDate })` | `league_knockout` or `bracket_elimination` | `ServiceResult<Fixture>` | Unique live fixture per CSC. Inserts chosen rounds. |
 | `updateFixture(id, { status, startDate, endDate })` | — | `ServiceResult<Fixture>` | Does not change format or rounds. |
-| `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, and sides. |
+| `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, sides, and player score events. |
 | `listFixtureMatches(fixtureId)` | — | `ServiceResult<FixtureMatch[]>` | Live matches with both team sides, points, fouls, result status. |
 | `listChampionshipMatches(championshipId)` | — | `ServiceResult<FixtureMatch[]>` | All live matches across fixtures in that championship. |
 | `getFixtureMatch(id)` | — | `ServiceResult<FixtureMatch>` | One live match with sides and scores. |
 | `createMatch({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, team1Id, team2Id })` | status `draft` / `scheduled` / `cancelled` | `ServiceResult<FixtureMatch>` | Two different live teams on that CSC. |
 | `updateMatch(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces sides. |
-| `archiveMatch(id)` | — | `ServiceResult<true>` | Soft-deletes match and sides. |
-| `saveMatchScore({ matchId, team1Points, team2Points, team1Fouls, team2Fouls, winner, complete })` | RPC `save_fixture_match_scores`; then status `in_progress` / `completed` | `ServiceResult<FixtureMatch>` | Same `score` line on both sides. Knockout complete needs a winner. League complete may be draw. |
+| `archiveMatch(id)` | — | `ServiceResult<true>` | Soft-deletes match, sides, and player score events. |
+| `listMatchScoreEvents(matchId)` | — | `ServiceResult<MatchScoreEvent[]>` | Live 1/2/3 baskets for a match, newest first. |
+| `addMatchScoreEvent({ matchId, teamId, teamMemberId, points, scoringMode, team1Fouls?, team2Fouls? })` | points `1` / `2` / `3` | `ServiceResult<FixtureMatch>` | Inserts a basket and refreshes team totals. |
+| `archiveMatchScoreEvent(id, scoringMode, fouls?)` | — | `ServiceResult<FixtureMatch>` | Soft-deletes a basket and refreshes totals. |
+| `saveMatchScore({ matchId, team1Points, team2Points, team1Fouls, team2Fouls, winner, scoringMode, complete })` | RPC `save_fixture_match_scores`; then status `in_progress` / `completed` | `ServiceResult<FixtureMatch>` | Player/both modes use event sums as team points. Complete auto-picks winner/loser (or league draw) from points if winner is empty. Knockout tie still needs a winner. |
 
 ---
 

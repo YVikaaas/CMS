@@ -52,5 +52,8 @@ export {
   updateMatch,
   archiveMatch,
   saveMatchScore,
+  listMatchScoreEvents,
+  addMatchScoreEvent,
+  archiveMatchScoreEvent,
 } from "./fixtures";
 export { getDashboardSummary } from "./dashboard";

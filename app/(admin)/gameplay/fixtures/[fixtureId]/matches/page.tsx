@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Crumbs } from "@/components/crumbs";
 import { Modal, fieldClass } from "@/components/Modal";
 import { RoundChips } from "@/components/RoundChips";
-import { ScoreMatchModal } from "@/components/ScoreMatchModal";
 import { SortTh, TableControls } from "@/components/table";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
@@ -50,7 +49,6 @@ export default function FixtureMatchesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [scoreMatch, setScoreMatch] = useState<FixtureMatch | null>(null);
 
   const load = useCallback(async () => {
     const fixtureRes = await getFixture(fixtureId);
@@ -199,7 +197,7 @@ export default function FixtureMatchesPage() {
           {fixture.championshipName} · {fixture.sportName} · {fixture.categoryLabel} · Matches
         </h1>
         <p className="mt-1 text-sm text-[var(--cms-muted)]">
-          {formatLabel(fixture.formatType)}. Add a match inside the round it belongs to.
+          {formatLabel(fixture.formatType)}. Create matches here. Use Scoring to enter points.
         </p>
       </div>
 
@@ -269,15 +267,6 @@ export default function FixtureMatchesPage() {
                     </td>
                     <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
                     <td className="px-4 py-3 text-right">
-                      {row.status === "cancelled" ? null : (
-                        <button
-                          type="button"
-                          className="mr-3 text-[var(--cms-action)]"
-                          onClick={() => setScoreMatch(row)}
-                        >
-                          Score
-                        </button>
-                      )}
                       <button
                         type="button"
                         className="mr-3 text-[var(--cms-action)]"
@@ -442,16 +431,6 @@ export default function FixtureMatchesPage() {
           </div>
         </form>
       </Modal>
-
-      <ScoreMatchModal
-        open={Boolean(scoreMatch)}
-        match={scoreMatch}
-        onClose={() => setScoreMatch(null)}
-        onSaved={() => {
-          setScoreMatch(null);
-          void load();
-        }}
-      />
     </div>
   );
 }

@@ -236,7 +236,7 @@ export default function FixturesPage() {
         <div>
           <h1 className="text-lg font-semibold">{selected.name} · Fixtures</h1>
           <p className="mt-1 text-sm text-[var(--cms-muted)]">
-            Click a fixture to open its matches. One draw per offered category.
+            Create the draw for each category. Scoring and published results have their own pages.
           </p>
         </div>
         <button

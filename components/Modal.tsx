@@ -9,14 +9,18 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  xl = false,
   stacked = false,
+  over = false,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   wide?: boolean;
+  xl?: boolean;
   stacked?: boolean;
+  over?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -38,7 +42,7 @@ export function Modal({
     <div
       className={cn(
         "fixed inset-0 flex cursor-pointer items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:items-center",
-        stacked ? "z-[60]" : "z-50",
+        over ? "z-[70]" : stacked ? "z-[60]" : "z-50",
       )}
       onClick={onClose}
       role="presentation"
@@ -49,7 +53,7 @@ export function Modal({
         aria-label={title}
         className={cn(
           "my-8 w-full cursor-auto rounded-2xl bg-white p-5 shadow-xl",
-          wide ? "max-w-2xl" : "max-w-lg",
+          xl ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-lg",
         )}
         onClick={(event) => event.stopPropagation()}
       >

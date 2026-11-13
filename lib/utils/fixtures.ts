@@ -1,10 +1,13 @@
 import type {
+  BasketPoints,
   FixtureFormatType,
   FixtureMatch,
   FixtureMatchStatus,
   FixtureParticipantResult,
   FixtureRoundType,
+  MatchScoreEvent,
   MatchWinner,
+  ScoringMode,
 } from "@/lib/types/cms";
 
 export const FIXTURE_ROUND_TYPES: FixtureRoundType[] = [
@@ -212,8 +215,84 @@ export function winnerFromResults(
   return null;
 }
 
+export function resultLabel(
+  match: Pick<
+    FixtureMatch,
+    "team1Name" | "team2Name" | "team1ResultStatus" | "team2ResultStatus"
+  >,
+): string {
+  const winner = winnerFromResults(match.team1ResultStatus, match.team2ResultStatus);
+  if (winner === "1") return match.team1Name;
+  if (winner === "2") return match.team2Name;
+  if (winner === "draw") return "Draw";
+  return "\u2014";
+}
+
+export function resultOutcome(
+  match: Pick<FixtureMatch, "status" | "team1ResultStatus" | "team2ResultStatus">,
+): string {
+  if (match.status === "completed") {
+    const winner = winnerFromResults(match.team1ResultStatus, match.team2ResultStatus);
+    if (winner === "draw") return "Draw";
+    return "Final";
+  }
+  if (match.status === "in_progress") return "Live";
+  if (match.status === "cancelled") return "Cancelled";
+  if (match.status === "scheduled") return "Scheduled";
+  return "Upcoming";
+}
+
+export function sidePoints(points: number | null): string {
+  return points == null ? "\u2014" : String(points);
+}
+
 export function parseCountInput(raw: string): number {
   const trimmed = raw.trim();
   if (!trimmed) return 0;
   return Number(trimmed);
+}
+
+export const BASKET_POINTS: BasketPoints[] = [1, 2, 3];
+
+export function isBasketPoints(value: number): value is BasketPoints {
+  return value === 1 || value === 2 || value === 3;
+}
+
+export function parseScoringMode(detail: unknown): ScoringMode {
+  if (!detail || typeof detail !== "object" || Array.isArray(detail)) return "both";
+  const mode = (detail as { scoring_mode?: unknown }).scoring_mode;
+  if (mode === "players" || mode === "both" || mode === "totals") return mode;
+  return "both";
+}
+
+export function sumPlayerPoints(events: MatchScoreEvent[], teamId: string): number {
+  return events
+    .filter((event) => event.teamId === teamId)
+    .reduce((sum, event) => sum + event.points, 0);
+}
+
+export function officialTeamPoints(input: {
+  mode: ScoringMode;
+  typed: number;
+  eventSum: number;
+  hasEvents: boolean;
+}): number {
+  if (input.mode === "totals") return input.typed;
+  if (input.mode === "players") return input.eventSum;
+  return input.hasEvents ? input.eventSum : input.typed;
+}
+
+export function detectWinnerFromPoints(
+  team1Points: number,
+  team2Points: number,
+  league: boolean,
+): MatchWinner | null {
+  if (team1Points > team2Points) return "1";
+  if (team2Points > team1Points) return "2";
+  if (league) return "draw";
+  return null;
+}
+
+export function playerScoresPath(matchId: string): string {
+  return `/gameplay/scoring/${matchId}/players`;
 }

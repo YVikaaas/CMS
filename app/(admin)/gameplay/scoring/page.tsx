@@ -9,7 +9,7 @@ import { SortTh, TableControls } from "@/components/table";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { listChampionshipMatches } from "@/lib/services";
 import type { FixtureMatch, FixtureMatchStatus } from "@/lib/types/cms";
-import { displayScore } from "@/lib/utils/fixtures";
+import { displayScore, playerScoresPath } from "@/lib/utils/fixtures";
 import { compareText, matchesQuery, type SortState } from "@/lib/utils/table";
 
 export default function ScoringPage() {
@@ -93,7 +93,7 @@ export default function ScoringPage() {
       <div>
         <h1 className="text-lg font-semibold">{selected.name} · Scoring</h1>
         <p className="mt-1 text-sm text-[var(--cms-muted)]">
-          Score matches across this championship. Points, fouls, and a winner.
+          Enter match scores here. Fixtures are for the draw. Results is the public board.
         </p>
       </div>
 
@@ -153,6 +153,12 @@ export default function ScoringPage() {
                 <td className="px-4 py-3">{displayScore(row)}</td>
                 <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
                 <td className="px-4 py-3 text-right">
+                  <Link
+                    href={playerScoresPath(row.id)}
+                    className="mr-3 text-[var(--cms-action)]"
+                  >
+                    Player scores
+                  </Link>
                   {row.status === "cancelled" ? null : (
                     <button
                       type="button"
