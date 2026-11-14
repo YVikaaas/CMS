@@ -9,6 +9,8 @@ import { NameInput, PhoneInput } from "@/components/fields";
 import {
   EmptyState,
   PageHeader,
+  PageLoader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SoftSearch,
@@ -139,8 +141,8 @@ export default function ChampionshipTeamMembersPage() {
     return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
   }, [members, search]);
 
-  if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+  if (loading || (championship && !ready)) {
+    return <PageSkeleton kind="table" />;
   }
   if (!championship || !team) {
     return (
@@ -156,7 +158,7 @@ export default function ChampionshipTeamMembersPage() {
   }
 
   if (team.teamSize === 1 && team.maxTeamSize === 1) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageLoader compact label="Opening athletes" />;
   }
 
   const atMin = members.length <= team.teamSize;

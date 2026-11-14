@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { fieldClass } from "@/components/Modal";
-import { SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
+import { PageSkeleton, SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
 import {
   listCscAthletes,
   listFixtureRanking,
@@ -137,7 +137,7 @@ export function FixtureRankingBoard({
   };
 
   if (!ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading ranking…</p>;
+    return <PageSkeleton kind="board" />;
   }
 
   const visibleRows = canEdit ? rows : rows.filter((row) => row.rank);

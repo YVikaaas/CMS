@@ -9,6 +9,7 @@ import {
   ChipFilter,
   EmptyState,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SoftSearch,
@@ -57,6 +58,7 @@ export default function ChampionshipCategoriesPage() {
   const [categoryId, setCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ categoryId?: string }>({});
+  const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
     const [sportRes, catRes, offerRes] = await Promise.all([
@@ -70,6 +72,7 @@ export default function ChampionshipCategoriesPage() {
     setSports(sportRes.data ?? []);
     setCategories(catRes.data ?? []);
     setOfferings(offerRes.data ?? []);
+    setReady(true);
   }, [championshipId, sportId]);
 
   useEffect(() => {
@@ -114,8 +117,8 @@ export default function ChampionshipCategoriesPage() {
     return [...filtered].sort((a, b) => compareText(categoryLabel(a), categoryLabel(b), "asc"));
   }, [assigned, search, genderFilter, ageFilter, nameFilter]);
 
-  if (loading) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+  if (loading || (championship && !ready)) {
+    return <PageSkeleton kind="cards" />;
   }
   if (!championship) {
     return (

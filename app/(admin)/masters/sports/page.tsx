@@ -8,6 +8,7 @@ import { SortTh } from "@/components/table";
 import {
   ChipFilter,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftSearch,
 } from "@/components/ops";
@@ -36,11 +37,13 @@ export default function SportsPage() {
     dir: "asc",
   });
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; code?: string }>({});
+  const [ready, setReady] = useState(false);
 
   const load = async () => {
     const { data, error } = await listSports();
     if (error) toast.error(error.message);
     setSports(data ?? []);
+    setReady(true);
   };
 
   useEffect(() => {
@@ -97,6 +100,10 @@ export default function SportsPage() {
       return compareText(a.name, b.name, sort.dir);
     });
   }, [sports, search, modeFilter, sort]);
+
+  if (!ready) {
+    return <PageSkeleton kind="table" />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

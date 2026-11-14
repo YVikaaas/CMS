@@ -10,6 +10,7 @@ import {
   EmptyState,
   EventIdentity,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SoftSelect,
@@ -268,7 +269,7 @@ export default function FixtureWorkspacePage() {
   );
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="split" />;
   }
   if (!selected || !fixture) {
     return (

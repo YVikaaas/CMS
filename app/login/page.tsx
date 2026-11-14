@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageLoader } from "@/components/ops";
 import EmailMagicLinkForm from "./EmailMagicLinkForm";
 
 function CmsMark() {
@@ -14,7 +15,7 @@ function CmsMark() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
+    <main className="ops-page-enter flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)] p-8 shadow-[var(--ops-shadow-card)]">
         <div className="mb-6 flex flex-col items-center gap-3">
           <CmsMark />
@@ -23,7 +24,7 @@ export default function LoginPage() {
             Sign in with email and password. Magic link is optional.
           </p>
         </div>
-        <Suspense fallback={<p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>}>
+        <Suspense fallback={<PageLoader compact label="Loading sign in" />}>
           <EmailMagicLinkForm />
         </Suspense>
       </div>

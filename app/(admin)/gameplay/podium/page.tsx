@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PodiumBoard } from "@/components/podium/PodiumBoard";
-import { EmptyState, EventFilters, PageHeader, SoftButton, SoftCard, StatusBadge } from "@/components/ops";
+import { EmptyState, EventFilters, PageHeader, PageSkeleton, SoftButton, SoftCard, StatusBadge } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { getPodiumSheet, listFixtures, setPodiumDelivery } from "@/lib/services";
 import type { Fixture, PodiumSheet } from "@/lib/types/cms";
@@ -90,7 +90,7 @@ export default function PodiumPage() {
   }
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="desk" />;
   }
   if (!selected) {
     return (
@@ -149,7 +149,7 @@ export default function PodiumPage() {
           <PodiumBoard holders={sheet.holders} savingId={savingId} onDeliver={(id, delivered) => void onDeliver(id, delivered)} />
         </SoftCard>
       ) : (
-        <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>
+        <PageSkeleton kind="board" />
       )}
     </div>
   );

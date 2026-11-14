@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { authSendMagicLink, authSignInWithPassword } from "@/lib/services";
 import { safeNextPathAfterLogin } from "@/lib/utils/routes";
 import { cn } from "@/lib/utils/cn";
+import { SoftButton } from "@/components/ops";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -119,22 +120,13 @@ export default function EmailMagicLinkForm() {
         ) : null}
       </label>
 
-      <button
-        type="submit"
-        disabled={busy !== null}
-        className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg bg-[var(--ops-primary)] text-sm font-semibold text-white hover:bg-[var(--ops-primary-hover)] disabled:opacity-60"
-      >
-        {busy === "password" ? "Signing in…" : "Sign in"}
-      </button>
+      <SoftButton type="submit" variant="primary" loading={busy === "password"} disabled={busy !== null}>
+        Sign in
+      </SoftButton>
 
-      <button
-        type="button"
-        disabled={busy !== null}
-        onClick={() => void onSendLink()}
-        className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg border border-[var(--ops-line)] text-sm font-medium text-[var(--ops-text)] hover:bg-[var(--ops-surface-hover)] disabled:opacity-60"
-      >
-        {busy === "link" ? "Sending…" : "Send magic link instead"}
-      </button>
+      <SoftButton type="button" loading={busy === "link"} disabled={busy !== null} onClick={() => void onSendLink()}>
+        Send magic link instead
+      </SoftButton>
     </form>
   );
 }

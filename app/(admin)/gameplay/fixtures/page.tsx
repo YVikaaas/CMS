@@ -8,6 +8,7 @@ import {
   EmptyState,
   EventFilters,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   StatusBadge,
@@ -71,7 +72,7 @@ export default function FixturesPage() {
   };
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="cards" />;
   }
   if (!selected) {
     return (

@@ -9,6 +9,7 @@ import {
   ChipFilter,
   EmptyState,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SoftSearch,
@@ -39,7 +40,7 @@ const statusTone: Record<CompetitionStatus, "warning" | "success" | "neutral"> =
 
 export default function ChampionshipsPage() {
   const router = useRouter();
-  const { championships, selectedId, setSelectedId, refresh } = useChampionship();
+  const { championships, selectedId, setSelectedId, refresh, loading } = useChampionship();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -128,6 +129,10 @@ export default function ChampionshipsPage() {
     });
     return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
   }, [championships, search, statusFilter]);
+
+  if (loading) {
+    return <PageSkeleton kind="table" />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

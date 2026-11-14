@@ -7,7 +7,7 @@ import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import { ChampionshipProvider, useChampionship } from "@/app/providers/ChampionshipProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
-import { EmptyState, SoftButton, SoftSelect } from "@/components/ops";
+import { EmptyState, Shimmer, SoftButton, SoftSelect } from "@/components/ops";
 import {
   ADMIN_NAV,
   NAV_SECTIONS,
@@ -193,21 +193,25 @@ function Shell({ children }: { children: React.ReactNode }) {
           <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h1>
           <label className="flex min-w-0 items-center gap-2 text-sm">
             <span className="hidden shrink-0 text-[var(--ops-text-muted)] sm:inline">Championship</span>
-            <SoftSelect
-              value={selectedId ?? ""}
-              onChange={(event) => setSelectedId(event.target.value || null)}
-              className="max-w-[16rem]"
-            >
-              {championships.length === 0 ? (
-                <option value="">No championships yet</option>
-              ) : (
-                championships.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name}
-                  </option>
-                ))
-              )}
-            </SoftSelect>
+            {loading ? (
+              <Shimmer className="h-11 w-40 sm:w-52" />
+            ) : (
+              <SoftSelect
+                value={selectedId ?? ""}
+                onChange={(event) => setSelectedId(event.target.value || null)}
+                className="max-w-[16rem]"
+              >
+                {championships.length === 0 ? (
+                  <option value="">No championships yet</option>
+                ) : (
+                  championships.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))
+                )}
+              </SoftSelect>
+            )}
           </label>
           <p className="hidden max-w-[10rem] truncate text-xs text-[var(--ops-text-muted)] xl:block">
             {appUser?.fullName || appUser?.email}
@@ -222,19 +226,21 @@ function Shell({ children }: { children: React.ReactNode }) {
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
-          {gated ? (
-            <EmptyState
-              title="Create a championship to get started"
-              hint="Floor pages need a championship in the header."
-              action={
-                <Link href="/championships">
-                  <SoftButton variant="primary">Championships</SoftButton>
-                </Link>
-              }
-            />
-          ) : (
-            children
-          )}
+          <div key={pathname} className="ops-page-enter">
+            {gated ? (
+              <EmptyState
+                title="Create a championship to get started"
+                hint="Floor pages need a championship in the header."
+                action={
+                  <Link href="/championships">
+                    <SoftButton variant="primary">Championships</SoftButton>
+                  </Link>
+                }
+              />
+            ) : (
+              children
+            )}
+          </div>
         </div>
       </div>
     </div>

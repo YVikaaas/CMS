@@ -9,6 +9,7 @@ import { SortTh, TableControls } from "@/components/table";
 import {
   ChipFilter,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftSelect,
   StatusBadge,
@@ -124,6 +125,7 @@ export default function CategoriesPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ sportId?: string; name?: string; ageGroup?: string }>({});
+  const [ready, setReady] = useState(false);
 
   const load = async () => {
     const [sportsRes, catsRes] = await Promise.all([listSports(), listCategories()]);
@@ -131,6 +133,7 @@ export default function CategoriesPage() {
     if (catsRes.error) toast.error(catsRes.error.message);
     setSports(sportsRes.data ?? []);
     setCategories(catsRes.data ?? []);
+    setReady(true);
     setForm((current) => {
       if (current.sportId) return current;
       const sport = sportsRes.data?.[0];
@@ -267,6 +270,10 @@ export default function CategoriesPage() {
     close();
     await load();
   };
+
+  if (!ready) {
+    return <PageSkeleton kind="table" />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

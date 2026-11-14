@@ -11,6 +11,7 @@ import {
   ChipFilter,
   EmptyState,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SoftSearch,
@@ -78,6 +79,7 @@ export default function ChampionshipCategoryTeamsPage() {
   const [athletePhone, setAthletePhone] = useState("");
   const [members, setMembers] = useState<TeamMemberInput[]>([emptyMember()]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
+  const [ready, setReady] = useState(false);
 
   const sport = sports.find((item) => item.id === sportId) ?? null;
   const category = categories.find((item) => item.id === categoryId) ?? null;
@@ -112,11 +114,13 @@ export default function ChampionshipCategoryTeamsPage() {
     setCsc(match);
     if (!match) {
       setTeams([]);
+      setReady(true);
       return;
     }
     const teamRes = await listTeams({ cscId: match.id });
     if (teamRes.error) toast.error(teamRes.error.message);
     setTeams(teamRes.data ?? []);
+    setReady(true);
   }, [championshipId, sportId, categoryId]);
 
   useEffect(() => {
@@ -260,8 +264,8 @@ export default function ChampionshipCategoryTeamsPage() {
     return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
   }, [teams, search, rosterFilter]);
 
-  if (loading) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+  if (loading || (championship && !ready)) {
+    return <PageSkeleton kind="table" />;
   }
   if (!championship) {
     return (

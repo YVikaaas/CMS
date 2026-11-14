@@ -232,12 +232,14 @@ All in `components/ops/`. Import from `@/components/ops`.
 | `PageHeader` | Title + hint + optional action. |
 | `EmptyState` | Centered card when there is nothing to do. |
 | `StepCrumbs` | Nested setup path. |
+| `PageLoader` / `PageSkeleton` / `Shimmer` / `Spinner` | CSS loaders. Use skeletons for page waits, spinner for compact/inline, shimmer bars for unknown values. |
+| `RouteProgress` | Thin primary bar on route enter/exit. |
 | `Modal` | `components/Modal.tsx` — create/edit. Escape + overlay click closes. |
 | `fieldClass` / `fieldErrorClass` | Inputs. Error = red outline (`ops-control-error`). |
 | `TableControls` / `SortTh` | Catalog tables. `components/table.tsx`. |
 | `cn()` | `lib/utils/cn.ts`. |
 
-Global classes in `globals.css`: `.ops-control`, `.ops-control-error`, `.soft-card`.
+Global classes in `globals.css`: `.ops-control`, `.ops-control-error`, `.soft-card`, `.ops-shimmer`, `.ops-spinner`, `.ops-page-enter`.
 
 **Do not** add a second button/card/input primitive.
 

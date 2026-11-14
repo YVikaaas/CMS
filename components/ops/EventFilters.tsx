@@ -10,6 +10,7 @@ import {
 } from "@/lib/services";
 import type { Category, Gender, Sport } from "@/lib/types/cms";
 import { cn } from "@/lib/utils/cn";
+import { PageSkeleton } from "./loading";
 import {
   agesForSportGender,
   applyAge,
@@ -184,7 +185,7 @@ export function EventFilters({
   const hasFilter = Boolean(value.sportId || value.gender || value.ageGroup || value.categoryId);
 
   if (!ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading filters…</p>;
+    return <PageSkeleton kind="filters" />;
   }
 
   return (

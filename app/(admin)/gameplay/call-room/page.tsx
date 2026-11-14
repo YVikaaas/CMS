@@ -10,6 +10,7 @@ import {
   EmptyState,
   EventFilters,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SplitWorkspace,
   StatusBadge,
@@ -135,7 +136,7 @@ function CallRoomDesk() {
   }
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="desk" />;
   }
   if (!selected) {
     return (
@@ -226,7 +227,7 @@ function CallRoomDesk() {
               selectedMatch && sheet && sheet.matchId === selectedMatch.id ? (
                 <CallRoomBoard sheet={sheet} saving={saving} onChange={(next, action) => void handleChange(next, action)} />
               ) : selectedMatch ? (
-                <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>
+                <PageSkeleton kind="board" />
               ) : (
                 <EmptyState title="Select a match" hint="Present and absent opens here." />
               )
@@ -240,7 +241,7 @@ function CallRoomDesk() {
 
 export default function CallRoomPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>}>
+    <Suspense fallback={<PageSkeleton kind="desk" />}>
       <CallRoomDesk />
     </Suspense>
   );

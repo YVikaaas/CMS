@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
-import { EmptyState, PageHeader, SoftButton, SoftCard } from "@/components/ops";
+import { EmptyState, PageHeader, PageSkeleton, Shimmer, SoftButton, SoftCard } from "@/components/ops";
 import { getDashboardSummary } from "@/lib/services";
 import type { DashboardSummary } from "@/lib/types/cms";
 
@@ -20,7 +20,7 @@ export default function DashboardPage() {
   }, [selected]);
 
   if (loading) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="cards" />;
   }
 
   if (!selected) {
@@ -92,7 +92,11 @@ export default function DashboardPage() {
         {cards.map((card) => (
           <SoftCard key={card.label}>
             <p className="text-sm text-[var(--ops-text-muted)]">{card.label}</p>
-            <p className="mt-2 text-2xl font-semibold">{card.value}</p>
+            {summary ? (
+              <p className="mt-2 text-2xl font-semibold">{card.value}</p>
+            ) : (
+              <Shimmer className="mt-2 h-8 w-16" />
+            )}
           </SoftCard>
         ))}
       </div>

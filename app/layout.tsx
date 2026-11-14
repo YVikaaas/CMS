@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/app/providers/AuthProvider";
 import { CurrentUserProvider } from "@/app/providers/CurrentUserProvider";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
+import { RouteProgress } from "@/components/ops";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -44,6 +45,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <CurrentUserProvider>
+              <RouteProgress />
               {children}
               <Toaster richColors position="top-center" />
             </CurrentUserProvider>

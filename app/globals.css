@@ -125,6 +125,76 @@ input:disabled {
   box-shadow: var(--ops-shadow-card);
 }
 
+.ops-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ops-line) 65%, var(--ops-surface));
+}
+
+.ops-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.7) 50%,
+    transparent 100%
+  );
+  animation: ops-shimmer 1.15s var(--ops-ease) infinite;
+}
+
+.ops-spinner {
+  display: inline-block;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: ops-spin 0.7s linear infinite;
+}
+
+.ops-page-enter {
+  animation: ops-page-in 180ms var(--ops-ease);
+}
+
+.ops-route-bar {
+  animation: ops-route-bar 0.9s var(--ops-ease) infinite;
+}
+
+@keyframes ops-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ops-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ops-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ops-route-bar {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(380%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   a,
   button,
@@ -136,5 +206,12 @@ input:disabled {
   button:not(:disabled):active,
   [role="button"]:active {
     transform: none;
+  }
+
+  .ops-shimmer::after,
+  .ops-spinner,
+  .ops-page-enter,
+  .ops-route-bar {
+    animation: none;
   }
 }

@@ -12,6 +12,7 @@ import {
   EmptyState,
   EventFilters,
   PageHeader,
+  PageSkeleton,
   SoftButton,
   SoftCard,
   SplitWorkspace,
@@ -126,7 +127,7 @@ function ScoringDesk() {
   const selectedMatch = queue.find((row) => row.id === selectedMatchId) ?? categoryMatches.find((row) => row.id === selectedMatchId) ?? null;
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="desk" />;
   }
   if (!selected) {
     return (
@@ -253,7 +254,7 @@ function ScoringDesk() {
 
 export default function ScoringPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>}>
+    <Suspense fallback={<PageSkeleton kind="desk" />}>
       <ScoringDesk />
     </Suspense>
   );

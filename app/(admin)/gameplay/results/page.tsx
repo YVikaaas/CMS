@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { EmptyState, EventFilters, PageHeader, SoftButton } from "@/components/ops";
+import { EmptyState, EventFilters, PageHeader, PageSkeleton, SoftButton } from "@/components/ops";
 import { CategoryResultsBoard } from "@/components/results/CategoryResultsBoard";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { listCategories, listChampionshipMatches, listFixtures, listTeams } from "@/lib/services";
@@ -92,7 +92,7 @@ export default function ResultsPage() {
   const showTitles = boards.length > 1;
 
   if (loading || !ready) {
-    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
+    return <PageSkeleton kind="desk" />;
   }
   if (!selected) {
     return (

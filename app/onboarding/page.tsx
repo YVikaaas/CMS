@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { completeOnboarding } from "@/lib/services";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
 import { NameInput, PhoneInput } from "@/components/fields";
+import { SoftButton } from "@/components/ops";
 import { fieldClass, fieldErrorClass } from "@/components/Modal";
 import { nameError, phoneError } from "@/lib/utils/validation";
 
@@ -44,7 +45,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
+    <main className="ops-page-enter flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)] p-8 shadow-[var(--ops-shadow-card)]">
         <div className="mb-6 flex flex-col items-center gap-3">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] text-xl font-semibold text-white">
@@ -87,13 +88,9 @@ export default function OnboardingPage() {
               <span className="text-xs font-normal text-[var(--ops-danger)]">{fieldErrors.phone}</span>
             ) : null}
           </label>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex min-h-[var(--ops-touch-min)] items-center justify-center rounded-lg bg-[var(--ops-primary)] text-sm font-semibold text-white hover:bg-[var(--ops-primary-hover)] disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Continue"}
-          </button>
+          <SoftButton type="submit" variant="primary" loading={saving}>
+            Continue
+          </SoftButton>
         </form>
       </div>
     </main>

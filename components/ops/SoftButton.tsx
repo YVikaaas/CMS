@@ -2,6 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
+import { Spinner } from "./loading";
 
 type Variant = "default" | "primary" | "success" | "danger" | "ghost";
 
@@ -48,7 +49,8 @@ export function SoftButton({
       )}
       {...rest}
     >
-      {loading ? "…" : children}
+      {loading ? <Spinner className="size-4" /> : null}
+      <span className={loading ? "opacity-80" : undefined}>{children}</span>
     </button>
   );
 }
