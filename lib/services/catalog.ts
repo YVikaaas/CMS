@@ -1,13 +1,33 @@
 import { createClient } from "@/lib/supabase/client";
 import type {
   Category,
+  CategoryFixtureConfig,
+  FixtureFormatType,
+  FixtureRoundType,
   Gender,
   ServiceResult,
   Sport,
   SportEventMode,
 } from "@/lib/types/cms";
-import { nameError } from "@/lib/utils/validation";
+import { categoryNameError, nameError } from "@/lib/utils/validation";
+import { defaultAthleticsRoster } from "@/lib/utils/athletics";
+import {
+  defaultCategoryFixtureConfig,
+  formatsForSport,
+  isAthleticsSport,
+  normalizeCategoryFixtureConfig,
+  parseFixtureConfig,
+  serializeFixtureConfig,
+} from "@/lib/utils/fixtures";
 import { toServiceError } from "./errors";
+
+function categoryWriteError(error: { message?: string } | null) {
+  const message = error?.message ?? "";
+  if (/category_sport_gender_age_name_live_idx|duplicate key/i.test(message)) {
+    return { message: "That event already exists for this gender and age." };
+  }
+  return toServiceError(error);
+}
 
 type SportRow = {
   id: string;
@@ -27,8 +47,12 @@ type CategoryRow = {
   age_max: number;
   team_size: number;
   max_team_size: number;
+  fixture_config: unknown;
   created_at: string;
 };
+
+const CATEGORY_SELECT =
+  "id, sport_id, name, gender, age_group, age_min, age_max, team_size, max_team_size, fixture_config, created_at";
 
 function toSport(row: SportRow): Sport {
   return {
@@ -51,8 +75,43 @@ function toCategory(row: CategoryRow): Category {
     ageMax: row.age_max,
     teamSize: row.team_size,
     maxTeamSize: row.max_team_size,
+    fixtureConfig: parseFixtureConfig(row.fixture_config),
     createdAt: row.created_at,
   };
+}
+
+function rosterForSport(
+  sport: Pick<Sport, "code" | "eventMode">,
+  eventName: string,
+  teamSize: number,
+  maxTeamSize: number,
+): { teamSize: number; maxTeamSize: number } {
+  if (isAthleticsSport(sport)) return defaultAthleticsRoster(eventName);
+  const min = Number.isFinite(teamSize) && teamSize > 0 ? Math.trunc(teamSize) : 1;
+  const max = Number.isFinite(maxTeamSize) && maxTeamSize > 0 ? Math.trunc(maxTeamSize) : min;
+  return { teamSize: min, maxTeamSize: Math.max(min, max) };
+}
+
+function fixtureFromInput(
+  sport: Pick<Sport, "code" | "eventMode">,
+  input: {
+    format?: FixtureFormatType;
+    scoringStyle?: string;
+    participantsPerMatch?: number;
+    availableRounds?: FixtureRoundType[];
+  },
+  eventName: string,
+): CategoryFixtureConfig {
+  const allowed = formatsForSport(sport);
+  const fallback = defaultCategoryFixtureConfig(sport, eventName);
+  const format = input.format && allowed.includes(input.format) ? input.format : fallback.format;
+  return normalizeCategoryFixtureConfig({
+    format,
+    scoringStyle: input.scoringStyle ?? fallback.scoringStyle,
+    participantsPerMatch: input.participantsPerMatch ?? fallback.participantsPerMatch,
+    availableRounds: input.availableRounds ?? fallback.availableRounds,
+    sport,
+  });
 }
 
 export async function listSports(): Promise<ServiceResult<Sport[]>> {
@@ -120,12 +179,11 @@ export async function listCategories(
   const supabase = createClient();
   let query = supabase
     .from("category")
-    .select(
-      "id, sport_id, name, gender, age_group, age_min, age_max, team_size, max_team_size, created_at",
-    )
+    .select(CATEGORY_SELECT)
     .is("deleted_at", null)
     .order("age_group")
-    .order("gender");
+    .order("gender")
+    .order("name");
   if (sportId) query = query.eq("sport_id", sportId);
   const { data, error } = await query;
   if (error) return { data: null, error: toServiceError(error) };
@@ -140,10 +198,25 @@ export async function createCategory(input: {
   ageMax: number;
   teamSize: number;
   maxTeamSize: number;
+  format?: FixtureFormatType;
+  scoringStyle?: string;
+  participantsPerMatch?: number;
+  availableRounds?: FixtureRoundType[];
 }): Promise<ServiceResult<Category>> {
-  const categoryNameErr = nameError(input.name, "Category name");
+  const categoryNameErr = categoryNameError(input.name, "Category name");
   if (categoryNameErr) return { data: null, error: { message: categoryNameErr } };
   const supabase = createClient();
+  const { data: sport, error: sportError } = await supabase
+    .from("sport")
+    .select("code, event_mode")
+    .eq("id", input.sportId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (sportError) return { data: null, error: toServiceError(sportError) };
+  if (!sport) return { data: null, error: { message: "Sport was not found." } };
+  const sportRef = { code: sport.code, eventMode: sport.event_mode };
+  const fixtureConfig = fixtureFromInput(sportRef, input, input.name);
+  const roster = rosterForSport(sportRef, input.name, input.teamSize, input.maxTeamSize);
   const { data, error } = await supabase
     .from("category")
     .insert({
@@ -152,26 +225,13 @@ export async function createCategory(input: {
       gender: input.gender,
       age_group: input.ageGroup.trim(),
       age_max: input.ageMax,
-      team_size: input.teamSize,
-      max_team_size: input.maxTeamSize,
-      fixture_config: {
-        format: "league_knockout",
-        scoring_style: "simple",
-        available_rounds: [
-          "league",
-          "quarter_final",
-          "semi_final",
-          "final",
-          "third_place",
-        ],
-        participants_per_match: 2,
-      },
+      team_size: roster.teamSize,
+      max_team_size: roster.maxTeamSize,
+      fixture_config: serializeFixtureConfig(fixtureConfig),
     })
-    .select(
-      "id, sport_id, name, gender, age_group, age_min, age_max, team_size, max_team_size, created_at",
-    )
+    .select(CATEGORY_SELECT)
     .single();
-  if (error || !data) return { data: null, error: toServiceError(error) };
+  if (error || !data) return { data: null, error: categoryWriteError(error) };
   return { data: toCategory(data), error: null };
 }
 
@@ -184,11 +244,34 @@ export async function updateCategory(
     ageMax: number;
     teamSize: number;
     maxTeamSize: number;
+    format: FixtureFormatType;
+    scoringStyle: string;
+    participantsPerMatch: number;
+    availableRounds: FixtureRoundType[];
   },
 ): Promise<ServiceResult<Category>> {
-  const categoryNameErr = nameError(input.name, "Category name");
+  const categoryNameErr = categoryNameError(input.name, "Category name");
   if (categoryNameErr) return { data: null, error: { message: categoryNameErr } };
   const supabase = createClient();
+  const { data: current, error: currentError } = await supabase
+    .from("category")
+    .select("sport_id")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (currentError) return { data: null, error: toServiceError(currentError) };
+  if (!current) return { data: null, error: { message: "Category was not found." } };
+  const { data: sport, error: sportError } = await supabase
+    .from("sport")
+    .select("code, event_mode")
+    .eq("id", current.sport_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (sportError) return { data: null, error: toServiceError(sportError) };
+  if (!sport) return { data: null, error: { message: "Sport was not found." } };
+  const sportRef = { code: sport.code, eventMode: sport.event_mode };
+  const fixtureConfig = fixtureFromInput(sportRef, input, input.name);
+  const roster = rosterForSport(sportRef, input.name, input.teamSize, input.maxTeamSize);
   const { data, error } = await supabase
     .from("category")
     .update({
@@ -196,15 +279,14 @@ export async function updateCategory(
       gender: input.gender,
       age_group: input.ageGroup.trim(),
       age_max: input.ageMax,
-      team_size: input.teamSize,
-      max_team_size: input.maxTeamSize,
+      team_size: roster.teamSize,
+      max_team_size: roster.maxTeamSize,
+      fixture_config: serializeFixtureConfig(fixtureConfig),
     })
     .eq("id", id)
-    .select(
-      "id, sport_id, name, gender, age_group, age_min, age_max, team_size, max_team_size, created_at",
-    )
+    .select(CATEGORY_SELECT)
     .single();
-  if (error || !data) return { data: null, error: toServiceError(error) };
+  if (error || !data) return { data: null, error: categoryWriteError(error) };
   return { data: toCategory(data), error: null };
 }
 

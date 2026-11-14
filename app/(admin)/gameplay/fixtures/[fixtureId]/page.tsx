@@ -21,15 +21,33 @@ import {
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
   archiveMatch,
+  createHeat,
   createMatch,
   getFixture,
+  listCscAthletes,
   listFixtureMatches,
   listTeams,
+  updateHeat,
   updateMatch,
 } from "@/lib/services";
-import type { Fixture, FixtureMatch, FixtureMatchStatus, Team } from "@/lib/types/cms";
+import type { CscAthlete, Fixture, FixtureMatch, FixtureMatchStatus, Team } from "@/lib/types/cms";
 import { eventIdentityEyebrow } from "@/lib/utils/eventFilter";
-import { formatLabel, fromDatetimeLocal, MATCH_STATUSES, toDatetimeLocal } from "@/lib/utils/fixtures";
+import { HeatLaneSlots } from "@/components/athletics/HeatLaneSlots";
+import {
+  defaultVenue,
+  heatQueueHint,
+  heatQueueTitle,
+  isAthleticsFormat,
+  isRelayEvent,
+} from "@/lib/utils/athletics";
+import {
+  formatLabel,
+  fromDatetimeLocal,
+  MATCH_STATUSES,
+  sortByRoundOrder,
+  toDatetimeLocal,
+} from "@/lib/utils/fixtures";
+import { orgCityLine } from "@/lib/utils/labels";
 
 const emptyForm = {
   roundId: "",
@@ -39,7 +57,18 @@ const emptyForm = {
   status: "draft" as FixtureMatchStatus,
   team1Id: "",
   team2Id: "",
+  athleteIds: [] as string[],
+  teamIds: [] as string[],
 };
+
+function laneIdsFromMatch(match: FixtureMatch, laneCount: number, relay: boolean): string[] {
+  const ids = Array.from({ length: laneCount }, () => "");
+  for (const row of match.participants) {
+    if (row.lane < 1 || row.lane > laneCount) continue;
+    ids[row.lane - 1] = relay ? row.teamId : row.athleteId;
+  }
+  return ids;
+}
 
 function statusTone(status: FixtureMatchStatus) {
   if (status === "completed") return "success" as const;
@@ -56,12 +85,19 @@ export default function FixtureWorkspacePage() {
   const [fixture, setFixture] = useState<Fixture | null>(null);
   const [matches, setMatches] = useState<FixtureMatch[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [athletes, setAthletes] = useState<CscAthlete[]>([]);
   const [ready, setReady] = useState(false);
   const [roundId, setRoundId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
+
+  const orderedRounds = useMemo(
+    () => (fixture ? sortByRoundOrder(fixture.rounds) : []),
+    [fixture],
+  );
+  const firstRoundId = orderedRounds[0]?.id ?? "";
 
   const load = useCallback(async () => {
     const fixtureRes = await getFixture(fixtureId);
@@ -75,15 +111,24 @@ export default function FixtureWorkspacePage() {
       return;
     }
     setFixture(next);
-    const [matchRes, teamRes] = await Promise.all([
+    const athletics = isAthleticsFormat(next.formatType);
+    const relay = isRelayEvent(next.categoryName);
+    const [matchRes, teamRes, athleteRes] = await Promise.all([
       listFixtureMatches(fixtureId),
-      listTeams({ cscId: next.cscId }),
+      !athletics || relay
+        ? listTeams({ cscId: next.cscId })
+        : Promise.resolve({ data: [] as Team[], error: null }),
+      athletics && !relay
+        ? listCscAthletes(next.cscId)
+        : Promise.resolve({ data: [] as CscAthlete[], error: null }),
     ]);
     if (matchRes.error) toast.error(matchRes.error.message);
     if (teamRes.error) toast.error(teamRes.error.message);
+    if (athleteRes.error) toast.error(athleteRes.error.message);
     setMatches(matchRes.data ?? []);
     setTeams(teamRes.data ?? []);
-    setRoundId((current) => current || next.rounds[0]?.id || "");
+    setAthletes(athleteRes.data ?? []);
+    setRoundId((current) => current || sortByRoundOrder(next.rounds)[0]?.id || "");
     setReady(true);
   }, [fixtureId, selected]);
 
@@ -91,14 +136,26 @@ export default function FixtureWorkspacePage() {
     if (!loading && selected) void load();
   }, [loading, selected, load]);
 
+  useEffect(() => {
+    if (!fixture || selectedMatchId) return;
+    setForm((current) => ({
+      ...current,
+      roundId: current.roundId || firstRoundId,
+      venue: current.venue && current.venue !== "Court 1" ? current.venue : defaultVenue(fixture.formatType),
+    }));
+  }, [fixture, selectedMatchId]);
+
   const startCreate = (nextRoundId?: string) => {
     setSelectedMatchId(null);
     setFieldErrors({});
     setForm({
       ...emptyForm,
-      roundId: nextRoundId ?? roundId ?? fixture?.rounds[0]?.id ?? "",
+      roundId: nextRoundId ?? roundId ?? firstRoundId,
+      venue: fixture ? defaultVenue(fixture.formatType) : "Court 1",
       team1Id: teams[0]?.id ?? "",
       team2Id: teams[1]?.id ?? "",
+      athleteIds: Array.from({ length: fixture?.participantsPerMatch ?? 8 }, () => ""),
+      teamIds: Array.from({ length: fixture?.participantsPerMatch ?? 8 }, () => ""),
     });
   };
 
@@ -109,48 +166,98 @@ export default function FixtureWorkspacePage() {
     setForm({
       roundId: row.roundId,
       matchLabel: row.matchLabel,
-      venue: row.venue ?? "Court 1",
+      venue: row.venue ?? defaultVenue(row.formatType),
       scheduledAt: toDatetimeLocal(row.scheduledAt),
       status: MATCH_STATUSES.includes(row.status) ? row.status : "draft",
       team1Id: row.team1Id,
       team2Id: row.team2Id,
+      athleteIds: laneIdsFromMatch(row, fixture?.participantsPerMatch ?? row.participants.length, false),
+      teamIds: laneIdsFromMatch(row, fixture?.participantsPerMatch ?? row.participants.length, true),
     });
   };
 
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
+    const athletics = fixture ? isAthleticsFormat(fixture.formatType) : false;
+    const relay = fixture ? isRelayEvent(fixture.categoryName) : false;
     const nextErrors: Record<string, string> = {};
     if (!form.roundId) nextErrors.roundId = "Required";
-    if (!form.team1Id) nextErrors.team1Id = "Required";
-    if (!form.team2Id) nextErrors.team2Id = "Required";
-    if (form.team1Id && form.team2Id && form.team1Id === form.team2Id) {
-      nextErrors.team2Id = "Pick two different teams.";
+    if (athletics && relay) {
+      if (form.teamIds.filter(Boolean).length < 2) nextErrors.teamIds = "Pick at least two teams.";
+    } else if (athletics) {
+      if (form.athleteIds.filter(Boolean).length < 2) {
+        nextErrors.athleteIds = "Pick at least two athletes.";
+      }
+    } else {
+      if (!form.team1Id) nextErrors.team1Id = "Required";
+      if (!form.team2Id) nextErrors.team2Id = "Required";
+      if (form.team1Id && form.team2Id && form.team1Id === form.team2Id) {
+        nextErrors.team2Id = "Pick two different teams.";
+      }
     }
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       toast.error("Fill the highlighted fields.");
       return;
     }
-    const payload = {
-      fixtureId,
-      roundId: form.roundId,
-      matchLabel: form.matchLabel,
-      venue: form.venue,
-      scheduledAt: fromDatetimeLocal(form.scheduledAt),
-      status: form.status,
-      team1Id: form.team1Id,
-      team2Id: form.team2Id,
-    };
     setSaving(true);
-    const result = selectedMatchId
-      ? await updateMatch(selectedMatchId, payload)
-      : await createMatch(payload);
+    const result = athletics
+      ? selectedMatchId
+        ? await updateHeat(selectedMatchId, {
+            fixtureId,
+            roundId: form.roundId,
+            matchLabel: form.matchLabel,
+            venue: form.venue,
+            scheduledAt: fromDatetimeLocal(form.scheduledAt),
+            status: form.status,
+            athleteIds: relay ? [] : form.athleteIds,
+            teamIds: relay ? form.teamIds : [],
+          })
+        : await createHeat({
+            fixtureId,
+            roundId: form.roundId,
+            matchLabel: form.matchLabel,
+            venue: form.venue,
+            scheduledAt: fromDatetimeLocal(form.scheduledAt),
+            status: form.status,
+            athleteIds: relay ? [] : form.athleteIds,
+            teamIds: relay ? form.teamIds : [],
+          })
+      : selectedMatchId
+        ? await updateMatch(selectedMatchId, {
+            fixtureId,
+            roundId: form.roundId,
+            matchLabel: form.matchLabel,
+            venue: form.venue,
+            scheduledAt: fromDatetimeLocal(form.scheduledAt),
+            status: form.status,
+            team1Id: form.team1Id,
+            team2Id: form.team2Id,
+          })
+        : await createMatch({
+            fixtureId,
+            roundId: form.roundId,
+            matchLabel: form.matchLabel,
+            venue: form.venue,
+            scheduledAt: fromDatetimeLocal(form.scheduledAt),
+            status: form.status,
+            team1Id: form.team1Id,
+            team2Id: form.team2Id,
+          });
     setSaving(false);
     if (result.error) {
       toast.error(result.error.message);
       return;
     }
-    toast.success(selectedMatchId ? "Match updated." : "Match added.");
+    toast.success(
+      selectedMatchId
+        ? athletics
+          ? "Heat updated."
+          : "Match updated."
+        : athletics
+          ? "Heat added."
+          : "Match added.",
+    );
     await load();
     if (result.data) openMatch(result.data);
   };
@@ -176,9 +283,16 @@ export default function FixtureWorkspacePage() {
     );
   }
 
-  const canAddMatch = teams.length >= 2;
+  const athletics = isAthleticsFormat(fixture.formatType);
+  const relay = isRelayEvent(fixture.categoryName);
+  const canAddMatch = athletics
+    ? relay
+      ? teams.length >= 2
+      : athletes.length >= 2
+    : teams.length >= 2;
   const gender = fixture.categoryLabel.startsWith("Girls") ? "female" : "male";
-  const ageGroup = fixture.categoryLabel.replace(/^(Boys|Girls)\s+/, "");
+  const ageGroup = fixture.categoryAgeGroup;
+  const categoryName = fixture.categoryName;
 
   return (
     <div className="flex flex-col gap-6">
@@ -194,7 +308,7 @@ export default function FixtureWorkspacePage() {
         hint={`${formatLabel(fixture.formatType)}. Scoring is on the Scoring page.`}
       />
       <EventIdentity
-        eyebrow={eventIdentityEyebrow(fixture.sportName, gender, ageGroup)}
+        eyebrow={eventIdentityEyebrow(fixture.sportName, gender, ageGroup, categoryName)}
         title={fixture.categoryLabel}
       />
       <ChipFilter
@@ -207,11 +321,15 @@ export default function FixtureWorkspacePage() {
           setRoundId(value);
           startCreate(value);
         }}
-        options={fixture.rounds.map((round) => ({ value: round.id, label: round.roundLabel }))}
+        options={orderedRounds.map((round) => ({ value: round.id, label: round.roundLabel }))}
       />
       {!canAddMatch ? (
         <p className="text-sm text-[var(--ops-text-muted)]">
-          This category needs at least two teams before matches can be added.
+          {athletics
+            ? relay
+              ? "This category needs at least two relay teams before heats can be added."
+              : "This category needs at least two athletes before heats can be added."
+            : "This category needs at least two teams before matches can be added."}
         </p>
       ) : null}
       <SplitWorkspace
@@ -219,7 +337,7 @@ export default function FixtureWorkspacePage() {
         queue={
           <>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Matches</p>
+              <p className="text-sm font-semibold">{athletics ? "Heats" : "Matches"}</p>
               <SoftButton onClick={() => startCreate(roundId)} disabled={!canAddMatch}>
                 Add
               </SoftButton>
@@ -239,13 +357,17 @@ export default function FixtureWorkspacePage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold">{row.matchLabel || `${row.team1Name} vs ${row.team2Name}`}</p>
+                    <p className="font-semibold">
+                      {athletics
+                        ? heatQueueTitle(row)
+                        : row.matchLabel || `${row.team1Name} vs ${row.team2Name}`}
+                    </p>
                     <StatusBadge tone={statusTone(row.status)}>
                       {row.status.replace("_", " ")}
                     </StatusBadge>
                   </div>
                   <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
-                    {row.team1Name} vs {row.team2Name}
+                    {athletics ? heatQueueHint(row) : `${row.team1Name} vs ${row.team2Name}`}
                   </p>
                 </button>
               ))
@@ -255,18 +377,59 @@ export default function FixtureWorkspacePage() {
         board={
           <SoftCard padding="md">
             <form onSubmit={onSave} className="grid gap-4">
-              <p className="text-sm font-semibold">{selectedMatchId ? "Edit match" : "New match"}</p>
+              <p className="text-sm font-semibold">
+                {selectedMatchId
+                  ? athletics
+                    ? "Edit heat"
+                    : "Edit match"
+                  : athletics
+                    ? "New heat"
+                    : "New match"}
+              </p>
               <label className="flex flex-col gap-1 text-sm font-medium">
-                Match label
+                {athletics ? "Heat label" : "Match label"}
                 <input
                   value={form.matchLabel}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, matchLabel: event.target.value }))
                   }
-                  placeholder="Match 1"
+                  placeholder={athletics ? "Heat 1" : "Match 1"}
                   className={fieldClass}
                 />
               </label>
+              {athletics ? (
+                <HeatLaneSlots
+                  laneCount={fixture.participantsPerMatch}
+                  ids={relay ? form.teamIds : form.athleteIds}
+                  slotLabel={fixture.formatType === "field_attempts" ? "Slot" : "Lane"}
+                  error={fieldErrors.athleteIds || fieldErrors.teamIds}
+                  options={
+                    relay
+                      ? teams.map((team) => ({
+                          id: team.id,
+                          label: orgCityLine(team.orgName, team.city)
+                            ? `${team.name} · ${orgCityLine(team.orgName, team.city)}`
+                            : team.name,
+                        }))
+                      : athletes.map((athlete) => ({
+                          id: athlete.id,
+                          label: orgCityLine(athlete.orgName, athlete.city)
+                            ? `${athlete.name} · ${orgCityLine(athlete.orgName, athlete.city)}`
+                            : athlete.name,
+                        }))
+                  }
+                  onChange={(ids) => {
+                    setForm((current) =>
+                      relay ? { ...current, teamIds: ids } : { ...current, athleteIds: ids },
+                    );
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      athleteIds: undefined,
+                      teamIds: undefined,
+                    }));
+                  }}
+                />
+              ) : (
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Team 1
@@ -304,6 +467,7 @@ export default function FixtureWorkspacePage() {
                   </SoftSelect>
                 </label>
               </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Venue
@@ -316,7 +480,7 @@ export default function FixtureWorkspacePage() {
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Tip-off
+                  {athletics ? "Start" : "Tip-off"}
                   <input
                     type="datetime-local"
                     value={form.scheduledAt}
@@ -364,7 +528,13 @@ export default function FixtureWorkspacePage() {
                   </SoftButton>
                 ) : null}
                 <SoftButton type="submit" variant="primary" loading={saving} disabled={!canAddMatch}>
-                  {selectedMatchId ? "Save match" : "Add match"}
+                  {selectedMatchId
+                    ? athletics
+                      ? "Save heat"
+                      : "Save match"
+                    : athletics
+                      ? "Add heat"
+                      : "Add match"}
                 </SoftButton>
               </StickyActionBar>
             </form>

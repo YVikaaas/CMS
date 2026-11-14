@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
@@ -37,6 +37,7 @@ export default function ChampionshipTeamMembersPage() {
     teamId: string;
   }>();
   const { championshipId, sportId, categoryId, teamId } = params;
+  const router = useRouter();
   const { championship, loading } = useScopedChampionship(championshipId);
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -77,6 +78,12 @@ export default function ChampionshipTeamMembersPage() {
   useEffect(() => {
     if (championship) void load();
   }, [championship, load]);
+
+  useEffect(() => {
+    if (team && team.teamSize === 1 && team.maxTeamSize === 1) {
+      router.replace(teamsHref);
+    }
+  }, [team, teamsHref, router]);
 
   const closeForm = () => {
     setFormOpen(false);
@@ -146,6 +153,10 @@ export default function ChampionshipTeamMembersPage() {
         }
       />
     );
+  }
+
+  if (team.teamSize === 1 && team.maxTeamSize === 1) {
+    return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
   }
 
   const atMin = members.length <= team.teamSize;

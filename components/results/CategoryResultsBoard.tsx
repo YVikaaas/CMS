@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Fixture, FixtureMatch, FixtureRoundType } from "@/lib/types/cms";
+import { AthleticsResultsBoard } from "./AthleticsResultsBoard";
+import { FixtureRankingBoard } from "./FixtureRankingBoard";
 import { KnockoutResultsBoard } from "./KnockoutResultsBoard";
 import { LeagueResultsBoard } from "./LeagueResultsBoard";
 import { ResultsPhaseTabs } from "./ResultsPhaseTabs";
 import { sortRoundTypesPresent } from "@/lib/utils/resultsBoard";
+import { isAthleticsFormat } from "@/lib/utils/athletics";
 import { roundLabel } from "@/lib/utils/fixtures";
+
+type ResultsTab = FixtureRoundType | "ranking";
 
 export function CategoryResultsBoard({
   fixture,
@@ -23,19 +28,23 @@ export function CategoryResultsBoard({
     () => sortRoundTypesPresent(matches.map((row) => row.roundType)),
     [matches],
   );
-  const [round, setRound] = useState<FixtureRoundType | "">(rounds[0] ?? "");
+  const tabs = useMemo(
+    () => [
+      ...rounds.map((type) => ({ id: type as ResultsTab, label: roundLabel(type) })),
+      { id: "ranking" as const, label: "Ranking" },
+    ],
+    [rounds],
+  );
+  const [tab, setTab] = useState<ResultsTab>(rounds[0] ?? "ranking");
 
   useEffect(() => {
-    if (rounds.length === 0) {
-      setRound("");
-      return;
-    }
-    if (!round || !rounds.includes(round)) setRound(rounds[0]!);
-  }, [round, rounds]);
+    const allowed = tabs.map((item) => item.id);
+    if (!allowed.includes(tab)) setTab(allowed[0] ?? "ranking");
+  }, [tab, tabs]);
 
   const roundMatches = useMemo(
-    () => matches.filter((row) => row.roundType === round),
-    [matches, round],
+    () => (tab === "ranking" ? [] : matches.filter((row) => row.roundType === tab)),
+    [matches, tab],
   );
 
   if (matches.length === 0) return null;
@@ -50,13 +59,12 @@ export function CategoryResultsBoard({
           <h2 className="text-base font-semibold">{fixture.categoryLabel}</h2>
         </div>
       ) : null}
-      <ResultsPhaseTabs
-        ariaLabel="Rounds"
-        tabs={rounds.map((type) => ({ id: type, label: roundLabel(type) }))}
-        value={round || rounds[0]!}
-        onChange={setRound}
-      />
-      {round === "league" ? (
+      <ResultsPhaseTabs ariaLabel="Rounds" tabs={tabs} value={tab} onChange={setTab} />
+      {tab === "ranking" ? (
+        <FixtureRankingBoard fixture={fixture} readOnly />
+      ) : isAthleticsFormat(fixture.formatType) ? (
+        <AthleticsResultsBoard matches={roundMatches} />
+      ) : tab === "league" ? (
         <LeagueResultsBoard matches={roundMatches} orgByTeamId={orgByTeamId} />
       ) : (
         <KnockoutResultsBoard matches={roundMatches} orgByTeamId={orgByTeamId} />

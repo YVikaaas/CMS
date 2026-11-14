@@ -7,6 +7,16 @@ Append **one row per change** at the **top** of the table (newest first).
 
 | Date | Area | Summary | Migration / reference |
 | ---- | ---- | ------- | --------------------- |
+| 2026-11-14 | Gameplay | `fixture.rankings_locked_at` locks 1st–3rd from scoring. `fixture_ranking.medal_delivered_at` marks podium medal delivery. Ranking edits are blocked while locked. | `podium_medals` |
+| 2026-11-14 | Gameplay | Call room `fixture_match_attendance`: present/absent per match for a team or a player. Unique live row per match+team and match+member. Admin RLS. | `call_room_attendance` |
+| 2026-11-14 | Teams | `team.city` is separate from `org_name`. City-only org values moved to city. | `team_city` |
+| 2026-11-14 | Catalog | Athletics roster is solo 1/1 except relays 4/4. Live solo clubs split to one athlete per team-of-1 (member ids kept). | `athletics_solo_roster` |
+| 2026-11-14 | Gameplay | Field attempt counts are per round: 3 in qualifying, 2 in the final. No extra-attempt slots. | `field_attempts_per_round` |
+| 2026-11-14 | Gameplay | Manual `fixture_ranking` per draw (Results Ranking tab). Field rounds store unique `attempt_count`. Seeded complete Boys U16 basketball, 100m, Shot Put, and Long Jump with scores. | `fixture_ranking_round_attempts`, `seed_demo_floor` |
+| 2026-11-14 | Gameplay | Track rounds may include quarter-finals. Basketball league configs always keep SF + final (create UI no longer strips them). | `track_qf_basketball_rounds` |
+| 2026-11-14 | Catalog | Athletics relays `4x100m` and `4x400m` (Boys/Girls × U14/U16/U18). Roster 4–6. Offered to championships that already had that athletics age/gender. | `athletics_relay_events` |
+| 2026-11-14 | Catalog | Athletics category identity is sport + gender + age + event name (`100m`, `Long Jump`, …). Unique live index includes `lower(name)`. Seeded track/field events for U14/U16/U18. Championships that already offered an athletics age/gender also got the sibling events. | `athletics_event_categories` |
+| 2026-11-14 | Gameplay | Athletics formats `track_rounds` / `field_attempts`. Round types `heat` and `qualifying`. Heat participants: N `team_member` athletes, lane labels 1–99. `save_fixture_match_scores` also writes `position` and `attempts`. Seeded Athletics (`ATH`) + Boys/Girls U14/U16/U18. | `athletics_format_enum`, `athletics_fixtures` |
 | 2026-11-13 | Gameplay | `fixture_match_score_event`: one row per basket (1/2/3) by a team member on a match. Admin RLS. Member must belong to a live match side. | `fixture_match_score_event` |
 | 2026-11-03 | Gameplay | RPC `save_fixture_match_scores(p_match_id, p_scores jsonb)`. Admin-only. Writes participant score / score_detail / result_status. Does not set match status. | `save_fixture_match_scores` |
 | 2026-11-03 | Gameplay | Fixture tree: one live draw per CSC. Formats `league_knockout` and `bracket_elimination`. Rounds, matches, two team sides. Admin RLS. | `gameplay_fixtures` |

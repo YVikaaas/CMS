@@ -22,6 +22,14 @@ export type Sport = {
   createdAt: string;
 };
 
+export type CategoryFixtureConfig = {
+  format: FixtureFormatType;
+  scoringStyle: string;
+  participantsPerMatch: number;
+  availableRounds: FixtureRoundType[];
+  availableFormats: FixtureFormatType[];
+};
+
 export type Category = {
   id: string;
   sportId: string;
@@ -32,6 +40,7 @@ export type Category = {
   ageMax: number;
   teamSize: number;
   maxTeamSize: number;
+  fixtureConfig: CategoryFixtureConfig;
   createdAt: string;
 };
 
@@ -51,7 +60,11 @@ export type ChampionshipOffering = {
   categoryIds: string[];
 };
 
-export type FixtureFormatType = "league_knockout" | "bracket_elimination";
+export type FixtureFormatType =
+  | "league_knockout"
+  | "bracket_elimination"
+  | "track_rounds"
+  | "field_attempts";
 export type FixtureStatus = "draft" | "published" | "in_progress" | "completed";
 export type FixtureMatchStatus =
   | "draft"
@@ -65,7 +78,13 @@ export type FixtureRoundType =
   | "quarter_final"
   | "semi_final"
   | "final"
-  | "third_place";
+  | "third_place"
+  | "heat"
+  | "qualifying";
+export type FixtureMatchKind = "dual" | "heat";
+export type AthleticsScoringStyle = "time" | "distance" | "height";
+export type AthleticsResultCode = "ok" | "dns" | "dnf" | "dq" | "nm";
+export type FieldAttemptStatus = "ok" | "foul" | "pass";
 export type FixtureParticipantResult =
   | "winner"
   | "loser"
@@ -89,10 +108,50 @@ export type CscOption = {
   sportName: string;
   categoryId: string;
   categoryLabel: string;
+  categoryName: string;
+  categoryAgeGroup: string;
   categoryGender: Gender;
   teamSize: number;
   maxTeamSize: number;
   availableRounds: FixtureRoundType[];
+  defaultFormat: FixtureFormatType;
+  availableFormats: FixtureFormatType[];
+  scoringStyle: string;
+  participantsPerMatch: number;
+};
+
+export type CscAthlete = {
+  id: string;
+  teamId: string;
+  teamName: string;
+  orgName: string | null;
+  city: string | null;
+  name: string;
+  gender: Gender;
+};
+
+export type FieldAttempt = {
+  mark: number | null;
+  status: FieldAttemptStatus;
+};
+
+export type HeatParticipant = {
+  id: string;
+  athleteId: string;
+  teamId: string;
+  name: string;
+  orgName: string | null;
+  city: string | null;
+  lane: number;
+  score: string;
+  timeMs: number | null;
+  mark: number | null;
+  unit: string;
+  place: number | null;
+  qualified: boolean;
+  resultStatus: FixtureParticipantResult;
+  resultCode: AthleticsResultCode;
+  attempts: FieldAttempt[];
 };
 
 export type FixtureRound = {
@@ -101,6 +160,20 @@ export type FixtureRound = {
   roundType: FixtureRoundType;
   roundNumber: number;
   roundLabel: string;
+  attemptCount: number;
+  extraAttemptCount: number;
+};
+
+export type FixtureRankingEntry = {
+  id: string;
+  fixtureId: string;
+  rank: number;
+  teamId: string;
+  athleteId: string;
+  name: string;
+  orgName: string | null;
+  city: string | null;
+  medalDeliveredAt: string | null;
 };
 
 export type Fixture = {
@@ -112,13 +185,46 @@ export type Fixture = {
   sportName: string;
   categoryId: string;
   categoryLabel: string;
+  categoryName: string;
+  categoryAgeGroup: string;
   formatType: FixtureFormatType;
+  scoringStyle: string;
+  participantsPerMatch: number;
   status: FixtureStatus;
+  rankingLockedAt: string | null;
   startDate: string | null;
   endDate: string | null;
   matchCount: number;
   rounds: FixtureRound[];
   createdAt: string;
+};
+
+export type PodiumRank = 1 | 2 | 3;
+
+export type PodiumPerson = {
+  id: string;
+  name: string;
+  phone: string;
+  gender: Gender;
+};
+
+export type PodiumHolder = {
+  rankingId: string;
+  rank: PodiumRank;
+  kind: "athlete" | "team";
+  name: string;
+  orgName: string | null;
+  city: string | null;
+  deliveredAt: string | null;
+  people: PodiumPerson[];
+};
+
+export type PodiumSheet = {
+  fixtureId: string;
+  categoryLabel: string;
+  sportName: string;
+  rankingLockedAt: string | null;
+  holders: PodiumHolder[];
 };
 
 export type FixtureMatch = {
@@ -149,6 +255,11 @@ export type FixtureMatch = {
   team2ResultStatus: FixtureParticipantResult;
   scoreLine: string;
   scoringMode: ScoringMode;
+  kind: FixtureMatchKind;
+  formatType: FixtureFormatType;
+  attemptCount: number;
+  extraAttemptCount: number;
+  participants: HeatParticipant[];
 };
 
 export type MatchScoreEvent = {
@@ -174,6 +285,7 @@ export type Team = {
   maxTeamSize: number;
   name: string;
   orgName: string | null;
+  city: string | null;
   gender: Gender;
   memberCount: number;
   createdAt: string;
@@ -198,6 +310,45 @@ export type DashboardSummary = {
   categoryCount: number;
   teamCount: number;
 };
+
+export type CallRoomMark = "present" | "absent" | "";
+
+export type CallRoomAttendanceRow = {
+  matchId: string;
+  teamId: string | null;
+  teamMemberId: string | null;
+  status: Exclude<CallRoomMark, "">;
+};
+
+export type CallRoomMember = {
+  id: string;
+  name: string;
+  mark: CallRoomMark;
+  effective: CallRoomMark;
+};
+
+export type CallRoomUnit = {
+  key: string;
+  kind: "athlete" | "team";
+  teamId: string;
+  memberId: string;
+  name: string;
+  detail: string | null;
+  lane: number | null;
+  mark: CallRoomMark;
+  members: CallRoomMember[];
+};
+
+export type CallRoomSheet = {
+  matchId: string;
+  solo: boolean;
+  units: CallRoomUnit[];
+};
+
+export type CallRoomAction =
+  | { type: "unit"; key: string; mark: CallRoomMark }
+  | { type: "member"; key: string; memberId: string; mark: CallRoomMark }
+  | { type: "all"; mark: CallRoomMark };
 
 export type ServiceError = {
   message: string;

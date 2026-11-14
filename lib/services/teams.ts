@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 import { categoryLabel } from "@/lib/utils/labels";
-import { parseAvailableRounds } from "@/lib/utils/fixtures";
+import { parseFixtureConfig } from "@/lib/utils/fixtures";
 import { nameError, optionalNameError, phoneError } from "@/lib/utils/validation";
 import type {
+  CscAthlete,
   CscOption,
   Gender,
   ServiceResult,
@@ -16,6 +17,7 @@ const TEAM_SELECT = `
   id,
   name,
   org_name,
+  city,
   gender,
   created_at,
   competition_sport_category_map_id,
@@ -61,6 +63,7 @@ type TeamRow = {
   id: string;
   name: string;
   org_name: string | null;
+  city: string | null;
   gender: Gender;
   created_at: string;
   competition_sport_category_map_id: string;
@@ -104,6 +107,7 @@ function toTeam(row: TeamRow): Team | null {
     maxTeamSize: category.max_team_size,
     name: row.name,
     orgName: row.org_name,
+    city: row.city,
     gender: row.gender,
     memberCount,
     createdAt: row.created_at,
@@ -196,12 +200,15 @@ export async function createTeam(input: {
   cscId: string;
   name: string;
   orgName: string | null;
+  city: string | null;
   members: TeamMemberInput[];
 }): Promise<ServiceResult<Team>> {
   const teamNameErr = nameError(input.name, "Team name");
   if (teamNameErr) return { data: null, error: { message: teamNameErr } };
   const orgErr = optionalNameError(input.orgName ?? "", "Organization");
   if (orgErr) return { data: null, error: { message: orgErr } };
+  const cityErr = optionalNameError(input.city ?? "", "City");
+  if (cityErr) return { data: null, error: { message: cityErr } };
 
   const roster = await loadCscRoster(input.cscId);
   if (roster.error || !roster.data) return { data: null, error: roster.error };
@@ -228,6 +235,7 @@ export async function createTeam(input: {
       competition_sport_category_map_id: input.cscId,
       name: input.name.trim(),
       org_name: input.orgName?.trim() || null,
+      city: input.city?.trim() || null,
       gender: rosterData.gender,
       created_by: user?.id ?? null,
     })
@@ -247,11 +255,57 @@ export async function createTeam(input: {
   return listTeamById(data.id);
 }
 
+function teamWriteError(error: { message?: string } | null, name: string) {
+  const message = error?.message ?? "";
+  if (/team_csc_name_live_idx|duplicate key/i.test(message)) {
+    return { message: `${name} is already in this category.` };
+  }
+  if (/team_member_name_phone_live_idx/i.test(message)) {
+    return { message: "A player on this row is already on a team." };
+  }
+  return toServiceError(error);
+}
+
+export async function importCscTeams(
+  cscId: string,
+  entries: Array<{
+    name: string;
+    orgName: string | null;
+    city: string | null;
+    members: TeamMemberInput[];
+  }>,
+): Promise<ServiceResult<{ created: number; failed: { name: string; message: string }[] }>> {
+  if (entries.length === 0) {
+    return { data: null, error: { message: "No rows to import." } };
+  }
+  const roster = await loadCscRoster(cscId);
+  if (roster.error || !roster.data) return { data: null, error: roster.error };
+
+  const failed: { name: string; message: string }[] = [];
+  let created = 0;
+  for (const entry of entries) {
+    const result = await createTeam({
+      cscId,
+      name: entry.name,
+      orgName: entry.orgName,
+      city: entry.city,
+      members: entry.members,
+    });
+    if (result.error) {
+      failed.push({ name: entry.name, message: teamWriteError(result.error, entry.name).message });
+      continue;
+    }
+    created += 1;
+  }
+  return { data: { created, failed }, error: null };
+}
+
 export async function updateTeam(
   id: string,
   input: {
     name: string;
     orgName: string | null;
+    city: string | null;
     members?: TeamMemberInput[];
   },
 ): Promise<ServiceResult<Team>> {
@@ -259,6 +313,8 @@ export async function updateTeam(
   if (teamNameErr) return { data: null, error: { message: teamNameErr } };
   const orgErr = optionalNameError(input.orgName ?? "", "Organization");
   if (orgErr) return { data: null, error: { message: orgErr } };
+  const cityErr = optionalNameError(input.city ?? "", "City");
+  if (cityErr) return { data: null, error: { message: cityErr } };
 
   const current = await listTeamById(id);
   if (current.error || !current.data) return current;
@@ -270,6 +326,7 @@ export async function updateTeam(
     .update({
       name: input.name.trim(),
       org_name: input.orgName?.trim() || null,
+      city: input.city?.trim() || null,
     })
     .eq("id", id);
   if (error) return { data: null, error: toServiceError(error) };
@@ -349,6 +406,31 @@ async function namePhoneTaken(
       row.id !== excludeId && row.name.toLowerCase() === name.toLowerCase(),
   );
   return { data: taken, error: null };
+}
+
+export async function listCscAthletes(
+  cscId: string,
+): Promise<ServiceResult<CscAthlete[]>> {
+  const teams = await listTeams({ cscId });
+  if (teams.error || !teams.data) return { data: null, error: teams.error };
+  const athletes: CscAthlete[] = [];
+  for (const team of teams.data) {
+    const members = await listTeamMembers(team.id);
+    if (members.error || !members.data) return { data: null, error: members.error };
+    for (const member of members.data) {
+      athletes.push({
+        id: member.id,
+        teamId: team.id,
+        teamName: team.name,
+        orgName: team.orgName,
+        city: team.city,
+        name: member.name,
+        gender: member.gender,
+      });
+    }
+  }
+  athletes.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return { data: athletes, error: null };
 }
 
 export async function listTeamMembers(
@@ -548,6 +630,41 @@ export async function saveTeamMembers(
     .eq("team_id", teamId);
   if (existingError) return { data: null, error: toServiceError(existingError) };
 
+  if (roster && roster.min === 1 && roster.max === 1 && normalized.length === 1) {
+    const next = normalized[0];
+    const live = (existing ?? []).filter((item) => !item.deleted_at);
+    const keep = live[0];
+    const now = new Date().toISOString();
+    for (const row of live.slice(1)) {
+      const { error } = await supabase
+        .from("team_member")
+        .update({ deleted_at: now })
+        .eq("id", row.id);
+      if (error) return { data: null, error: toServiceError(error) };
+    }
+    if (keep) {
+      const { error } = await supabase
+        .from("team_member")
+        .update({
+          name: next.name,
+          phone: next.phone,
+          gender: next.gender,
+          deleted_at: null,
+        })
+        .eq("id", keep.id);
+      if (error) return { data: null, error: toServiceError(error) };
+    } else {
+      const { error } = await supabase.from("team_member").insert({
+        team_id: teamId,
+        name: next.name,
+        phone: next.phone,
+        gender: next.gender,
+      });
+      if (error) return { data: null, error: toServiceError(error) };
+    }
+    return { data: true, error: null };
+  }
+
   const keepKeys = new Set(
     normalized.map((member) => `${member.name.toLowerCase()}|${member.phone}`),
   );
@@ -660,6 +777,7 @@ export async function listCscOptions(filters?: {
         fixture_config: unknown;
       } | null;
       if (!category) continue;
+      const config = parseFixtureConfig(category.fixture_config);
       options.push({
         id: csc.id,
         championshipId: competition.id,
@@ -672,10 +790,16 @@ export async function listCscOptions(filters?: {
           ageGroup: category.age_group,
           name: category.name,
         }),
+        categoryName: category.name,
+        categoryAgeGroup: category.age_group,
         categoryGender: category.gender,
         teamSize: category.team_size,
         maxTeamSize: category.max_team_size,
-        availableRounds: parseAvailableRounds(category.fixture_config),
+        availableRounds: config.availableRounds,
+        defaultFormat: config.format,
+        availableFormats: config.availableFormats,
+        scoringStyle: config.scoringStyle,
+        participantsPerMatch: config.participantsPerMatch,
       });
     }
   }

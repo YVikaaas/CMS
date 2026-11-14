@@ -53,20 +53,32 @@ export default function DashboardPage() {
     {
       n: "2",
       title: "Create draws",
-      hint: "Pick a sport, then a category, then the match workspace.",
+      hint: "All sports until you filter, then a category, then the match workspace.",
       href: "/gameplay/fixtures",
     },
     {
       n: "3",
-      title: "Score matches",
-      hint: "Sport → gender → age, then the scoreboard.",
-      href: "/gameplay/scoring",
+      title: "Call room",
+      hint: "Pick sport, gender, age, then category, then mark present and absent.",
+      href: "/gameplay/call-room",
     },
     {
       n: "4",
+      title: "Score matches",
+      hint: "Pick sport, gender, age, then category, then the scoreboard.",
+      href: "/gameplay/scoring",
+    },
+    {
+      n: "5",
       title: "Publish results",
-      hint: "Same filters. Round columns of live and completed matches.",
+      hint: "Pick sport, gender, age, then category to open the board.",
       href: "/gameplay/results",
+    },
+    {
+      n: "6",
+      title: "Podium",
+      hint: "Lock 1st, 2nd and 3rd on scoring, then mark medal delivery.",
+      href: "/gameplay/podium",
     },
   ];
 

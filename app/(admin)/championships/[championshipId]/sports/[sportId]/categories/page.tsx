@@ -26,13 +26,19 @@ import {
 } from "@/lib/services";
 import type { Category, ChampionshipOffering, Gender, Sport } from "@/lib/types/cms";
 import {
+  agesForSportGender,
   applyAge,
   applyGender,
   applySport,
   emptyEventFilter,
+  genderLabel,
+  gendersForSport,
+  namesForSportGenderAge,
   writeEventFilter,
 } from "@/lib/utils/eventFilter";
-import { categoryLabel } from "@/lib/utils/labels";
+import { isRelayEvent } from "@/lib/utils/athletics";
+import { isAthleticsSport } from "@/lib/utils/fixtures";
+import { categoryEventName, categoryLabel } from "@/lib/utils/labels";
 import { compareText, matchesQuery } from "@/lib/utils/table";
 
 export default function ChampionshipCategoriesPage() {
@@ -45,6 +51,8 @@ export default function ChampionshipCategoriesPage() {
   const [offerings, setOfferings] = useState<ChampionshipOffering[]>([]);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<"" | Gender>("");
+  const [ageFilter, setAgeFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -80,13 +88,31 @@ export default function ChampionshipCategoriesPage() {
     }
   }, [available, categoryId]);
 
+  const genderOptions = useMemo(() => gendersForSport(assigned), [assigned]);
+  const ageOptions = useMemo(
+    () => agesForSportGender(assigned, genderFilter),
+    [assigned, genderFilter],
+  );
+  const nameOptions = useMemo(
+    () => namesForSportGenderAge(assigned, genderFilter, ageFilter),
+    [assigned, genderFilter, ageFilter],
+  );
+
   const visible = useMemo(() => {
     const filtered = assigned.filter((category) => {
       if (genderFilter && category.gender !== genderFilter) return false;
-      return matchesQuery(search, categoryLabel(category), category.ageGroup, category.gender);
+      if (ageFilter && category.ageGroup !== ageFilter) return false;
+      if (nameFilter && category.name !== nameFilter) return false;
+      return matchesQuery(
+        search,
+        categoryLabel(category),
+        category.name,
+        category.ageGroup,
+        category.gender,
+      );
     });
     return [...filtered].sort((a, b) => compareText(categoryLabel(a), categoryLabel(b), "asc"));
-  }, [assigned, search, genderFilter]);
+  }, [assigned, search, genderFilter, ageFilter, nameFilter]);
 
   if (loading) {
     return <p className="text-sm text-[var(--ops-text-muted)]">Loading…</p>;
@@ -125,7 +151,7 @@ export default function ChampionshipCategoriesPage() {
       />
       <PageHeader
         title="Categories"
-        hint="Pick a category, then add teams."
+        hint="All assigned categories until you filter. Gender, then age, then name."
         action={
           <SoftButton
             variant="primary"
@@ -157,18 +183,39 @@ export default function ChampionshipCategoriesPage() {
         <ChipFilter
           ariaLabel="Gender"
           value={genderFilter}
-          onChange={setGenderFilter}
-          options={[
-            { value: "male", label: "Boys" },
-            { value: "female", label: "Girls" },
-          ]}
+          onChange={(value) => {
+            setGenderFilter(value);
+            setAgeFilter("");
+            setNameFilter("");
+          }}
+          options={genderOptions.map((gender) => ({
+            value: gender,
+            label: genderLabel(gender),
+          }))}
+        />
+        <ChipFilter
+          ariaLabel="Age"
+          value={ageFilter}
+          disabled={!genderFilter}
+          onChange={(value) => {
+            setAgeFilter(value);
+            setNameFilter("");
+          }}
+          options={ageOptions.map((age) => ({ value: age, label: age }))}
+        />
+        <ChipFilter
+          ariaLabel="Category"
+          value={nameFilter}
+          disabled={!ageFilter}
+          onChange={setNameFilter}
+          options={nameOptions.map((name) => ({ value: name, label: name }))}
         />
       </div>
 
       {visible.length === 0 ? (
         <EmptyState
           title={assigned.length === 0 ? "No categories yet" : "No matching categories"}
-          hint="Add a category to continue."
+          hint={assigned.length === 0 ? "Add a category to continue." : "Clear a chip to see more."}
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -176,10 +223,14 @@ export default function ChampionshipCategoriesPage() {
             <SoftCard key={category.id} interactive onClick={() => openCategory(category)}>
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold">{categoryLabel(category)}</p>
-                <StatusBadge>{category.ageGroup}</StatusBadge>
+                <StatusBadge>{categoryEventName(category.name) ?? category.ageGroup}</StatusBadge>
               </div>
               <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
-                Roster {category.teamSize}–{category.maxTeamSize}
+                {isAthleticsSport(sport)
+                  ? isRelayEvent(category.name)
+                    ? "Relay teams of 4"
+                    : "Individual athletes"
+                  : `Roster ${category.teamSize}–${category.maxTeamSize}`}
               </p>
               <div
                 className="mt-4 flex justify-end"

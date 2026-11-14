@@ -1,5 +1,9 @@
 import type { Category, ChampionshipOffering, Gender, Sport } from "@/lib/types/cms";
-import { categoryLabel } from "@/lib/utils/labels";
+import {
+  ageGroupFromCategoryLabel,
+  categoryEventName,
+  categoryNameFromLabel,
+} from "@/lib/utils/labels";
 
 export type EventFilterValue = {
   championshipId: string;
@@ -7,6 +11,7 @@ export type EventFilterValue = {
   gender: "" | Gender;
   ageGroup: string;
   categoryId: string;
+  categoryName: string;
 };
 
 const STORAGE_KEY = "cms.eventFilter";
@@ -17,6 +22,7 @@ export const EMPTY_EVENT_FILTER: EventFilterValue = {
   gender: "",
   ageGroup: "",
   categoryId: "",
+  categoryName: "",
 };
 
 export function emptyEventFilter(championshipId: string): EventFilterValue {
@@ -38,6 +44,7 @@ export function readEventFilter(championshipId: string): EventFilterValue {
       gender: parsed.gender === "male" || parsed.gender === "female" ? parsed.gender : "",
       ageGroup: typeof parsed.ageGroup === "string" ? parsed.ageGroup : "",
       categoryId: typeof parsed.categoryId === "string" ? parsed.categoryId : "",
+      categoryName: typeof parsed.categoryName === "string" ? parsed.categoryName : "",
     };
   } catch {
     return emptyEventFilter(championshipId);
@@ -92,18 +99,48 @@ export function agesForSportGender(categories: Category[], gender?: "" | Gender)
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
+export function namesForSportGenderAge(
+  categories: Category[],
+  gender?: "" | Gender,
+  ageGroup?: string,
+): string[] {
+  const set = new Set<string>();
+  categories
+    .filter((row) => {
+      if (gender && row.gender !== gender) return false;
+      if (ageGroup && row.ageGroup !== ageGroup) return false;
+      return true;
+    })
+    .forEach((row) => set.add(row.name));
+  return [...set].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+export function categoriesForSportGenderAge(
+  categories: Category[],
+  sportId: string,
+  gender: "" | Gender,
+  ageGroup: string,
+): Category[] {
+  return categories
+    .filter((row) => {
+      if (sportId && row.sportId !== sportId) return false;
+      if (gender && row.gender !== gender) return false;
+      if (ageGroup && row.ageGroup !== ageGroup) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
 export function categoryForSelection(
   categories: Category[],
   sportId: string,
   gender: Gender,
   ageGroup: string,
+  categoryId?: string,
 ): Category | null {
-  return (
-    categories.find(
-      (row) =>
-        row.sportId === sportId && row.gender === gender && row.ageGroup === ageGroup,
-    ) ?? null
-  );
+  const matches = categoriesForSportGenderAge(categories, sportId, gender, ageGroup);
+  if (categoryId) return matches.find((row) => row.id === categoryId) ?? null;
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function applySport(current: EventFilterValue, sportId: string): EventFilterValue {
@@ -113,6 +150,7 @@ export function applySport(current: EventFilterValue, sportId: string): EventFil
     gender: "",
     ageGroup: "",
     categoryId: "",
+    categoryName: "",
   };
 }
 
@@ -122,6 +160,7 @@ export function applyGender(current: EventFilterValue, gender: "" | Gender): Eve
     gender,
     ageGroup: "",
     categoryId: "",
+    categoryName: "",
   };
 }
 
@@ -131,13 +170,40 @@ export function applyAge(
   categories: Category[],
 ): EventFilterValue {
   if (!ageGroup) {
-    return { ...current, ageGroup: "", categoryId: "" };
+    return { ...current, ageGroup: "", categoryId: "", categoryName: "" };
   }
-  if (current.sportId && current.gender) {
-    const match = categoryForSelection(categories, current.sportId, current.gender, ageGroup);
-    return { ...current, ageGroup, categoryId: match?.id ?? "" };
+  const matches = categoriesForSportGenderAge(
+    categories,
+    current.sportId,
+    current.gender,
+    ageGroup,
+  );
+  const only = matches.length === 1 ? matches[0] : null;
+  return {
+    ...current,
+    ageGroup,
+    categoryId: only?.id ?? "",
+    categoryName: only?.name ?? "",
+  };
+}
+
+export function applyCategory(
+  current: EventFilterValue,
+  categoryId: string,
+  categories: Category[],
+): EventFilterValue {
+  if (!categoryId) {
+    return { ...current, categoryId: "", categoryName: "" };
   }
-  return { ...current, ageGroup, categoryId: "" };
+  const match = categories.find((row) => row.id === categoryId) ?? null;
+  if (!match) return { ...current, categoryId: "", categoryName: "" };
+  return {
+    ...current,
+    gender: match.gender,
+    ageGroup: match.ageGroup,
+    categoryId: match.id,
+    categoryName: match.name,
+  };
 }
 
 export function genderFromCategoryLabel(label: string): "" | Gender {
@@ -161,19 +227,34 @@ export function genderFromCategoryLabel(label: string): "" | Gender {
   return "";
 }
 
+function ageMatchesFilter(filterAge: string, categoryAge: string, label: string): boolean {
+  if (!filterAge) return true;
+  const age = categoryAge || ageGroupFromCategoryLabel(label);
+  return age.toLowerCase() === filterAge.toLowerCase();
+}
+
+function nameMatchesFilter(filterName: string, categoryName: string, label: string): boolean {
+  if (!filterName) return true;
+  const event = categoryEventName(filterName);
+  if (!event) return true;
+  const name = categoryName || categoryNameFromLabel(label);
+  return name.toLowerCase() === filterName.toLowerCase();
+}
+
 export function fixturePassesEventFilter(
   fixture: { sportId: string; categoryId: string; categoryLabel: string },
   filter: EventFilterValue,
-  category?: Pick<Category, "gender" | "ageGroup" | "sportId"> | null,
+  category?: Pick<Category, "gender" | "ageGroup" | "sportId" | "name"> | null,
 ): boolean {
   if (filter.sportId && fixture.sportId !== filter.sportId) return false;
   if (filter.categoryId && fixture.categoryId !== filter.categoryId) return false;
   const gender = genderFromCategoryLabel(fixture.categoryLabel) || category?.gender || "";
   if (filter.gender && gender !== filter.gender) return false;
-  const ageGroup = category?.ageGroup || "";
-  if (filter.ageGroup) {
-    const haystack = `${ageGroup} ${fixture.categoryLabel}`.toLowerCase();
-    if (!haystack.includes(filter.ageGroup.toLowerCase())) return false;
+  if (!ageMatchesFilter(filter.ageGroup, category?.ageGroup ?? "", fixture.categoryLabel)) {
+    return false;
+  }
+  if (!nameMatchesFilter(filter.categoryName, category?.name ?? "", fixture.categoryLabel)) {
+    return false;
   }
   return true;
 }
@@ -184,6 +265,8 @@ export function cscPassesEventFilter(
     categoryId: string;
     categoryGender: Gender;
     categoryLabel: string;
+    categoryAgeGroup?: string;
+    categoryName?: string;
   },
   filter: EventFilterValue,
 ): boolean {
@@ -191,7 +274,10 @@ export function cscPassesEventFilter(
   if (filter.categoryId && row.categoryId !== filter.categoryId) return false;
   const gender = row.categoryGender || genderFromCategoryLabel(row.categoryLabel);
   if (filter.gender && gender !== filter.gender) return false;
-  if (filter.ageGroup && !row.categoryLabel.toLowerCase().includes(filter.ageGroup.toLowerCase())) {
+  if (!ageMatchesFilter(filter.ageGroup, row.categoryAgeGroup ?? "", row.categoryLabel)) {
+    return false;
+  }
+  if (!nameMatchesFilter(filter.categoryName, row.categoryName ?? "", row.categoryLabel)) {
     return false;
   }
   return true;
@@ -205,23 +291,38 @@ export function matchPassesEventFilter(
   if (filter.sportId && sportName && match.sportName !== sportName) return false;
   const gender = genderFromCategoryLabel(match.categoryLabel);
   if (filter.gender && gender !== filter.gender) return false;
-  if (filter.ageGroup && !match.categoryLabel.toLowerCase().includes(filter.ageGroup.toLowerCase())) {
-    return false;
-  }
+  if (!ageMatchesFilter(filter.ageGroup, "", match.categoryLabel)) return false;
+  if (!nameMatchesFilter(filter.categoryName, "", match.categoryLabel)) return false;
   return true;
 }
 
 export function eventIdentityEyebrow(
-  sportName: string,
-  gender: Gender,
-  ageGroup: string,
+  sportName?: string | null,
+  gender?: "" | Gender,
+  ageGroup?: string,
+  name?: string | null,
 ): string {
-  const who = gender === "male" ? "BOYS" : "GIRLS";
-  return `${sportName.toUpperCase()} · ${who} · ${ageGroup.toUpperCase()}`;
+  const parts: string[] = [];
+  if (sportName?.trim()) parts.push(sportName.trim());
+  if (gender) parts.push(gender === "male" ? "BOYS" : "GIRLS");
+  if (ageGroup?.trim()) parts.push(ageGroup.trim());
+  if (name?.trim()) parts.push(name.trim());
+  return parts.map((part) => part.toUpperCase()).join(" · ");
 }
 
-export function eventIdentityTitle(gender: Gender, ageGroup: string): string {
-  return categoryLabel({ gender, ageGroup });
+export function eventIdentityTitle(
+  gender?: "" | Gender,
+  ageGroup?: string,
+  name?: string | null,
+  sportName?: string | null,
+): string {
+  if (gender && ageGroup) {
+    const who = gender === "male" ? "Boys" : "Girls";
+    const event = name?.trim();
+    return event ? `${who} ${ageGroup} ${event}` : `${who} ${ageGroup}`;
+  }
+  if (gender) return genderLabel(gender);
+  return sportName?.trim() || "";
 }
 
 export function genderLabel(gender: Gender): string {

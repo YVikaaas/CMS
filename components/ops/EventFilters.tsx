@@ -13,13 +13,15 @@ import { cn } from "@/lib/utils/cn";
 import {
   agesForSportGender,
   applyAge,
+  applyCategory,
   applyGender,
   applySport,
+  categoriesForSportGenderAge,
   emptyEventFilter,
   eventIdentityEyebrow,
   eventIdentityTitle,
   genderLabel,
-  isEventFilterComplete,
+  gendersForSport,
   offeredCategories,
   offeredSports,
   readEventFilter,
@@ -76,7 +78,7 @@ export function EventFilters({
   championshipId,
   onlyWithExistingFixture = false,
   lockSportId,
-  unlockInOrder = false,
+  unlockInOrder = true,
   onChange,
 }: {
   championshipId: string;
@@ -134,8 +136,20 @@ export function EventFilters({
       if (next.sportId && !offered.some((row) => row.id === next.sportId)) {
         next = emptyEventFilter(championshipId);
       }
-      if (next.categoryId && !cats.some((row) => row.id === next.categoryId)) {
-        next = { ...next, gender: "", ageGroup: "", categoryId: "" };
+      if (next.categoryId) {
+        const storedCategory = cats.find((row) => row.id === next.categoryId);
+        if (!storedCategory) {
+          next = { ...next, gender: "", ageGroup: "", categoryId: "", categoryName: "" };
+        } else {
+          next = {
+            ...next,
+            gender: storedCategory.gender,
+            ageGroup: storedCategory.ageGroup,
+            categoryName: storedCategory.name,
+          };
+        }
+      } else {
+        next = { ...next, categoryName: "" };
       }
       emit(next, offered, cats);
       setReady(true);
@@ -149,16 +163,25 @@ export function EventFilters({
     () => liveCategories.filter((row) => !value.sportId || row.sportId === value.sportId),
     [liveCategories, value.sportId],
   );
-  const genderOptions = useMemo(() => ["male", "female"] as Gender[], []);
+  const genderOptions = useMemo(() => gendersForSport(sportCats), [sportCats]);
   const ageOptions = useMemo(
     () => agesForSportGender(sportCats, value.gender),
     [sportCats, value.gender],
+  );
+  const categoryOptions = useMemo(
+    () =>
+      categoriesForSportGenderAge(sportCats, value.sportId, value.gender, value.ageGroup).map(
+        (row) => ({ value: row.id, label: row.name }),
+      ),
+    [sportCats, value.sportId, value.gender, value.ageGroup],
   );
 
   const selectedSport = liveSports.find((row) => row.id === value.sportId) ?? null;
   const selectedCategory = liveCategories.find((row) => row.id === value.categoryId) ?? null;
   const genderLocked = unlockInOrder && !value.sportId;
   const ageLocked = unlockInOrder && !value.gender;
+  const categoryLocked = unlockInOrder && !value.ageGroup;
+  const hasFilter = Boolean(value.sportId || value.gender || value.ageGroup || value.categoryId);
 
   if (!ready) {
     return <p className="text-sm text-[var(--ops-text-muted)]">Loading filters…</p>;
@@ -170,7 +193,7 @@ export function EventFilters({
         <FilterChip
           label="Sport"
           value={value.sportId}
-          placeholder={unlockInOrder ? "Select sport" : "All"}
+          placeholder="All"
           disabled={Boolean(lockSportId)}
           options={liveSports.map((row) => ({ value: row.id, label: row.name }))}
           onChange={(sportId) => emit(applySport(value, sportId), liveSports, liveCategories)}
@@ -178,7 +201,7 @@ export function EventFilters({
         <FilterChip
           label="Gender"
           value={value.gender}
-          placeholder={genderLocked ? "Pick sport first" : unlockInOrder ? "Select gender" : "All"}
+          placeholder={genderLocked ? "Pick sport first" : "All"}
           disabled={genderLocked}
           options={genderOptions.map((gender) => ({
             value: gender,
@@ -191,20 +214,36 @@ export function EventFilters({
         <FilterChip
           label="Age"
           value={value.ageGroup}
-          placeholder={ageLocked ? "Pick gender first" : unlockInOrder ? "Select age" : "All"}
+          placeholder={ageLocked ? "Pick gender first" : "All"}
           disabled={ageLocked}
           options={ageOptions.map((age) => ({ value: age, label: age }))}
           onChange={(ageGroup) => emit(applyAge(value, ageGroup, liveCategories), liveSports, liveCategories)}
         />
+        <FilterChip
+          label="Category"
+          value={value.categoryId}
+          placeholder={categoryLocked ? "Pick age first" : "All"}
+          disabled={categoryLocked}
+          options={categoryOptions}
+          onChange={(categoryId) =>
+            emit(applyCategory(value, categoryId, liveCategories), liveSports, liveCategories)
+          }
+        />
       </div>
-      {isEventFilterComplete(value) && selectedSport && selectedCategory ? (
+      {hasFilter ? (
         <EventIdentity
           eyebrow={eventIdentityEyebrow(
-            selectedSport.name,
-            selectedCategory.gender,
-            selectedCategory.ageGroup,
+            selectedSport?.name,
+            value.gender,
+            value.ageGroup,
+            selectedCategory?.name || value.categoryName,
           )}
-          title={eventIdentityTitle(selectedCategory.gender, selectedCategory.ageGroup)}
+          title={eventIdentityTitle(
+            value.gender,
+            value.ageGroup,
+            selectedCategory?.name || value.categoryName,
+            selectedSport?.name,
+          )}
         />
       ) : null}
     </div>

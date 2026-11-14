@@ -11,9 +11,10 @@ import type { Category, Fixture, FixtureMatch, Team } from "@/lib/types/cms";
 import {
   emptyEventFilter,
   fixturePassesEventFilter,
-  isEventFilterSelected,
+  isEventFilterComplete,
   type EventFilterValue,
 } from "@/lib/utils/eventFilter";
+import { orgCityLine } from "@/lib/utils/labels";
 
 export default function ResultsPage() {
   const { selected, loading } = useChampionship();
@@ -25,7 +26,7 @@ export default function ResultsPage() {
   const [ready, setReady] = useState(false);
 
   const activeFilter = filter ?? emptyEventFilter(selected?.id ?? "");
-  const filtersReady = isEventFilterSelected(activeFilter);
+  const filtersReady = isEventFilterComplete(activeFilter);
 
   const load = useCallback(async () => {
     if (!selected) {
@@ -83,7 +84,7 @@ export default function ResultsPage() {
 
   const orgByTeamId = useMemo(() => {
     const map: Record<string, string | null> = {};
-    for (const team of teams) map[team.id] = team.orgName;
+    for (const team of teams) map[team.id] = orgCityLine(team.orgName, team.city);
     return map;
   }, [teams]);
 
@@ -108,7 +109,7 @@ export default function ResultsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Results" hint="Pick sport, gender, then age to open the board." />
+      <PageHeader title="Results" hint="Pick sport, gender, age, then category to open the board." />
       <EventFilters
         championshipId={selected.id}
         onlyWithExistingFixture
@@ -117,11 +118,11 @@ export default function ResultsPage() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick sport, then gender, then age" hint="Results wait until the category is selected." />
+        <EmptyState title="Pick sport, gender, age, then category" hint="Results wait until the category name is selected." />
       ) : fixtures.length === 0 ? (
         <EmptyState title="No draws yet" hint="Create a fixture first." />
       ) : boards.length === 0 ? (
-        <EmptyState title="No results for this filter" hint="Try another sport / gender / age." />
+        <EmptyState title="No results for this filter" hint="Try another sport / gender / age / category." />
       ) : (
         <div className="flex flex-col gap-8">
           {boards.map((fixture) => (

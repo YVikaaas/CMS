@@ -1,10 +1,19 @@
 const NAME_RE = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
+const CATEGORY_NAME_RE = /^[A-Za-z0-9]+(?:[ xX][A-Za-z0-9]+)*$/;
 const PHONE_RE = /^[6-9][0-9]{9}$/;
 
 /** Strip everything except letters and spaces while typing a name. */
 export function sanitizeNameInput(raw: string): string {
   return raw
     .replace(/[^A-Za-z ]/g, "")
+    .replace(/ +/g, " ")
+    .replace(/^ /, "");
+}
+
+/** Strip everything except letters, numbers, and spaces (100m, Long Jump). */
+export function sanitizeCategoryNameInput(raw: string): string {
+  return raw
+    .replace(/[^A-Za-z0-9 xX]/g, "")
     .replace(/ +/g, " ")
     .replace(/^ /, "");
 }
@@ -29,6 +38,19 @@ export function nameError(value: string, label = "Name"): string | null {
   const trimmed = value.trim();
   if (!trimmed) return `${label} is required.`;
   if (!isValidName(trimmed)) return `${label} can only contain letters.`;
+  return null;
+}
+
+export function isValidCategoryName(value: string): boolean {
+  return CATEGORY_NAME_RE.test(value.trim());
+}
+
+export function categoryNameError(value: string, label = "Name"): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return `${label} is required.`;
+  if (!isValidCategoryName(trimmed)) {
+    return `${label} can only contain letters, numbers, and spaces.`;
+  }
   return null;
 }
 

@@ -12,6 +12,7 @@ import {
   knockoutSvgWidth,
   knockoutThreadTypes,
   sortKnockoutMatches,
+  sortRoundTypesPresent,
 } from "@/lib/utils/resultsBoard";
 import { ResultMatchCard } from "./ResultMatchCard";
 import "./knockoutBoard.css";
@@ -24,7 +25,7 @@ export function KnockoutResultsBoard({
   orgByTeamId: Record<string, string | null>;
 }) {
   const presentTypes = useMemo(
-    () => [...new Set(matches.map((row) => row.roundType))],
+    () => sortRoundTypesPresent(matches.map((row) => row.roundType)),
     [matches],
   );
   const thread = useMemo(() => knockoutThreadTypes(presentTypes), [presentTypes]);

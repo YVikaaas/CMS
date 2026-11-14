@@ -1,5 +1,6 @@
 import type {
   BasketPoints,
+  CategoryFixtureConfig,
   FixtureFormatType,
   FixtureMatch,
   FixtureMatchStatus,
@@ -8,7 +9,18 @@ import type {
   MatchScoreEvent,
   MatchWinner,
   ScoringMode,
+  Sport,
 } from "@/lib/types/cms";
+import {
+  ATHLETICS_ONLY_ROUNDS,
+  BASKETBALL_FORMATS,
+  FIELD_ROUND_TYPES,
+  TRACK_ROUND_TYPES,
+  defaultParticipantsPerMatch,
+  defaultScoringStyle,
+  inferAthleticsEvent,
+  isAthleticsFormat,
+} from "@/lib/utils/athletics";
 
 export const FIXTURE_ROUND_TYPES: FixtureRoundType[] = [
   "league",
@@ -16,6 +28,8 @@ export const FIXTURE_ROUND_TYPES: FixtureRoundType[] = [
   "semi_final",
   "final",
   "third_place",
+  "heat",
+  "qualifying",
 ];
 
 export const KNOCKOUT_ROUND_TYPES: FixtureRoundType[] = [
@@ -26,11 +40,13 @@ export const KNOCKOUT_ROUND_TYPES: FixtureRoundType[] = [
 ];
 
 const ROUND_ORDER: Record<FixtureRoundType, number> = {
-  league: 1,
-  quarter_final: 2,
-  semi_final: 3,
-  final: 4,
-  third_place: 5,
+  heat: 1,
+  qualifying: 2,
+  league: 10,
+  quarter_final: 11,
+  semi_final: 12,
+  final: 13,
+  third_place: 14,
 };
 
 const ROUND_LABELS: Record<FixtureRoundType, string> = {
@@ -39,6 +55,8 @@ const ROUND_LABELS: Record<FixtureRoundType, string> = {
   semi_final: "Semi Finals",
   final: "Final",
   third_place: "3rd Place",
+  heat: "Heats",
+  qualifying: "Qualifying",
 };
 
 export function isFixtureRoundType(value: string): value is FixtureRoundType {
@@ -50,12 +68,19 @@ export function parseAvailableRounds(config: unknown): FixtureRoundType[] {
     config && typeof config === "object" && "available_rounds" in config
       ? (config as { available_rounds?: unknown }).available_rounds
       : null;
-  if (!Array.isArray(raw)) return [...FIXTURE_ROUND_TYPES];
+  const basketballDefault: FixtureRoundType[] = [
+    "league",
+    "quarter_final",
+    "semi_final",
+    "final",
+    "third_place",
+  ];
+  if (!Array.isArray(raw)) return basketballDefault;
   const rounds = raw.filter(
     (item): item is FixtureRoundType =>
       typeof item === "string" && isFixtureRoundType(item),
   );
-  return rounds.length > 0 ? rounds : [...FIXTURE_ROUND_TYPES];
+  return rounds.length > 0 ? rounds : basketballDefault;
 }
 
 export function roundLabel(type: FixtureRoundType): string {
@@ -70,8 +95,34 @@ export function sortRoundTypes(rounds: FixtureRoundType[]): FixtureRoundType[] {
   return [...rounds].sort((a, b) => ROUND_ORDER[a] - ROUND_ORDER[b]);
 }
 
+export function sortByRoundOrder<T extends { roundType: FixtureRoundType }>(
+  rows: T[],
+  thenBy?: (a: T, b: T) => number,
+): T[] {
+  return [...rows].sort((a, b) => {
+    const round = ROUND_ORDER[a.roundType] - ROUND_ORDER[b.roundType];
+    if (round !== 0) return round;
+    return thenBy ? thenBy(a, b) : 0;
+  });
+}
+
+export function uniqueRoundLabelsInOrder(
+  matches: Array<{ roundType: FixtureRoundType; roundLabel: string }>,
+): string[] {
+  const labels = new Map<FixtureRoundType, string>();
+  for (const match of matches) {
+    if (!labels.has(match.roundType)) {
+      labels.set(match.roundType, match.roundLabel.trim() || roundLabel(match.roundType));
+    }
+  }
+  return sortRoundTypes([...labels.keys()]).map((type) => labels.get(type)!);
+}
+
 export function formatLabel(format: FixtureFormatType): string {
-  return format === "league_knockout" ? "League + bracket" : "Bracket elimination";
+  if (format === "league_knockout") return "League + bracket";
+  if (format === "bracket_elimination") return "Bracket elimination";
+  if (format === "track_rounds") return "Track rounds";
+  return "Field attempts";
 }
 
 export function roundsForFormat(
@@ -79,9 +130,150 @@ export function roundsForFormat(
   available: FixtureRoundType[],
 ): FixtureRoundType[] {
   if (format === "bracket_elimination") {
-    return available.filter((round) => round !== "league");
+    return available.filter(
+      (round) => round !== "league" && !ATHLETICS_ONLY_ROUNDS.includes(round),
+    );
   }
-  return available;
+  if (format === "track_rounds") {
+    return available.filter((round) => TRACK_ROUND_TYPES.includes(round));
+  }
+  if (format === "field_attempts") {
+    return available.filter((round) => FIELD_ROUND_TYPES.includes(round));
+  }
+  return available.filter((round) => !ATHLETICS_ONLY_ROUNDS.includes(round));
+}
+
+export function formatsForConfig(format: FixtureFormatType): FixtureFormatType[] {
+  if (isAthleticsFormat(format)) return ["track_rounds", "field_attempts"];
+  return [...BASKETBALL_FORMATS];
+}
+
+export function isAthleticsSport(sport?: Pick<Sport, "code" | "eventMode"> | null): boolean {
+  return sport?.eventMode === "solo" || sport?.code === "ATH";
+}
+
+export function formatsForSport(sport?: Pick<Sport, "code" | "eventMode"> | null): FixtureFormatType[] {
+  return isAthleticsSport(sport) ? ["track_rounds", "field_attempts"] : [...BASKETBALL_FORMATS];
+}
+
+export function roundsForFormatFamily(format: FixtureFormatType): FixtureRoundType[] {
+  if (format === "track_rounds") return [...TRACK_ROUND_TYPES];
+  if (format === "field_attempts") return [...FIELD_ROUND_TYPES];
+  return ["league", "quarter_final", "semi_final", "final", "third_place"];
+}
+
+export function fixtureConfigLabel(config: Pick<CategoryFixtureConfig, "format" | "scoringStyle">): string {
+  const format = formatLabel(config.format);
+  if (!config.scoringStyle || config.scoringStyle === "simple") return format;
+  return `${format} · ${config.scoringStyle}`;
+}
+
+export function basketballFixtureConfig(): CategoryFixtureConfig {
+  return {
+    format: "league_knockout",
+    scoringStyle: "simple",
+    participantsPerMatch: 2,
+    availableRounds: ["league", "quarter_final", "semi_final", "final", "third_place"],
+    availableFormats: [...BASKETBALL_FORMATS],
+  };
+}
+
+export function defaultCategoryFixtureConfig(
+  sport: Pick<Sport, "code" | "eventMode"> | null | undefined,
+  eventName = "",
+): CategoryFixtureConfig {
+  if (isAthleticsSport(sport)) {
+    const event = inferAthleticsEvent(eventName);
+    return normalizeCategoryFixtureConfig({
+      format: event.format,
+      scoringStyle: event.scoringStyle,
+      sport,
+    });
+  }
+  return basketballFixtureConfig();
+}
+
+export function serializeFixtureConfig(config: CategoryFixtureConfig) {
+  return {
+    format: config.format,
+    scoring_style: config.scoringStyle,
+    available_rounds: config.availableRounds,
+    available_formats: config.availableFormats,
+    participants_per_match: config.participantsPerMatch,
+  };
+}
+
+export function normalizeCategoryFixtureConfig(input: {
+  format: FixtureFormatType;
+  scoringStyle?: string;
+  participantsPerMatch?: number;
+  availableRounds?: FixtureRoundType[];
+  sport?: Pick<Sport, "code" | "eventMode"> | null;
+}): CategoryFixtureConfig {
+  const allowed = formatsForSport(input.sport);
+  const format = allowed.includes(input.format) ? input.format : allowed[0];
+  let scoringStyle = input.scoringStyle?.trim() || defaultScoringStyle(format);
+  if (!isAthleticsFormat(format)) scoringStyle = "simple";
+  else if (format === "track_rounds") scoringStyle = "time";
+  else if (scoringStyle !== "distance" && scoringStyle !== "height") scoringStyle = "distance";
+  const familyRounds = roundsForFormatFamily(format);
+  let availableRounds = (input.availableRounds ?? familyRounds).filter((round) =>
+    familyRounds.includes(round),
+  );
+  if (format === "league_knockout") {
+    for (const required of ["league", "semi_final", "final"] as FixtureRoundType[]) {
+      if (!availableRounds.includes(required)) availableRounds = [...availableRounds, required];
+    }
+    availableRounds = sortRoundTypes(availableRounds);
+  }
+  const participants =
+    typeof input.participantsPerMatch === "number" && Number.isFinite(input.participantsPerMatch)
+      ? Math.trunc(input.participantsPerMatch)
+      : defaultParticipantsPerMatch(format);
+  return {
+    format,
+    scoringStyle,
+    participantsPerMatch: participants > 0 ? participants : defaultParticipantsPerMatch(format),
+    availableRounds: availableRounds.length > 0 ? availableRounds : familyRounds,
+    availableFormats: allowed,
+  };
+}
+
+export function parseFixtureConfig(config: unknown): CategoryFixtureConfig {
+  const rec = config && typeof config === "object" && !Array.isArray(config)
+    ? (config as Record<string, unknown>)
+    : {};
+  const formatRaw = typeof rec.format === "string" ? rec.format : "";
+  const format: FixtureFormatType =
+    formatRaw === "track_rounds" ||
+    formatRaw === "field_attempts" ||
+    formatRaw === "league_knockout" ||
+    formatRaw === "bracket_elimination"
+      ? formatRaw
+      : "league_knockout";
+  let availableRounds = parseAvailableRounds(config);
+  if (format === "league_knockout") {
+    for (const required of ["league", "semi_final", "final"] as FixtureRoundType[]) {
+      if (!availableRounds.includes(required)) availableRounds = [...availableRounds, required];
+    }
+    availableRounds = sortRoundTypes(availableRounds);
+  }
+  const participantsRaw = rec.participants_per_match;
+  const participants =
+    typeof participantsRaw === "number" && Number.isFinite(participantsRaw)
+      ? Math.trunc(participantsRaw)
+      : defaultParticipantsPerMatch(format);
+  const scoringStyle =
+    typeof rec.scoring_style === "string" && rec.scoring_style.trim()
+      ? rec.scoring_style
+      : defaultScoringStyle(format);
+  return {
+    format,
+    scoringStyle,
+    participantsPerMatch: participants > 0 ? participants : defaultParticipantsPerMatch(format),
+    availableRounds,
+    availableFormats: formatsForConfig(format),
+  };
 }
 
 export const PRESET_QF_FINAL: FixtureRoundType[] = [
@@ -119,9 +311,23 @@ export function validateFixtureRounds(
   const knockoutCount = unique.filter((round) =>
     KNOCKOUT_ROUND_TYPES.includes(round),
   ).length;
+  if (format === "track_rounds") {
+    if (unique.length === 0) return "Pick at least one track round.";
+    if (unique.some((round) => !TRACK_ROUND_TYPES.includes(round))) {
+      return "Track rounds use heat, quarter-final, semi, and/or final.";
+    }
+    return null;
+  }
+  if (format === "field_attempts") {
+    if (unique.length === 0) return "Pick at least one field round.";
+    if (unique.some((round) => !FIELD_ROUND_TYPES.includes(round))) {
+      return "Field attempts use qualifying and/or final.";
+    }
+    return null;
+  }
   if (format === "league_knockout") {
-    if (!hasLeague || knockoutCount < 1) {
-      return "League + bracket needs a league round and at least one knockout round.";
+    if (!hasLeague || !unique.includes("semi_final") || !unique.includes("final")) {
+      return "League + bracket needs league, semi, and final.";
     }
     return null;
   }
@@ -198,9 +404,10 @@ export function formatScoreLine(team1Points: number, team2Points: number): strin
 }
 
 export function displayScore(
-  match: Pick<FixtureMatch, "scoreLine" | "team1Points" | "team2Points">,
+  match: Pick<FixtureMatch, "scoreLine" | "team1Points" | "team2Points" | "kind">,
 ): string {
   if (match.scoreLine) return match.scoreLine;
+  if (match.kind === "heat") return "\u2014";
   if (match.team1Points == null && match.team2Points == null) return "\u2014";
   return formatScoreLine(match.team1Points ?? 0, match.team2Points ?? 0);
 }

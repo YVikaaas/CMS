@@ -10,6 +10,7 @@ export function ChipFilter<T extends string>({
   ariaLabel,
   allowEmpty = true,
   showAll = true,
+  gapBefore,
 }: {
   options: Array<{ value: T; label: string }>;
   value: T | "";
@@ -18,6 +19,7 @@ export function ChipFilter<T extends string>({
   ariaLabel: string;
   allowEmpty?: boolean;
   showAll?: boolean;
+  gapBefore?: T;
 }) {
   const chipClass = (active: boolean) =>
     cn(
@@ -42,7 +44,7 @@ export function ChipFilter<T extends string>({
           All
         </button>
       ) : null}
-      {options.map((option) => {
+      {options.map((option, index) => {
         const active = value === option.value;
         return (
           <button
@@ -55,7 +57,10 @@ export function ChipFilter<T extends string>({
               if (active && !allowEmpty) return;
               onChange(active ? "" : option.value);
             }}
-            className={chipClass(active)}
+            className={cn(
+              chipClass(active),
+              gapBefore && option.value === gapBefore && index > 0 && "ml-3",
+            )}
           >
             {option.label}
           </button>

@@ -17,7 +17,7 @@ Ignore `CMS/docs/SPORT_DISCIPLINE_FIXTURE_SCORING.md` for this work. That file d
 | Docs | Same change: `CMS/lib/services/SERVICES.md` if services change; `CMS/lib/utils/UTILS.md` if utils change; `CMS/AGENT_CODING_GUIDE.md` if policy changes. |
 | Build | `npm run build` inside `CMS`. User browser-tests. |
 | Forms | On Save, red outline every invalid required field (`fieldErrorClass`). One short toast. |
-| UI | Ops tokens `#2559db`, kit in `CMS/components/ops/`. No Framer Motion. Do not copy GMS desks (call room, BIB, kit, medals, event-code loaders, weight classes). |
+| UI | Ops tokens `#2559db`, kit in `CMS/components/ops/`. No Framer Motion. Do not copy GMS desks (BIB, kit, medals, event-code loaders, weight classes). CMS Call Room is present/absent only. |
 | Filters | Floor pages share `sessionStorage` key `cms.eventFilter`. |
 
 Basketball must keep working. Do not rewrite basketball scoring math, roster min/max, or “one live fixture per CSC”.
@@ -30,11 +30,11 @@ CMS is an **ops desk** for one championship at a time (header picker).
 
 ```text
 Catalog          sport  →  category (Boys U16, Girls U14, …)
-Setup            championship → offer sports → offer categories → teams → members
-Floor            fixtures → scoring → results
+Setup            championship → offer sports → offer categories → athletes (solo) / teams (relay + basketball) → members (teams only)
+Floor            call room → fixtures → scoring → results → podium
 ```
 
-**Nav** (`CMS/lib/utils/nav.ts`): Dashboard · Floor (Fixtures, Scoring, Results) · Setup (Championships) · Catalog (Sport, Category).
+**Nav** (`CMS/lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Championships) · Catalog (Sport, Category).
 
 **Championship hops** (keep nested URLs):
 
@@ -42,8 +42,8 @@ Floor            fixtures → scoring → results
 /championships
   /[championshipId]/sports
     /[sportId]/categories
-      /[categoryId]/teams
-        /[teamId]/members
+      /[categoryId]/teams   (Athletes for solo events; Teams for relays)
+        /[teamId]/members   (relays and basketball only)
 ```
 
 **One live fixture per CSC** (`competition_sport_category_map` = championship + sport + category). Example: Basketball · Boys · U16 has at most one draw.
@@ -55,12 +55,15 @@ Floor            fixtures → scoring → results
 File: `CMS/components/ops/EventFilters.tsx`  
 Helpers: `CMS/lib/utils/eventFilter.ts`
 
-Three controls: **Sport → Gender → Age**. Age **is** the category (there is no fourth “discipline” chip).
+Four controls: **Sport → Gender → Age → Category**. Age is U16. Category is the event name (100m, Long Jump) or Basketball.
 
 | Page | Filter behaviour |
 |------|------------------|
-| Fixtures | `unlockInOrder`: Gender disabled until Sport; Age disabled until Gender. Cards hidden until Age is set. Picking Sport on `/gameplay/fixtures` navigates to `/gameplay/fixtures/sport/[sportId]`. |
-| Scoring / Results | All three must be set (`isEventFilterSelected`) or the board stays empty. Dropdowns still have an empty “All” value meaning *not selected*. |
+| Fixtures | `unlockInOrder`: Gender disabled until Sport; Age until Gender; Category until Age. Empty chip = All sports/categories. Picking Sport on `/gameplay/fixtures` navigates to `/gameplay/fixtures/sport/[sportId]`. |
+| Call Room | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round chips have no All. Solo heats mark athletes present/absent. Basketball and relays mark the team and each member. Team absent puts every player out; a player marked present brings the team back. |
+| Scoring | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round chips have no All and stay in heat → QF → SF → final → 3rd order. **Ranking** is the last chip (with a gap after the rounds) and is where places are set. Lock 1st, 2nd and 3rd after save so Podium can open. Field scoring uses that round’s attempt count (default 3 qualifying, 2 final). |
+| Results | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round tabs have no All, plus a read-only **Ranking** tab. |
+| Podium | Board stays empty until Sport + Gender + Age + Category are all set. The category only appears after ranking is locked. Gold / silver / bronze delivery for those three; teams list every member, solo lists athlete details. |
 
 Persisted value:
 
@@ -98,7 +101,7 @@ Display label is always `Boys {age}` or `Girls {age}` (`CMS/lib/utils/labels.ts`
 
 Championship offering: `competition_sport_map` (CSM) + `competition_sport_category_map` (CSC). Services: `addChampionshipSport`, `addChampionshipEvent`, `listChampionshipOfferings`.
 
-Teams: one `team` per CSC, members  `team_size`–`max_team_size`, gender copied from category. Services in `CMS/lib/services/teams.ts`.
+Entry: solo athletics events are individual athletes (`team_size`/`max_team_size` = 1, stored as a team-of-1). Relays are teams of 4. Basketball stays a team roster. Gender is copied from the category. Setup can add one by one or import Excel (athlete sample vs team sample). Team sheet: one row per member; the same Team name groups that roster. Services in `CMS/lib/services/teams.ts`.
 
 ---
 
@@ -124,10 +127,13 @@ Helpers: `CMS/lib/utils/fixtures.ts` (`roundsForFormat`, `validateFixtureRounds`
 | `/gameplay/fixtures/sport/[sportId]` | Gender then Age, then **one card per matching CSC**: create draw, or open existing. |
 | `/gameplay/fixtures/[fixtureId]` | Match workspace: round chips (no All), queue \| create/edit match, sticky Save. **No scoring here.** |
 | `/gameplay/fixtures/[fixtureId]/matches` | Redirects to `/gameplay/fixtures/[fixtureId]`. |
+| `/gameplay/call-room` | Present/absent for the selected match. Solo heats mark athletes. Relays and basketball mark the team and each member. |
 
-Create-draw modal: format + `RoundChips`. Then `createFixture({ cscId, formatType, rounds, startDate, endDate })`.
+Create-draw modal: athletics format comes from the category (no track/field picker). Operator picks rounds, and for track the **lanes per heat**. Field rounds each have their own attempt count (default **3 qualifying, 2 final**). Then `createFixture({ cscId, rounds, participantsPerMatch, roundAttempts, startDate, endDate })`.
 
 Match create: two **different** live teams on that CSC (`createMatch`). Fields: round, match label, venue (default `"Court 1"`), schedule, status (`draft` / `scheduled` / `cancelled` at create), team1, team2.
+
+Athletics heat create: one dropdown per lane/slot (`HeatLaneSlots`). Empty lanes stay blank. Lane number is the row, not checkbox order.
 
 Workspace UI: `CMS/app/(admin)/gameplay/fixtures/[fixtureId]/page.tsx`.
 
@@ -145,6 +151,10 @@ Services: `CMS/lib/services/fixtures.ts` — `listFixtures`, `getFixture`, `crea
 
 `FixtureMatch` in the client is **flattened**: `team1Id`, `team1Name`, `team1Points`, `team1Fouls`, `team1ResultStatus`, same for team2, plus `scoreLine`, `sportName`, `categoryLabel`. There is **no** `categoryId` on the match DTO. Filter results/scoring via fixture `sportId` + `categoryId`, or parse `categoryLabel` (`Boys U16`).
 
+### 4.4 Call Room
+
+Route: `/gameplay/call-room`. Table `fixture_match_attendance` (team row or player row, never both). Team absent makes every member effectively absent; marking a player present lifts the team; marking every player absent marks the team absent. Helpers: `CMS/lib/utils/callRoom.ts`. Service: `CMS/lib/services/attendance.ts`.
+
 ---
 
 ## 5. Scoring (complete)
@@ -152,7 +162,7 @@ Services: `CMS/lib/services/fixtures.ts` — `listFixtures`, `getFixture`, `crea
 Route: `/gameplay/scoring`  
 Old: `/gameplay/scoring/[matchId]/players` → `/gameplay/scoring?match=`
 
-Wait for Sport + Gender + Age. Then **round chips with no All** (first round selected). `SplitWorkspace`: match queue \| `ScoreMatchBoard`. Sticky Save progress / Complete.
+Wait for Sport + Gender + Age + Category. Then **round chips with no All** in heat → QF → SF → final → 3rd order (first round selected). `SplitWorkspace`: match queue \| `ScoreMatchBoard`. Sticky Save progress / Complete.
 
 Board: `CMS/components/ScoreMatchBoard.tsx` (modal wrapper `ScoreMatchModal.tsx` still exists).
 
@@ -176,9 +186,9 @@ Winner enum on the client: `"1"` \| `"2"` \| `"draw"`, mapped to participant `re
 Route: `/gameplay/results`  
 Page: `CMS/app/(admin)/gameplay/results/page.tsx`
 
-1. Wait for Sport + Gender + Age (`isEventFilterSelected`).
+1. Wait for Sport + Gender + Age + Category (`isEventFilterComplete`).
 2. Filter fixtures with `fixturePassesEventFilter` (prefer category `gender` / `ageGroup`, then label).
-3. One `CategoryResultsBoard` per remaining fixture.
+3. One `CategoryResultsBoard` per remaining fixture, with round tabs plus a **Ranking** tab. Ranking is set by hand (`listFixtureRanking` / `saveFixtureRanking`).
 
 `CMS/components/results/`:
 
@@ -190,7 +200,14 @@ Page: `CMS/app/(admin)/gameplay/results/page.tsx`
 | `ResultMatchCard.tsx` | Public-style card: match id, date/time, two team rows, trophy, points. Live pill if `in_progress`. Scores for `completed` and `in_progress`. |
 | `knockoutBoard.css` + `resultsBoard.ts` | Column layout and connector paths. |
 
-Results are **read-only**. No rankings, no medals, no roster popups.
+Round results are **read-only**. Ranking on Results is read-only. Medals are on **Podium** after scoring locks 1st–3rd.
+
+### 6.1 Podium
+
+Route: `/gameplay/podium`  
+Page: `CMS/app/(admin)/gameplay/podium/page.tsx`
+
+Wait for Sport + Gender + Age + Category. The category only appears after `fixture.rankings_locked_at` is set from the scoring ranking tab (needs saved 1st, 2nd and 3rd). Gold / silver / bronze cards mark medal delivery (`fixture_ranking.medal_delivered_at`). Solo shows athlete name, phone, gender, organization, city. Teams show the team plus every member.
 
 Round order: `sortRoundTypesPresent` in `CMS/lib/utils/resultsBoard.ts` (uses `roundNumber` from `fixtures.ts`).
 
@@ -202,15 +219,23 @@ Round order: `sortRoundTypesPresent` in `CMS/lib/utils/resultsBoard.ts` (uses `r
 CMS/app/(admin)/gameplay/fixtures/page.tsx
 CMS/app/(admin)/gameplay/fixtures/sport/[sportId]/page.tsx
 CMS/app/(admin)/gameplay/fixtures/[fixtureId]/page.tsx
+CMS/app/(admin)/gameplay/call-room/page.tsx
 CMS/app/(admin)/gameplay/scoring/page.tsx
 CMS/app/(admin)/gameplay/results/page.tsx
+CMS/app/(admin)/gameplay/podium/page.tsx
+CMS/components/callRoom/CallRoomBoard.tsx
+CMS/components/podium/PodiumBoard.tsx
 CMS/components/ScoreMatchBoard.tsx
 CMS/components/ops/EventFilters.tsx
 CMS/components/results/*
+CMS/lib/services/attendance.ts
+CMS/lib/services/podium.ts
 CMS/lib/services/fixtures.ts
 CMS/lib/services/catalog.ts
 CMS/lib/services/teams.ts
 CMS/lib/types/cms.ts
+CMS/lib/utils/callRoom.ts
+CMS/lib/utils/podium.ts
 CMS/lib/utils/fixtures.ts
 CMS/lib/utils/eventFilter.ts
 CMS/lib/utils/resultsBoard.ts
@@ -229,12 +254,12 @@ Athletics is **many athletes in a heat or flight**, ranked by **time** or **dist
 
 | | Basketball (now) | Athletics (needed) |
 |--|------------------|--------------------|
-| `sport.event_mode` | `team` | `solo` (or `both` if relays later) |
-| Participants | Two `team` rows | Many athletes (or relay teams) per heat |
+| `sport.event_mode` | `team` | `solo` (relays still sit on Athletics) |
+| Participants | Two `team` rows | Many athletes per heat, or relay teams (4x100m / 4x400m) |
 | `participants_per_match` | 2 | typically 8 (heat) / 12+ (flight) |
 | Score | integer points + fouls | time (track) or mark + attempts (field) |
 | Winner | one of two sides | ordered places; several may **qualify** |
-| Rounds | league / QF / SF / Final / 3rd | heat, semi, final (track); qualifying, final (field) |
+| Rounds | league / QF / SF / Final / 3rd | heat, QF, semi, final (track); qualifying, final (field) |
 | Results UI | 1v1 cards + knockout bracket | heat tables / flight lists, times or marks |
 | Venue copy | Court | Track / pit / runway |
 
@@ -246,19 +271,17 @@ Do **not** fake athletics by stuffing times into `team1Points`. Do **not** force
 
 Treat Athletics as a **new scoring family**, branched on sport (or on `fixture.format_type` / `fixture_config.scoring_style`), not a rename of basketball.
 
-### 9.1 Catalog (no schema if you only seed)
+### 9.1 Catalog
 
 1. Master sport: name `Athletics`, code `ATH` (3 letters), `event_mode: "solo"`.
-2. Categories: still **gender + age** (Boys U16, Girls U14, …). If you also need event names (100m, Long Jump), that is extra identity. **CMS category today cannot store “100m” separately from age.** Options:
-   - **A (ask first):** add an event/discipline field or child table (e.g. 100m under Boys U16). Requires schema — **ask the user**.
-   - **B (no schema):** one category per “contest” by stuffing the event into `category.name` / `age_group` (ugly; avoid unless the user agrees).
-3. `fixture_config` for athletics categories must **not** be the basketball seed. Example target:
+2. Categories: **gender + age + event name**. Live unique is `(sport_id, gender, age_group, lower(name))`. Seeded events: 100m, 200m, 400m, 800m, 1500m, 4x100m, 4x400m, Long Jump, High Jump, Shot Put × Boys/Girls × U14/U16/U18. Solo events roster 1/1 (athletes enter). Relays roster 4/4 and heat lanes are teams. Floor filters are Sport → Gender → Age → Category.
+3. `fixture_config` for athletics categories must **not** be the basketball seed. Track events use `track_rounds` / `time`; field events use `field_attempts` / `distance` or `height`. Example target:
 
 ```json
 {
   "format": "track_rounds",
   "scoring_style": "time",
-  "available_rounds": ["heat", "semi_final", "final"],
+  "available_rounds": ["heat", "quarter_final", "semi_final", "final"],
   "participants_per_match": 8
 }
 ```
@@ -269,14 +292,7 @@ Field events would use `"format": "field_attempts"`, `"scoring_style": "distance
 
 ### 9.2 Participants
 
-Basketball teams are the wrong grain. Athletics needs **solo athletes** (name, org/school, bib optional).
-
-Today CMS only has `team` + `team_member` on a CSC. Options (ask before schema):
-
-- Solo “team of 1” (hack; scoring UI still assumes two sides).
-- New `athlete` (or reuse members as heat entries without two-team matches). **Prefer a real solo participant** and matches with N participants.
-
-Until the user approves schema, **do not** invent tables.
+Solo events: athletes enter (name, phone, org). Stored as `team` + one `team_member` so heat `athlete_id` rows stay on `team_member`. Relays and basketball: teams enter, then members. Setup UI hides the members hop for roster 1/1.
 
 ### 9.3 Fixture formats (schema likely)
 
@@ -287,7 +303,7 @@ Extend `FixtureFormatType` only after the DB check/enum allows it:
 
 New `FixtureRoundType` values will need a DB check as well (`heat`, `qualifying`, …). **Ask first.** Helpers in `fixtures.ts` (`FIXTURE_ROUND_TYPES`, `validateFixtureRounds`) must stay in sync with the DB.
 
-Create-draw modal on `fixtures/sport/[sportId]/page.tsx` must branch: basketball → current format + round chips; athletics → heat/flight setup, not QF presets.
+Create-draw modal on `fixtures/sport/[sportId]/page.tsx`: basketball may pick league vs bracket + rounds. Athletics does **not** pick track vs field — that is the category `fixture_config.format`. Athletics asks for rounds and, on track, lanes per heat.
 
 Match workspace must allow **N athletes per heat**, not two team dropdowns. Default venue `"Track 1"` / `"Pit 1"`, not `"Court 1"`.
 
@@ -310,13 +326,13 @@ Scoring page: same EventFilters. Round chips = heat / semi / final (no All). Que
 
 ### 9.5 Results
 
-Keep Sport → Gender → Age gate and one round-tab row **without All**.
+Keep Sport → Gender → Age → Category gate and one round-tab row **without All**.
 
 Do not use `ResultMatchCard` (1v1) or `KnockoutResultsBoard` for athletics.
 
 Add something like `TrackResultsBoard` / `FieldResultsBoard`:
 
-- Round tabs: Heat, Semi, Final (or Qualifying, Final)
+- Round tabs: Heat, Quarter Finals, Semi, Final (or Qualifying, Final)
 - Each heat: table of athletes, mark/time, place, Qualified mark
 - Read-only
 - Inspiration for layout only: public `TrackRoundsResultsView` (heats + times). **Do not copy** that app’s files or GMS ops kit.
@@ -359,7 +375,7 @@ Key off **`fixture.formatType` / `fixture_config`**, not `if (sportName === "Bas
 
 - [ ] User approved any DB/RPC change; migration + `DB_CHANGELOG.md`
 - [ ] Basketball create/score/results still work
-- [ ] EventFilters still Sport → Gender → Age; results/scoring still wait for all three
+- [ ] EventFilters still Sport → Gender → Age → Category; results/scoring still wait for all four
 - [ ] Results: one round-tab row, no All
 - [ ] Scoring rounds: no All
 - [ ] No `createClient` in `app/`

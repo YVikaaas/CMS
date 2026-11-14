@@ -57,9 +57,9 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `createSport({ name, code, eventMode })` | code is 3 letters | `ServiceResult<Sport>` | Admin RLS. |
 | `updateSport(id, { name, eventMode })` | — | `ServiceResult<Sport>` | Code is immutable after create. |
 | `archiveSport(id)` | — | `ServiceResult<true>` | Soft delete. |
-| `listCategories(sportId?)` | optional sport filter | `ServiceResult<Category[]>` | Live categories. |
-| `createCategory(...)` | sport, name, gender, age, sizes | `ServiceResult<Category>` | Seeds basketball-style `fixture_config`. |
-| `updateCategory(id, ...)` | — | `ServiceResult<Category>` | Does not change sport. |
+| `listCategories(sportId?)` | optional sport filter | `ServiceResult<Category[]>` | Live categories including parsed `fixtureConfig`. |
+| `createCategory(...)` | sport, name, gender, age, sizes, optional fixture type | `ServiceResult<Category>` | Writes `fixture_config`. Athletics formats are `track_rounds` / `field_attempts`; basketball is `league_knockout` / `bracket_elimination`. Athletics roster is forced: solo 1/1, relay 4/4. |
+| `updateCategory(id, ...)` | name, gender, age, sizes, fixture type | `ServiceResult<Category>` | Does not change sport. Updates `fixture_config` for the sport's format family. Athletics roster stays 1/1 or relay 4/4. |
 | `archiveCategory(id)` | — | `ServiceResult<true>` | Soft delete. |
 
 ---
@@ -86,11 +86,13 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
 | `listTeams({ championshipId?, cscId? })` | scoped to a championship or CSC | `ServiceResult<Team[]>` | Teams belong to one championship sport category. |
-| `createTeam({ cscId, name, orgName, members })` | member count = category `team_size`–`max_team_size` | `ServiceResult<Team>` | Unique live name per CSC. Team and all members take the category gender. |
-| `updateTeam(id, { name, orgName, members })` | — | `ServiceResult<Team>` | Replaces live member set within roster limits. |
+| `createTeam({ cscId, name, orgName, city, members })` | member count = category `team_size`–`max_team_size` | `ServiceResult<Team>` | Unique live name per CSC. Organization and city are separate optional names. Team and all members take the category gender. Solo athletics is one member (the athlete); relays and basketball are real teams. |
+| `importCscTeams(cscId, entries)` | same shape as `createTeam`, many rows | `ServiceResult<{ created, failed }>` | Creates valid rows one by one. Sheet parse/sample lives in `entrySheet.ts`. |
+| `updateTeam(id, { name, orgName, city, members })` | — | `ServiceResult<Team>` | Replaces live member set within roster limits. A 1/1 roster updates the existing member in place so heat `athlete_id` rows stay valid. |
 | `listTeamMembers(teamId)` | — | `ServiceResult<TeamMember[]>` | Live members. |
 | `archiveTeam(id)` | — | `ServiceResult<true>` | Soft-deletes team and members. |
-| `listCscOptions({ sportId?, championshipId? })` | — | `ServiceResult<CscOption[]>` | Live CSCs with roster min/max and `availableRounds`. |
+| `listCscOptions({ sportId?, championshipId? })` | — | `ServiceResult<CscOption[]>` | Live CSCs with category name/age, roster min/max, `availableRounds`, `defaultFormat`, `availableFormats`, scoring style, and heat size. |
+| `listCscAthletes(cscId)` | CSC id | `ServiceResult<CscAthlete[]>` | Live team members on that championship category, used as heat athletes. |
 | `getTeam(id)` | — | `ServiceResult<Team>` | Live team by id. |
 | `createTeamMember(teamId, { name, phone })` | — | `ServiceResult<TeamMember>` | Gender from the team/category. Blocked at max roster. |
 | `updateTeamMember(id, { name, phone })` | — | `ServiceResult<TeamMember>` | Live unique name+phone. |
@@ -104,19 +106,44 @@ Add new operations here and update this file with **inputs** and **outputs**.
 |----------|--------|--------|--------|
 | `listFixtures(championshipId)` | — | `ServiceResult<Fixture[]>` | One live draw per CSC in that championship. |
 | `getFixture(id)` | — | `ServiceResult<Fixture>` | Includes rounds. |
-| `createFixture({ cscId, formatType, rounds, startDate, endDate })` | `league_knockout` or `bracket_elimination` | `ServiceResult<Fixture>` | Unique live fixture per CSC. Inserts chosen rounds. |
+| `createFixture({ cscId, formatType?, rounds, participantsPerMatch?, roundAttempts?, startDate, endDate })` | basketball may pick league vs bracket; athletics format is always the category’s | `ServiceResult<Fixture>` | Unique live fixture per CSC. Inserts chosen rounds. Track `participantsPerMatch` is lanes per heat (2–24). Field `roundAttempts` is 3 in qualifying and 2 in the final unless overridden. |
 | `updateFixture(id, { status, startDate, endDate })` | — | `ServiceResult<Fixture>` | Does not change format or rounds. |
-| `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, sides, and player score events. |
-| `listFixtureMatches(fixtureId)` | — | `ServiceResult<FixtureMatch[]>` | Live matches with both team sides, points, fouls, result status. |
+| `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, sides, player score events, and call-room attendance. |
+| `listFixtureMatches(fixtureId)` | — | `ServiceResult<FixtureMatch[]>` | Live matches. Basketball: two team sides. Athletics: heat `participants`. |
 | `listChampionshipMatches(championshipId)` | — | `ServiceResult<FixtureMatch[]>` | All live matches across fixtures in that championship. |
 | `getFixtureMatch(id)` | — | `ServiceResult<FixtureMatch>` | One live match with sides and scores. |
 | `createMatch({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, team1Id, team2Id })` | status `draft` / `scheduled` / `cancelled` | `ServiceResult<FixtureMatch>` | Two different live teams on that CSC. |
 | `updateMatch(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces sides. |
-| `archiveMatch(id)` | — | `ServiceResult<true>` | Soft-deletes match, sides, and player score events. |
+| `createHeat({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, athleteIds?, teamIds? })` | 2–N athlete ids, or team ids for relays | `ServiceResult<FixtureMatch>` | Athletics heat/flight. Array index is the lane; blank entries stay empty. Relays insert `team_id` sides. |
+| `updateHeat(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces heat athletes or relay teams, keeping lane numbers. |
+| `listFixtureRanking(fixtureId)` | fixture id | `ServiceResult<FixtureRankingEntry[]>` | Live manual ranking for that draw, ordered by rank. Includes `medalDeliveredAt`. |
+| `saveFixtureRanking(fixtureId, rows)` | `{ rank, teamId? \| athleteId? }[]` | `ServiceResult<FixtureRankingEntry[]>` | Replaces live ranking. Athletics solo uses athletes; basketball and relays use teams. Blocked while ranking is locked. |
+| `setFixtureRankingLocked(fixtureId, locked)` | boolean | `ServiceResult<Fixture>` | Lock requires saved 1st, 2nd and 3rd. Unlock is blocked if any of those medals is marked delivered. |
+| `saveHeatScore({ matchId, complete, rows })` | per athlete time/mark, result code, attempts, optional qualified | `ServiceResult<FixtureMatch>` | RPC `save_fixture_match_scores` then match `in_progress` / `completed`. Ranks by time or best mark. Non-final auto-qualifies top 8 if qualified is omitted. |
+| `archiveMatch(id)` | — | `ServiceResult<true>` | Soft-deletes match, sides, player score events, and call-room attendance. |
 | `listMatchScoreEvents(matchId)` | — | `ServiceResult<MatchScoreEvent[]>` | Live 1/2/3 baskets for a match, newest first. |
 | `addMatchScoreEvent({ matchId, teamId, teamMemberId, points, scoringMode, team1Fouls?, team2Fouls? })` | points `1` / `2` / `3` | `ServiceResult<FixtureMatch>` | Inserts a basket and refreshes team totals. |
 | `archiveMatchScoreEvent(id, scoringMode, fouls?)` | — | `ServiceResult<FixtureMatch>` | Soft-deletes a basket and refreshes totals. |
 | `saveMatchScore({ matchId, team1Points, team2Points, team1Fouls, team2Fouls, winner, scoringMode, complete })` | RPC `save_fixture_match_scores`; then status `in_progress` / `completed` | `ServiceResult<FixtureMatch>` | Player/both modes use event sums as team points. Complete auto-picks winner/loser (or league draw) from points if winner is empty. Knockout tie still needs a winner. |
+
+---
+
+## `attendance` — `lib/services/attendance.ts`
+
+| Function | Input | Output | Notes |
+|----------|--------|--------|--------|
+| `listCallRoomAttendance(matchIds)` | match ids | `ServiceResult<CallRoomAttendanceRow[]>` | Live present/absent rows for those matches. |
+| `getCallRoomSheet(match)` | `FixtureMatch` | `ServiceResult<CallRoomSheet>` | Solo heats are athletes. Basketball and relays are teams + members. Team absent makes every player effectively absent. |
+| `saveCallRoomSheet(sheet)` | marked present/absent only; unset deletes | `ServiceResult<CallRoomSheet>` | Upserts live rows and restores previously cleared marks. |
+
+---
+
+## `podium` — `lib/services/podium.ts`
+
+| Function | Input | Output | Notes |
+|----------|--------|--------|--------|
+| `getPodiumSheet(fixtureId)` | fixture id | `ServiceResult<PodiumSheet>` | Ranks 1–3 only. Solo includes athlete name, phone, gender, org, city. Teams include every member. |
+| `setPodiumDelivery(rankingId, delivered)` | boolean | `ServiceResult<true>` | Only 1st/2nd/3rd, and only after ranking is locked. |
 
 ---
 

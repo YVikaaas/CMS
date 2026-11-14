@@ -34,10 +34,15 @@ import { cn } from "@/lib/utils/cn";
 import {
   cscPassesEventFilter,
   emptyEventFilter,
-  isEventFilterSelected,
   writeEventFilter,
   type EventFilterValue,
 } from "@/lib/utils/eventFilter";
+import {
+  clampAttemptCount,
+  clampHeatLanes,
+  defaultFieldAttemptPlan,
+  isAthleticsFormat,
+} from "@/lib/utils/athletics";
 import {
   applyKnockoutPreset,
   formatLabel,
@@ -52,10 +57,20 @@ const emptyForm = {
   cscId: "",
   formatType: "bracket_elimination" as FixtureFormatType,
   rounds: [] as FixtureRoundType[],
+  lanes: 8,
+  roundAttempts: {} as Record<string, number>,
   status: "draft" as FixtureStatus,
   startDate: "",
   endDate: "",
 };
+
+function attemptsForRounds(rounds: FixtureRoundType[]) {
+  const next: Record<string, number> = {};
+  for (const round of rounds) {
+    next[round] = defaultFieldAttemptPlan(round).attemptCount;
+  }
+  return next;
+}
 
 const statusTone: Record<FixtureStatus, "neutral" | "primary" | "warning" | "success"> = {
   draft: "neutral",
@@ -102,13 +117,14 @@ export default function FixtureSportPage() {
 
   const sportName = cscs[0]?.sportName ?? fixtures[0]?.sportName ?? "Sport";
   const activeFilter = filter ?? emptyEventFilter(selected?.id ?? "");
-  const filtersReady = isEventFilterSelected(activeFilter);
   const visibleCscs = useMemo(() => {
-    if (!filtersReady) return [];
     return cscs.filter((row) => cscPassesEventFilter(row, activeFilter));
-  }, [cscs, activeFilter, filtersReady]);
+  }, [cscs, activeFilter]);
   const usedCscIds = useMemo(() => new Set(fixtures.map((item) => item.cscId)), [fixtures]);
   const selectedCsc = cscs.find((item) => item.id === form.cscId) ?? null;
+  const athleticsDraw = selectedCsc
+    ? isAthleticsFormat(selectedCsc.defaultFormat)
+    : isAthleticsFormat(form.formatType);
   const roundChoices = selectedCsc
     ? roundsForFormat(form.formatType, selectedCsc.availableRounds)
     : [];
@@ -121,14 +137,15 @@ export default function FixtureSportPage() {
 
   const openCreate = (cscId: string) => {
     const csc = cscs.find((item) => item.id === cscId);
+    const formatType = csc?.defaultFormat ?? emptyForm.formatType;
     setEditingId(null);
     setForm({
       ...emptyForm,
       cscId,
-      rounds:
-        emptyForm.formatType === "league_knockout" && csc?.availableRounds.includes("league")
-          ? ["league"]
-          : [],
+      formatType,
+      rounds: roundsForFormat(formatType, csc?.availableRounds ?? []),
+      lanes: clampHeatLanes(csc?.participantsPerMatch ?? 8),
+      roundAttempts: attemptsForRounds(roundsForFormat(formatType, csc?.availableRounds ?? [])),
     });
     setFormOpen(true);
   };
@@ -149,9 +166,11 @@ export default function FixtureSportPage() {
   const setFormat = (formatType: FixtureFormatType) => {
     setForm((current) => {
       const csc = cscs.find((item) => item.id === current.cscId);
-      const allowed = new Set(roundsForFormat(formatType, csc?.availableRounds ?? []));
-      const nextRounds = current.rounds.filter((round) => allowed.has(round));
-      if (formatType === "league_knockout" && allowed.has("league") && !nextRounds.includes("league")) {
+      const allowed = roundsForFormat(formatType, csc?.availableRounds ?? []);
+      const allowedSet = new Set(allowed);
+      let nextRounds = current.rounds.filter((round) => allowedSet.has(round));
+      if (nextRounds.length === 0) nextRounds = [...allowed];
+      if (formatType === "league_knockout" && allowedSet.has("league") && !nextRounds.includes("league")) {
         nextRounds.unshift("league");
       }
       return { ...current, formatType, rounds: nextRounds };
@@ -161,10 +180,22 @@ export default function FixtureSportPage() {
   const toggleRound = (round: string) => {
     const typed = round as FixtureRoundType;
     setForm((current) => {
-      if (current.formatType === "league_knockout" && typed === "league") return current;
+      if (
+        current.formatType === "league_knockout" &&
+        (typed === "league" || typed === "semi_final" || typed === "final")
+      ) {
+        return current;
+      }
       const has = current.rounds.includes(typed);
       if (has) return { ...current, rounds: current.rounds.filter((item) => item !== typed) };
-      return { ...current, rounds: [...current.rounds, typed] };
+      return {
+        ...current,
+        rounds: [...current.rounds, typed],
+        roundAttempts: {
+          ...current.roundAttempts,
+          [typed]: current.roundAttempts[typed] ?? defaultFieldAttemptPlan(typed).attemptCount,
+        },
+      };
     });
   };
 
@@ -202,6 +233,20 @@ export default function FixtureSportPage() {
       cscId: form.cscId,
       formatType: form.formatType,
       rounds: form.rounds,
+      participantsPerMatch: form.lanes,
+      roundAttempts:
+        form.formatType === "field_attempts"
+          ? Object.fromEntries(
+              form.rounds.map((round) => [
+                round,
+                {
+                  attemptCount:
+                    form.roundAttempts[round] ?? defaultFieldAttemptPlan(round).attemptCount,
+                  extraAttemptCount: 0,
+                },
+              ]),
+            )
+          : undefined,
       startDate: form.startDate || null,
       endDate: form.endDate || null,
     });
@@ -240,7 +285,7 @@ export default function FixtureSportPage() {
           { label: sportName },
         ]}
       />
-      <PageHeader title="Categories" hint="Pick gender, then age, then create or open the draw." />
+      <PageHeader title="Categories" hint="All categories for this sport until you filter." />
       <EventFilters
         championshipId={selected.id}
         lockSportId={sportId}
@@ -257,12 +302,8 @@ export default function FixtureSportPage() {
             </Link>
           }
         />
-      ) : !activeFilter.gender ? (
-        <EmptyState title="Pick gender" hint="Age unlocks after gender." />
-      ) : !activeFilter.ageGroup ? (
-        <EmptyState title="Pick age" hint="The draw appears after age is selected." />
       ) : visibleCscs.length === 0 ? (
-        <EmptyState title="No categories for this filter" hint="Try another gender / age." />
+        <EmptyState title="No categories for this filter" hint="Clear a chip to see more." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibleCscs.map((csc) => {
@@ -277,8 +318,9 @@ export default function FixtureSportPage() {
                     championshipId: selected.id,
                     sportId,
                     gender: csc.categoryGender,
-                    ageGroup: csc.categoryLabel.replace(/^(Boys|Girls)\s+/, ""),
+                    ageGroup: csc.categoryAgeGroup,
                     categoryId: csc.categoryId,
+                    categoryName: csc.categoryName,
                   });
                   router.push(`/gameplay/fixtures/${fixture.id}`);
                 }}
@@ -298,7 +340,9 @@ export default function FixtureSportPage() {
                     {formatLabel(fixture.formatType)} · {fixture.matchCount} matches
                   </p>
                 ) : (
-                  <p className="mt-2 text-sm text-[var(--ops-text-muted)]">Create a draw to add matches.</p>
+                  <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
+                    {formatLabel(csc.defaultFormat)}. Create a draw to add matches.
+                  </p>
                 )}
                 <div
                   className="mt-4 flex justify-end gap-2"
@@ -361,42 +405,106 @@ export default function FixtureSportPage() {
             </label>
           ) : (
             <>
-              <div className="grid gap-2">
-                <p className="text-sm font-medium">Format</p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {(
-                    [
-                      {
-                        value: "bracket_elimination" as const,
-                        title: "Bracket elimination",
-                        hint: "Knockout only",
-                      },
-                      {
-                        value: "league_knockout" as const,
-                        title: "League + bracket",
-                        hint: "League then knockout",
-                      },
-                    ] as const
-                  ).map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setFormat(option.value)}
-                      className={cn(
-                        "rounded-xl border p-4 text-left",
-                        form.formatType === option.value
-                          ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                          : "border-[var(--ops-line)] hover:bg-[var(--ops-board-muted)]",
-                      )}
-                    >
-                      <p className="text-sm font-semibold">{option.title}</p>
-                      <p className="mt-1 text-xs text-[var(--ops-text-muted)]">{option.hint}</p>
-                    </button>
-                  ))}
+              {athleticsDraw ? (
+                <p className="text-sm text-[var(--ops-text-muted)]">
+                  {formatLabel(form.formatType)} is set on the category and does not change.
+                </p>
+              ) : (
+                <div className="grid gap-2">
+                  <p className="text-sm font-medium">Format</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        {
+                          value: "bracket_elimination" as const,
+                          title: "Bracket elimination",
+                          hint: "Knockout only",
+                        },
+                        {
+                          value: "league_knockout" as const,
+                          title: "League + bracket",
+                          hint: "League then knockout",
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormat(option.value)}
+                        className={cn(
+                          "rounded-xl border p-4 text-left",
+                          form.formatType === option.value
+                            ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
+                            : "border-[var(--ops-line)] hover:bg-[var(--ops-board-muted)]",
+                        )}
+                      >
+                        <p className="text-sm font-semibold">{option.title}</p>
+                        <p className="mt-1 text-xs text-[var(--ops-text-muted)]">{option.hint}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+              {form.formatType === "track_rounds" ? (
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Lanes per heat
+                  <input
+                    type="number"
+                    min={2}
+                    max={24}
+                    value={form.lanes}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        lanes: clampHeatLanes(Number(event.target.value)),
+                      }))
+                    }
+                    className={fieldClass}
+                  />
+                </label>
+              ) : null}
+              {form.formatType === "field_attempts" ? (
+                <div className="grid gap-3">
+                  <p className="text-sm font-medium">Attempts per athlete</p>
+                  <p className="text-xs text-[var(--ops-text-muted)]">
+                    Unique for each round. Default is 3 in qualifying and 2 in the final.
+                  </p>
+                  {form.rounds.map((round) => {
+                    const attempts =
+                      form.roundAttempts[round] ?? defaultFieldAttemptPlan(round).attemptCount;
+                    return (
+                      <label
+                        key={round}
+                        className="grid grid-cols-[1fr_6rem] items-end gap-2 text-sm font-medium"
+                      >
+                        <span className="pb-2">{roundLabel(round)}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={8}
+                          value={attempts}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              roundAttempts: {
+                                ...current.roundAttempts,
+                                [round]: clampAttemptCount(
+                                  Number(event.target.value),
+                                  defaultFieldAttemptPlan(round).attemptCount,
+                                ),
+                              },
+                            }))
+                          }
+                          className={fieldClass}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : null}
               <div className="grid gap-2">
                 <p className="text-sm font-medium">Rounds</p>
+                {athleticsDraw ? null : (
                 <div className="flex flex-wrap gap-2">
                   <SoftButton
                     onClick={() =>
@@ -427,11 +535,14 @@ export default function FixtureSportPage() {
                     Knockout (SF–Final)
                   </SoftButton>
                 </div>
+                )}
                 <RoundChips
                   options={roundChoices.map((round) => ({
                     value: round,
                     label: roundLabel(round),
-                    locked: form.formatType === "league_knockout" && round === "league",
+                    locked:
+                      form.formatType === "league_knockout" &&
+                      (round === "league" || round === "semi_final" || round === "final"),
                   }))}
                   selected={form.rounds}
                   onSelect={toggleRound}

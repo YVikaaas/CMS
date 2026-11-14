@@ -13,7 +13,7 @@ Product domain, scoring math, and athletics: `docs/ATHLETICS.md`. Coding rules: 
 
 Championship, sport, category (Boys U16 / Girls U14), CSC, fixture, round, match, team, score.
 
-There is **no** discipline chip, BIB, call room, FOP, kit, medals, or event-code loader. Do not add those desks.
+There is **no** discipline chip, BIB, FOP, kit, medals, or event-code loader. Call Room on the floor is present/absent for a match (solo athletes, or team + members). Do not copy GMS call-room desks.
 
 ---
 
@@ -56,7 +56,7 @@ Nav: white sidebar. Active item is `--ops-primary-soft` fill + `--ops-primary` t
 - Inter / mixed display faces → **Manrope only** (`--font-manrope`, `font-sans`)
 - Candy multi-color screens → the four cores above; status colors only on badges
 - Hover-only actions → every primary control is tappable
-- Copying call room / BIB / kit / verification / medals / weight-class UI from other products
+- Copying GMS call-room / BIB / kit / verification / medals / weight-class UI from other products
 - Flattening championship setup into one workspace
 - A fourth filter chip (discipline). Age **is** the category.
 
@@ -142,14 +142,14 @@ Other rules:
 Staff do the same thing on Floor:
 
 1. Championship in the **header** picker.
-2. **EventFilters** — Sport → Gender → Age. Shared `sessionStorage` key `cms.eventFilter`.
-3. **EventIdentity** — charcoal bar once the cascade is complete.
+2. **EventFilters** — Sport → Gender → Age → Category. Shared `sessionStorage` key `cms.eventFilter`.
+3. **EventIdentity** — charcoal bar as chips are picked.
 4. **Round chips** (`ChipFilter`) — selected = solid primary. Scoring and Results: **no All**; one round stays selected.
 5. **Split workspace** — left queue, right board (fixtures match editor, scoring board).
 6. **StickyActionBar** — Save / Complete. Disabled rules unchanged.
 7. Status is **derived** from data (`draft` / `scheduled` / `in_progress` / `completed`). No fake KPIs.
 
-Fixtures **unlock in order**: Gender disabled until Sport; Age until Gender; cards wait until Age. Scoring and Results stay empty until all three are set (`isEventFilterSelected`).
+Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Category until Age. Fixtures: empty chip = All (full list), each added chip narrows. Scoring and Results wait until all four chips are set. Round chips have no All. Results also has a Ranking tab (manual places).
 
 ---
 
@@ -159,11 +159,11 @@ Fixtures **unlock in order**: Gender disabled until Sport; Age until Gender; car
 
 `app/(admin)/layout.tsx` — white sidebar, header with menu / page title / championship `SoftSelect` / sign out. Floor + dashboard gated until a championship exists (`EmptyState` → Championships).
 
-Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Fixtures, Scoring, Results) · Setup (Championships) · Catalog (Sport, Category). `aria-current="page"` on the active link.
+Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Championships) · Catalog (Sport, Category). `aria-current="page"` on the active link.
 
 ### Dashboard (`/dashboard`)
 
-`PageHeader` with championship name. 3 metric `SoftCard`s. Numbered command steps (Assign sports → Create draws → Score → Results). Links land on the first hop of each flow.
+`PageHeader` with championship name. 3 metric `SoftCard`s. Numbered command steps (Assign sports → Create draws → Call room → Score → Results → Podium). Links land on the first hop of each flow.
 
 ### Setup (nested hops — do not flatten)
 
@@ -177,6 +177,10 @@ Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Fixtures, Scoring, Results)
 
 Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`. Card grid to pick the next hop.
 
+### Floor — Call Room (`/gameplay/call-room`)
+
+Wait for filters. Round chips no All. `SplitWorkspace`: match queue | present/absent. Solo heats mark athletes. Basketball and relays mark the team and each member; team absent puts every player out.
+
 ### Floor — Fixtures
 
 ```text
@@ -185,7 +189,7 @@ Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`
 /gameplay/fixtures/[fixtureId]      Round chips, queue | match form, sticky Save
 ```
 
-Default venue copy for basketball: `"Court 1"`. Do not put scoring on this page.
+Default venue copy for basketball: `"Court 1"`. Athletics create-draw does not pick track vs field — that lives on the category. Track asks for lanes per heat and which rounds. Do not put scoring on this page.
 
 ### Floor — Scoring (`/gameplay/scoring`)
 
@@ -194,6 +198,10 @@ Wait for filters. Round chips no All. `SplitWorkspace`: match queue | `ScoreMatc
 ### Floor — Results (`/gameplay/results`)
 
 Wait for filters. One `CategoryResultsBoard` per fixture. **One** round-tab row, no All. League = `ResultMatchCard` grid. Knockout = `KnockoutResultsBoard`. Read-only.
+
+### Floor — Podium (`/gameplay/podium`)
+
+Wait for filters. Category appears only after scoring locks 1st–3rd. Gold / silver / bronze delivery. Teams list members; solo lists athlete details.
 
 ### Catalog (`/masters/sports`, `/masters/categories`)
 
@@ -217,7 +225,7 @@ All in `components/ops/`. Import from `@/components/ops`.
 | `SoftSelect` | Native select with `ops-control`. |
 | `StatusBadge` | Status text + tone. Never color alone. |
 | `ChipFilter` | Round / phase pills. `showAll={false}` `allowEmpty={false}` on scoring/results rounds. |
-| `EventFilters` | Sport → Gender → Age. `unlockInOrder` on fixtures. |
+| `EventFilters` | Sport → Gender → Age → Category. `unlockInOrder` default. Empty = All. |
 | `EventIdentity` | Charcoal “where am I” bar. |
 | `SplitWorkspace` | Queue \| board. |
 | `StickyActionBar` | Footer actions on a board. |

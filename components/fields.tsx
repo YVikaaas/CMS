@@ -2,7 +2,11 @@
 
 import type { InputHTMLAttributes } from "react";
 import { fieldClass } from "@/components/Modal";
-import { sanitizeNameInput, sanitizePhoneInput } from "@/lib/utils/validation";
+import {
+  sanitizeCategoryNameInput,
+  sanitizeNameInput,
+  sanitizePhoneInput,
+} from "@/lib/utils/validation";
 
 export function NameInput({
   value,
@@ -20,6 +24,28 @@ export function NameInput({
       pattern={rest.pattern ?? "[A-Za-z]+( [A-Za-z]+)*"}
       title={rest.title ?? "Letters only"}
       onChange={(event) => onChange(sanitizeNameInput(event.target.value))}
+      className={className}
+      autoComplete={rest.autoComplete ?? "off"}
+    />
+  );
+}
+
+export function CategoryNameInput({
+  value,
+  onChange,
+  className = fieldClass,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      {...rest}
+      value={value}
+      pattern={rest.pattern ?? "[A-Za-z0-9]+([ xX][A-Za-z0-9]+)*"}
+      title={rest.title ?? "Letters, numbers, and spaces"}
+      onChange={(event) => onChange(sanitizeCategoryNameInput(event.target.value))}
       className={className}
       autoComplete={rest.autoComplete ?? "off"}
     />

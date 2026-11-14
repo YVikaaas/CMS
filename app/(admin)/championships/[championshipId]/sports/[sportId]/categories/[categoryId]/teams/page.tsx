@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { EntrySheetModal } from "@/components/EntrySheetModal";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
 import {
@@ -23,11 +24,15 @@ import {
   listCategories,
   listCscOptions,
   listSports,
+  listTeamMembers,
   listTeams,
   updateTeam,
 } from "@/lib/services";
 import type { Category, CscOption, Gender, Sport, Team, TeamMemberInput } from "@/lib/types/cms";
-import { categoryLabel } from "@/lib/utils/labels";
+import { isSoloAthleticsEvent } from "@/lib/utils/athletics";
+import { isAthleticsSport } from "@/lib/utils/fixtures";
+import { downloadEntrySample, type EntrySheetOptions } from "@/lib/utils/entrySheet";
+import { categoryLabel, orgCityLine } from "@/lib/utils/labels";
 import { compareText, matchesQuery } from "@/lib/utils/table";
 import { nameError, optionalNameError, phoneError } from "@/lib/utils/validation";
 
@@ -64,20 +69,32 @@ export default function ChampionshipCategoryTeamsPage() {
   const [search, setSearch] = useState("");
   const [rosterFilter, setRosterFilter] = useState<"" | "complete" | "short">("");
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [city, setCity] = useState("");
+  const [athletePhone, setAthletePhone] = useState("");
   const [members, setMembers] = useState<TeamMemberInput[]>([emptyMember()]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
 
   const sport = sports.find((item) => item.id === sportId) ?? null;
   const category = categories.find((item) => item.id === categoryId) ?? null;
-  const minMembers = csc?.teamSize ?? category?.teamSize ?? 1;
-  const maxMembers = csc?.maxTeamSize ?? category?.maxTeamSize ?? minMembers;
+  const eventName = category?.name ?? csc?.categoryName ?? "";
+  const solo = Boolean(eventName) && isAthleticsSport(sport) && isSoloAthleticsEvent(eventName);
+  const minMembers = solo ? 1 : (csc?.teamSize ?? category?.teamSize ?? 1);
+  const maxMembers = solo ? 1 : (csc?.maxTeamSize ?? category?.maxTeamSize ?? minMembers);
   const memberGender = csc?.categoryGender ?? category?.gender ?? "male";
   const sportsHref = `/championships/${championshipId}/sports`;
   const categoriesHref = `${sportsHref}/${sportId}/categories`;
+  const sheetOptions: EntrySheetOptions = {
+    kind: solo ? "athlete" : "team",
+    minMembers,
+    maxMembers,
+    gender: memberGender,
+    label: category ? categoryLabel(category) : eventName || "category",
+  };
 
   const load = useCallback(async () => {
     const [sportRes, catRes, cscRes] = await Promise.all([
@@ -110,6 +127,8 @@ export default function ChampionshipCategoryTeamsPage() {
     setEditingId(null);
     setTeamName("");
     setOrgName("");
+    setCity("");
+    setAthletePhone("");
     setMembers(padMembers([], minMembers, maxMembers, memberGender));
     setFieldErrors({});
   };
@@ -124,11 +143,25 @@ export default function ChampionshipCategoryTeamsPage() {
     setFormOpen(true);
   };
 
-  const openEdit = (team: Team) => {
+  const openEdit = async (team: Team) => {
     setEditingId(team.id);
     setTeamName(team.name);
     setOrgName(team.orgName ?? "");
+    setCity(team.city ?? "");
+    setAthletePhone("");
     setFieldErrors({});
+    if (solo) {
+      const membersRes = await listTeamMembers(team.id);
+      if (membersRes.error) toast.error(membersRes.error.message);
+      const athlete = membersRes.data?.[0];
+      setTeamName(athlete?.name || team.name);
+      setAthletePhone(athlete?.phone ?? "");
+      setMembers(
+        athlete
+          ? [{ name: athlete.name, phone: athlete.phone, gender: memberGender }]
+          : padMembers([], 1, 1, memberGender),
+      );
+    }
     setFormOpen(true);
   };
 
@@ -139,12 +172,20 @@ export default function ChampionshipCategoryTeamsPage() {
       return;
     }
     const nextErrors: Record<string, string> = {};
-    const teamErr = nameError(teamName, "Team name");
+    const teamErr = nameError(teamName, solo ? "Athlete name" : "Team name");
     if (teamErr) nextErrors.teamName = teamErr;
     const orgErr = optionalNameError(orgName, "Organization");
     if (orgErr) nextErrors.orgName = orgErr;
-    if (!editingId) {
-      members.forEach((member, index) => {
+    const cityErr = optionalNameError(city, "City");
+    if (cityErr) nextErrors.city = cityErr;
+    const roster = solo
+      ? [{ name: teamName, phone: athletePhone, gender: memberGender }]
+      : members;
+    if (solo) {
+      const phoneErr = phoneError(athletePhone, "Phone");
+      if (phoneErr) nextErrors.athletePhone = phoneErr;
+    } else if (!editingId) {
+      roster.forEach((member, index) => {
         const memberNameErr = nameError(member.name, "Member name");
         if (memberNameErr) nextErrors[`memberName-${index}`] = memberNameErr;
         const memberPhoneErr = phoneError(member.phone, "Member phone");
@@ -156,12 +197,16 @@ export default function ChampionshipCategoryTeamsPage() {
       toast.error("Fill the highlighted fields.");
       return;
     }
-    if (!editingId) {
-      if (members.length < minMembers || members.length > maxMembers) {
-        toast.error(`This category needs ${minMembers} to ${maxMembers} members.`);
+    if (solo || !editingId) {
+      if (roster.length < minMembers || roster.length > maxMembers) {
+        toast.error(
+          solo
+            ? "This event is for individual athletes."
+            : `This category needs ${minMembers} to ${maxMembers} members.`,
+        );
         return;
       }
-      const keys = members.map(
+      const keys = roster.map(
         (member) => `${member.name.trim().toLowerCase()}|${member.phone.trim()}`,
       );
       if (new Set(keys).size !== keys.length) {
@@ -174,20 +219,34 @@ export default function ChampionshipCategoryTeamsPage() {
     const payload = {
       name: teamName,
       orgName: orgName || null,
+      city: city || null,
     };
     const result = editingId
-      ? await updateTeam(editingId, payload)
+      ? await updateTeam(editingId, {
+          ...payload,
+          ...(solo
+            ? { members: roster.map((member) => ({ ...member, gender: memberGender })) }
+            : {}),
+        })
       : await createTeam({
           ...payload,
           cscId: csc.id,
-          members: members.map((member) => ({ ...member, gender: memberGender })),
+          members: roster.map((member) => ({ ...member, gender: memberGender })),
         });
     setSaving(false);
     if (result.error) {
       toast.error(result.error.message);
       return;
     }
-    toast.success(editingId ? "Team updated." : "Team created.");
+    toast.success(
+      editingId
+        ? solo
+          ? "Athlete updated."
+          : "Team updated."
+        : solo
+          ? "Athlete added."
+          : "Team created.",
+    );
     closeForm();
     await load();
   };
@@ -196,7 +255,7 @@ export default function ChampionshipCategoryTeamsPage() {
     const filtered = teams.filter((team) => {
       if (rosterFilter === "complete" && team.memberCount < team.teamSize) return false;
       if (rosterFilter === "short" && team.memberCount >= team.teamSize) return false;
-      return matchesQuery(search, team.name, team.orgName);
+      return matchesQuery(search, team.name, team.orgName, team.city);
     });
     return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
   }, [teams, search, rosterFilter]);
@@ -230,12 +289,31 @@ export default function ChampionshipCategoryTeamsPage() {
         ]}
       />
       <PageHeader
-        title="Teams"
-        hint={`Roster must be ${minMembers}–${maxMembers} members. Click a team for members.`}
+        title={solo ? "Athletes" : "Teams"}
+        hint={
+          solo
+            ? "Individual athletes enter this event. Click a card to edit."
+            : isAthleticsSport(sport)
+              ? "Relay teams of 4 enter this event. Click a team for members."
+              : `Roster must be ${minMembers}–${maxMembers} members. Click a team for members.`
+        }
         action={
-          <SoftButton variant="primary" onClick={openCreate} disabled={!csc}>
-            Add team
-          </SoftButton>
+          <div className="flex flex-wrap justify-end gap-2">
+            <SoftButton
+              disabled={!csc}
+              onClick={() => {
+                void downloadEntrySample(sheetOptions);
+              }}
+            >
+              {solo ? "Download athlete sample" : "Download team sample"}
+            </SoftButton>
+            <SoftButton disabled={!csc} onClick={() => setImportOpen(true)}>
+              Import Excel
+            </SoftButton>
+            <SoftButton variant="primary" onClick={openCreate} disabled={!csc}>
+              {solo ? "Add athlete" : "Add team"}
+            </SoftButton>
+          </div>
         }
       />
 
@@ -254,21 +332,33 @@ export default function ChampionshipCategoryTeamsPage() {
         <SoftSearch
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search team or organization"
+          placeholder={solo ? "Search athlete, organization, or city" : "Search team, organization, or city"}
         />
-        <ChipFilter
-          ariaLabel="Roster"
-          value={rosterFilter}
-          onChange={setRosterFilter}
-          options={[
-            { value: "complete", label: "Complete" },
-            { value: "short", label: "Short" },
-          ]}
-        />
+        {solo ? null : (
+          <ChipFilter
+            ariaLabel="Roster"
+            value={rosterFilter}
+            onChange={setRosterFilter}
+            options={[
+              { value: "complete", label: "Complete" },
+              { value: "short", label: "Short" },
+            ]}
+          />
+        )}
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title={teams.length === 0 ? "No teams yet" : "No matching teams"} />
+        <EmptyState
+          title={
+            teams.length === 0
+              ? solo
+                ? "No athletes yet"
+                : "No teams yet"
+              : solo
+                ? "No matching athletes"
+                : "No matching teams"
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((team) => {
@@ -277,24 +367,30 @@ export default function ChampionshipCategoryTeamsPage() {
               <SoftCard
                 key={team.id}
                 interactive
-                onClick={() => router.push(`${categoriesHref}/${categoryId}/teams/${team.id}/members`)}
+                onClick={() =>
+                  solo
+                    ? void openEdit(team)
+                    : router.push(`${categoriesHref}/${categoryId}/teams/${team.id}/members`)
+                }
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{team.name}</p>
                     <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
-                      {team.orgName || "No organization"}
+                      {orgCityLine(team.orgName, team.city) || "No organization or city"}
                     </p>
                   </div>
-                  <StatusBadge tone={complete ? "success" : "warning"}>
-                    {team.memberCount}/{team.maxTeamSize}
-                  </StatusBadge>
+                  {solo ? null : (
+                    <StatusBadge tone={complete ? "success" : "warning"}>
+                      {team.memberCount}/{team.maxTeamSize}
+                    </StatusBadge>
+                  )}
                 </div>
                 <div
                   className="mt-4 flex justify-end gap-2"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <SoftButton onClick={() => openEdit(team)}>Edit</SoftButton>
+                  {solo ? null : <SoftButton onClick={() => void openEdit(team)}>Edit</SoftButton>}
                   <SoftButton
                     variant="danger"
                     onClick={async () => {
@@ -315,13 +411,21 @@ export default function ChampionshipCategoryTeamsPage() {
 
       <Modal
         open={formOpen}
-        title={editingId ? "Edit team" : "Add team"}
+        title={
+          solo
+            ? editingId
+              ? "Edit athlete"
+              : "Add athlete"
+            : editingId
+              ? "Edit team"
+              : "Add team"
+        }
         onClose={closeForm}
-        wide={!editingId}
+        wide={!solo && !editingId}
       >
         <form onSubmit={onSave} className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Team name
+            {solo ? "Athlete name" : "Team name"}
             <NameInput
               value={teamName}
               onChange={(value) => {
@@ -331,6 +435,19 @@ export default function ChampionshipCategoryTeamsPage() {
               className={fieldErrors.teamName ? fieldErrorClass : fieldClass}
             />
           </label>
+          {solo ? (
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Phone
+              <PhoneInput
+                value={athletePhone}
+                onChange={(value) => {
+                  setAthletePhone(value);
+                  setFieldErrors((prev) => ({ ...prev, athletePhone: undefined }));
+                }}
+                className={fieldErrors.athletePhone ? fieldErrorClass : fieldClass}
+              />
+            </label>
+          ) : null}
           <label className="flex flex-col gap-1 text-sm font-medium">
             Organization
             <NameInput
@@ -342,7 +459,18 @@ export default function ChampionshipCategoryTeamsPage() {
               className={fieldErrors.orgName ? fieldErrorClass : fieldClass}
             />
           </label>
-          {!editingId ? (
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            City
+            <NameInput
+              value={city}
+              onChange={(value) => {
+                setCity(value);
+                setFieldErrors((prev) => ({ ...prev, city: undefined }));
+              }}
+              className={fieldErrors.city ? fieldErrorClass : fieldClass}
+            />
+          </label>
+          {!solo && !editingId ? (
             <>
               <div className="flex items-center justify-between sm:col-span-2">
                 <p className="text-sm font-medium">
@@ -409,7 +537,7 @@ export default function ChampionshipCategoryTeamsPage() {
           ) : null}
           <div className="flex gap-2 sm:col-span-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
-              {editingId ? "Save changes" : "Add team"}
+              {editingId ? "Save changes" : solo ? "Add athlete" : "Add team"}
             </SoftButton>
             <SoftButton type="button" onClick={closeForm}>
               Cancel
@@ -417,6 +545,15 @@ export default function ChampionshipCategoryTeamsPage() {
           </div>
         </form>
       </Modal>
+      {csc ? (
+        <EntrySheetModal
+          open={importOpen}
+          cscId={csc.id}
+          options={sheetOptions}
+          onClose={() => setImportOpen(false)}
+          onImported={load}
+        />
+      ) : null}
     </div>
   );
 }

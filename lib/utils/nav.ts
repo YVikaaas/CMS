@@ -1,9 +1,11 @@
 import {
+  Award,
   CalendarDays,
   ClipboardList,
   Flag,
   LayoutDashboard,
   Trophy,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +29,13 @@ export const NAV_SECTIONS: Array<{ id: NavSectionId; label: string }> = [
 export const ADMIN_NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", pageRole: "dashboard.view", icon: LayoutDashboard },
   {
+    href: "/gameplay/call-room",
+    label: "Call Room",
+    pageRole: "gameplay.manage",
+    section: "floor",
+    icon: UserCheck,
+  },
+  {
     href: "/gameplay/fixtures",
     label: "Fixtures",
     pageRole: "gameplay.manage",
@@ -46,6 +55,13 @@ export const ADMIN_NAV: NavItem[] = [
     pageRole: "gameplay.manage",
     section: "floor",
     icon: Trophy,
+  },
+  {
+    href: "/gameplay/podium",
+    label: "Podium",
+    pageRole: "gameplay.manage",
+    section: "floor",
+    icon: Award,
   },
   {
     href: "/championships",
@@ -70,7 +86,9 @@ export const ADMIN_NAV: NavItem[] = [
 
 export function pathTitle(pathname: string): string {
   if (pathname === "/dashboard" || pathname === "/") return "Dashboard";
+  if (pathname.startsWith("/gameplay/call-room")) return "Call Room";
   if (pathname.startsWith("/gameplay/scoring")) return "Scoring";
+  if (pathname.startsWith("/gameplay/podium")) return "Podium";
   if (pathname.startsWith("/gameplay/results")) return "Results";
   if (pathname.startsWith("/gameplay/fixtures")) return "Fixtures";
   if (pathname.startsWith("/championships")) return "Championships";
