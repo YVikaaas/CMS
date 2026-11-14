@@ -7,6 +7,7 @@ Append **one row per change** at the **top** of the table (newest first).
 
 | Date | Area | Summary | Migration / reference |
 | ---- | ---- | ------- | --------------------- |
+| 2026-11-14 | Gameplay | Seeded complete Boys U16 `4x100m` relay: 8 teams of 4, heats + SF + final times, team ranking locked. | `seed_demo_relay` |
 | 2026-11-14 | Gameplay | `fixture.rankings_locked_at` locks 1st–3rd from scoring. `fixture_ranking.medal_delivered_at` marks podium medal delivery. Ranking edits are blocked while locked. | `podium_medals` |
 | 2026-11-14 | Gameplay | Call room `fixture_match_attendance`: present/absent per match for a team or a player. Unique live row per match+team and match+member. Admin RLS. | `call_room_attendance` |
 | 2026-11-14 | Teams | `team.city` is separate from `org_name`. City-only org values moved to city. | `team_city` |
