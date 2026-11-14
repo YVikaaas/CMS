@@ -341,14 +341,14 @@ export function formatTimeMs(ms: number | null | undefined): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds - hours * 3600 - minutes * 60;
-  const sec = seconds.toFixed(3).padStart(6, "0");
+  const sec = seconds.toFixed(2).padStart(5, "0");
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, "0")}:${sec}`;
   }
   if (minutes > 0) {
     return `${minutes}:${sec}`;
   }
-  return seconds.toFixed(3);
+  return seconds.toFixed(2);
 }
 
 export function sanitizeTimeInput(raw: string): string {
@@ -385,15 +385,23 @@ export const EMPTY_TRACK_TIME: TrackTimeParts = {
 
 export function trackTimePartsFromMs(ms: number | null | undefined): TrackTimeParts {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return { ...EMPTY_TRACK_TIME };
-  const total = Math.round(ms);
-  const minutes = Math.floor(total / 60_000);
-  const remainder = total % 60_000;
-  const seconds = Math.floor(remainder / 1000);
-  const milliseconds = remainder % 1000;
+  let total = Math.round(ms / 10) * 10;
+  let minutes = Math.floor(total / 60_000);
+  let remainder = total % 60_000;
+  let seconds = Math.floor(remainder / 1000);
+  let hundredths = Math.round((remainder % 1000) / 10);
+  if (hundredths === 100) {
+    hundredths = 0;
+    seconds += 1;
+  }
+  if (seconds === 60) {
+    seconds = 0;
+    minutes += 1;
+  }
   return {
     minutes: String(minutes),
     seconds: String(seconds),
-    milliseconds: String(milliseconds).padStart(3, "0"),
+    milliseconds: String(hundredths),
   };
 }
 
@@ -402,12 +410,12 @@ export function trackTimePartsToSeconds(parts: TrackTimeParts): number | null {
   if (empty) return null;
   const minutes = parts.minutes === "" ? 0 : Number(parts.minutes);
   const seconds = parts.seconds === "" ? 0 : Number(parts.seconds);
-  const milliseconds = parts.milliseconds === "" ? 0 : Number(parts.milliseconds);
-  if (![minutes, seconds, milliseconds].every((value) => Number.isFinite(value))) return null;
+  const hundredths = parts.milliseconds === "" ? 0 : Number(parts.milliseconds);
+  if (![minutes, seconds, hundredths].every((value) => Number.isFinite(value))) return null;
   if (minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) return null;
-  if (milliseconds < 0 || milliseconds > 999) return null;
-  const total = minutes * 60 + seconds + milliseconds / 1000;
-  return total > 0 ? total : null;
+  if (hundredths < 0 || hundredths > 99) return null;
+  const total = minutes * 60 + seconds + hundredths / 100;
+  return total > 0 ? Math.round(total * 100) / 100 : null;
 }
 
 export function trackTimePartsToMs(parts: TrackTimeParts): number | null {
@@ -417,7 +425,7 @@ export function trackTimePartsToMs(parts: TrackTimeParts): number | null {
 
 export function secondsFromMs(ms: number | null | undefined): number | null {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return null;
-  return ms / 1000;
+  return Math.round((ms / 1000) * 100) / 100;
 }
 
 export function formatMark(mark: number | null | undefined, unit = "m"): string {

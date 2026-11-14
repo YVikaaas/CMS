@@ -227,7 +227,7 @@ export function ScoreAthleticsBoard({
         <p className="text-sm font-semibold">{match.matchLabel || (track ? "Heat" : "Flight")}</p>
         <p className="text-xs text-[var(--ops-text-muted)]">
           {track
-            ? "Pick minutes, seconds and milliseconds. Time is saved in seconds."
+            ? "Pick minutes, seconds and milliseconds (two places). Time is saved in seconds."
             : `Best mark from ${match.attemptCount} attempts. Tap Foul for a failed attempt (shown as X). NM if every attempt is a foul.`}
         </p>
       </div>
