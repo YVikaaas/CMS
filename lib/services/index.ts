@@ -23,8 +23,10 @@ export {
   listChampionshipOfferings,
   saveChampionshipOfferings,
   addChampionshipSport,
+  addChampionshipSports,
   removeChampionshipSport,
   addChampionshipEvent,
+  addChampionshipEvents,
   removeChampionshipEvent,
 } from "./championships";
 export {

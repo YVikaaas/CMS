@@ -163,7 +163,7 @@ Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scorin
 
 ### Dashboard (`/dashboard`)
 
-`PageHeader` with championship name. 3 metric `SoftCard`s. Numbered command steps (Assign sports → Create draws → Call room → Score → Results → Podium). Links land on the first hop of each flow.
+`PageHeader` with championship name and status. Grouped metric `SoftCard`s (overview, setup, coverage, draws, rounds, matches, call room, podium, by sport). Numbered command steps at the bottom. Links land on the first hop of each flow.
 
 ### Setup (nested hops — do not flatten)
 
@@ -175,7 +175,7 @@ Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scorin
         /[teamId]/members
 ```
 
-Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`. Card grid to pick the next hop.
+Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`. Card grid to pick the next hop. Sports and categories multi-add from a checklist modal; category add filters by gender and age.
 
 ### Floor — Call Room (`/gameplay/call-room`)
 

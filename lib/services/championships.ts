@@ -338,16 +338,45 @@ async function mutateOfferings(
   return saveChampionshipOfferings(championshipId, next);
 }
 
+export async function addChampionshipSports(
+  championshipId: string,
+  sportIds: string[],
+  extras?: { categoriesBySport?: Record<string, string[]> },
+): Promise<ServiceResult<true>> {
+  const unique = [...new Set(sportIds.filter(Boolean))];
+  if (unique.length === 0) {
+    return { data: null, error: { message: "Select at least one sport." } };
+  }
+  return mutateOfferings(championshipId, (current) => {
+    const next = current.map((item) => ({ ...item, categoryIds: [...item.categoryIds] }));
+    const index = new Map(next.map((item, i) => [item.sportId, i]));
+    for (const sportId of unique) {
+      const extra = [...new Set(extras?.categoriesBySport?.[sportId] ?? [])];
+      const existingIndex = index.get(sportId);
+      if (existingIndex === undefined) {
+        index.set(sportId, next.length);
+        next.push({ sportId, categoryIds: extra });
+        continue;
+      }
+      const row = next[existingIndex];
+      if (!row) continue;
+      const have = new Set(row.categoryIds);
+      for (const categoryId of extra) {
+        if (!have.has(categoryId)) {
+          row.categoryIds.push(categoryId);
+          have.add(categoryId);
+        }
+      }
+    }
+    return next;
+  });
+}
+
 export async function addChampionshipSport(
   championshipId: string,
   sportId: string,
 ): Promise<ServiceResult<true>> {
-  return mutateOfferings(championshipId, (current) => {
-    if (current.some((item) => item.sportId === sportId)) {
-      return { message: "Sport is already assigned." };
-    }
-    return [...current, { sportId, categoryIds: [] }];
-  });
+  return addChampionshipSports(championshipId, [sportId]);
 }
 
 export async function removeChampionshipSport(
@@ -359,25 +388,39 @@ export async function removeChampionshipSport(
   );
 }
 
+export async function addChampionshipEvents(
+  championshipId: string,
+  sportId: string,
+  categoryIds: string[],
+): Promise<ServiceResult<true>> {
+  const unique = [...new Set(categoryIds.filter(Boolean))];
+  if (unique.length === 0) {
+    return { data: null, error: { message: "Select at least one category." } };
+  }
+  return mutateOfferings(championshipId, (current) => {
+    const existing = current.find((item) => item.sportId === sportId);
+    if (!existing) {
+      return [...current, { sportId, categoryIds: unique }];
+    }
+    const have = new Set(existing.categoryIds);
+    const added = unique.filter((id) => !have.has(id));
+    if (added.length === 0) {
+      return { message: "Those categories are already assigned." };
+    }
+    return current.map((item) =>
+      item.sportId === sportId
+        ? { ...item, categoryIds: [...item.categoryIds, ...added] }
+        : item,
+    );
+  });
+}
+
 export async function addChampionshipEvent(
   championshipId: string,
   sportId: string,
   categoryId: string,
 ): Promise<ServiceResult<true>> {
-  return mutateOfferings(championshipId, (current) => {
-    const existing = current.find((item) => item.sportId === sportId);
-    if (!existing) {
-      return [...current, { sportId, categoryIds: [categoryId] }];
-    }
-    if (existing.categoryIds.includes(categoryId)) {
-      return { message: "Sport event is already assigned." };
-    }
-    return current.map((item) =>
-      item.sportId === sportId
-        ? { ...item, categoryIds: [...item.categoryIds, categoryId] }
-        : item,
-    );
-  });
+  return addChampionshipEvents(championshipId, sportId, [categoryId]);
 }
 
 export async function removeChampionshipEvent(

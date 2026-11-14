@@ -58,6 +58,86 @@ export function clampHeatLanes(value: number): number {
   return lanes;
 }
 
+export const FIELD_QUALIFYING_FINALISTS = 8;
+
+function roundTypesOf(
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>,
+): FixtureRoundType[] {
+  return rounds.map((row) => (typeof row === "string" ? row : row.roundType));
+}
+
+/** Final with no qualifying round — the whole field jumps in the final. */
+export function isDirectFieldFinal(
+  formatType: FixtureFormatType,
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>,
+): boolean {
+  if (formatType !== "field_attempts") return false;
+  const types = roundTypesOf(rounds);
+  return types.includes("final") && !types.includes("qualifying");
+}
+
+/** Athletes allowed in one flight. `null` means no cap (qualifying or a direct final). */
+export function fieldFlightAthleteCap(
+  formatType: FixtureFormatType,
+  roundType: FixtureRoundType,
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>,
+): number | null {
+  if (formatType !== "field_attempts") return null;
+  if (roundType === "final" && !isDirectFieldFinal(formatType, rounds)) {
+    return FIELD_QUALIFYING_FINALISTS;
+  }
+  return null;
+}
+
+export function heatEntryLimit(input: {
+  formatType: FixtureFormatType;
+  roundType: FixtureRoundType;
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>;
+  participantsPerMatch: number;
+}): number | null {
+  if (input.formatType === "field_attempts") {
+    return fieldFlightAthleteCap(input.formatType, input.roundType, input.rounds);
+  }
+  if (isAthleticsFormat(input.formatType)) {
+    return clampHeatLanes(input.participantsPerMatch);
+  }
+  return 2;
+}
+
+export function heatSlotCount(input: {
+  formatType: FixtureFormatType;
+  roundType: FixtureRoundType;
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>;
+  participantsPerMatch: number;
+  filledCount: number;
+  optionCount: number;
+}): number {
+  const cap = heatEntryLimit(input);
+  if (cap != null) return Math.max(cap, input.filledCount);
+  if (input.formatType === "field_attempts") {
+    return Math.max(input.filledCount, input.optionCount, 8);
+  }
+  return clampHeatLanes(input.participantsPerMatch);
+}
+
+export function fieldFlightCapHint(
+  formatType: FixtureFormatType,
+  roundType: FixtureRoundType,
+  rounds: Array<{ roundType: FixtureRoundType } | FixtureRoundType>,
+): string {
+  if (formatType !== "field_attempts") return "";
+  if (roundType === "qualifying") {
+    return "Qualifying has no athlete cap. Put everyone in one flight, or split across flights.";
+  }
+  if (isDirectFieldFinal(formatType, rounds)) {
+    return "Direct final has no athlete cap.";
+  }
+  if (roundType === "final") {
+    return `Final after qualifying is ${FIELD_QUALIFYING_FINALISTS} athletes.`;
+  }
+  return "";
+}
+
 export function defaultScoringStyle(format: FixtureFormatType): string {
   if (format === "field_attempts") return "distance";
   if (format === "track_rounds") return "time";
@@ -183,8 +263,16 @@ export function parseFieldAttempts(value: unknown): FieldAttempt[] {
   });
 }
 
+function timeMsFromDetail(rec: Record<string, unknown>): number | null {
+  const seconds = toFiniteNumber(rec.time_seconds);
+  if (seconds != null && seconds >= 0) return Math.round(seconds * 1000);
+  const ms = toFiniteNumber(rec.time_ms);
+  return ms != null && ms >= 0 ? ms : null;
+}
+
 export function parseAthleticsDetail(detail: unknown): {
   timeMs: number | null;
+  timeSeconds: number | null;
   mark: number | null;
   unit: string;
   place: number | null;
@@ -195,6 +283,7 @@ export function parseAthleticsDetail(detail: unknown): {
   if (!detail || typeof detail !== "object" || Array.isArray(detail)) {
     return {
       timeMs: null,
+      timeSeconds: null,
       mark: null,
       unit: "m",
       place: null,
@@ -207,8 +296,10 @@ export function parseAthleticsDetail(detail: unknown): {
   const resultCode = isAthleticsResultCode(String(rec.result_code ?? ""))
     ? (rec.result_code as AthleticsResultCode)
     : "ok";
+  const timeMs = timeMsFromDetail(rec);
   return {
-    timeMs: toFiniteNumber(rec.time_ms),
+    timeMs,
+    timeSeconds: timeMs == null ? null : timeMs / 1000,
     mark: toFiniteNumber(rec.mark),
     unit: typeof rec.unit === "string" && rec.unit.trim() ? rec.unit : "m",
     place: toFiniteNumber(rec.place) != null ? Math.trunc(toFiniteNumber(rec.place) as number) : null,
@@ -250,14 +341,14 @@ export function formatTimeMs(ms: number | null | undefined): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds - hours * 3600 - minutes * 60;
-  const sec = seconds.toFixed(2).padStart(5, "0");
+  const sec = seconds.toFixed(3).padStart(6, "0");
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, "0")}:${sec}`;
   }
   if (minutes > 0) {
     return `${minutes}:${sec}`;
   }
-  return seconds.toFixed(2);
+  return seconds.toFixed(3);
 }
 
 export function sanitizeTimeInput(raw: string): string {
@@ -273,10 +364,60 @@ export function sanitizeMarkInput(raw: string): string {
 
 export function parseMarkInput(raw: string): number | null {
   const value = raw.trim();
-  if (!value) return null;
-  if (!/^\d+(\.\d{1,3})?$/.test(value)) return null;
-  const mark = Number(value);
+  if (!value || value === ".") return null;
+  if (!/^\d*\.?\d{0,3}$/.test(value)) return null;
+  if (value.endsWith(".")) return null;
+  const mark = Number(value.startsWith(".") ? `0${value}` : value);
   return Number.isFinite(mark) && mark >= 0 ? mark : null;
+}
+
+export type TrackTimeParts = {
+  minutes: string;
+  seconds: string;
+  milliseconds: string;
+};
+
+export const EMPTY_TRACK_TIME: TrackTimeParts = {
+  minutes: "",
+  seconds: "",
+  milliseconds: "",
+};
+
+export function trackTimePartsFromMs(ms: number | null | undefined): TrackTimeParts {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return { ...EMPTY_TRACK_TIME };
+  const total = Math.round(ms);
+  const minutes = Math.floor(total / 60_000);
+  const remainder = total % 60_000;
+  const seconds = Math.floor(remainder / 1000);
+  const milliseconds = remainder % 1000;
+  return {
+    minutes: String(minutes),
+    seconds: String(seconds),
+    milliseconds: String(milliseconds).padStart(3, "0"),
+  };
+}
+
+export function trackTimePartsToSeconds(parts: TrackTimeParts): number | null {
+  const empty = !parts.minutes && !parts.seconds && !parts.milliseconds;
+  if (empty) return null;
+  const minutes = parts.minutes === "" ? 0 : Number(parts.minutes);
+  const seconds = parts.seconds === "" ? 0 : Number(parts.seconds);
+  const milliseconds = parts.milliseconds === "" ? 0 : Number(parts.milliseconds);
+  if (![minutes, seconds, milliseconds].every((value) => Number.isFinite(value))) return null;
+  if (minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) return null;
+  if (milliseconds < 0 || milliseconds > 999) return null;
+  const total = minutes * 60 + seconds + milliseconds / 1000;
+  return total > 0 ? total : null;
+}
+
+export function trackTimePartsToMs(parts: TrackTimeParts): number | null {
+  const seconds = trackTimePartsToSeconds(parts);
+  return seconds == null ? null : Math.round(seconds * 1000);
+}
+
+export function secondsFromMs(ms: number | null | undefined): number | null {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return null;
+  return ms / 1000;
 }
 
 export function formatMark(mark: number | null | undefined, unit = "m"): string {
@@ -291,6 +432,29 @@ export function bestFieldMark(attempts: FieldAttempt[]): number | null {
     .map((attempt) => attempt.mark as number);
   if (marks.length === 0) return null;
   return Math.max(...marks);
+}
+
+/** World Athletics field card: measured mark, X for a foul, − for a pass. */
+export function fieldAttemptNotation(attempt: FieldAttempt): string {
+  if (attempt.status === "foul") return "X";
+  if (attempt.status === "pass") return "−";
+  if (attempt.mark == null) return "";
+  return formatMark(attempt.mark, "").trim();
+}
+
+export function fieldAttemptsAreNoMark(attempts: FieldAttempt[]): boolean {
+  const taken = attempts.filter(
+    (attempt) => attempt.status === "foul" || attempt.status === "pass" || attempt.mark != null,
+  );
+  if (taken.length === 0) return false;
+  return taken.every((attempt) => attempt.status !== "ok" || attempt.mark == null);
+}
+
+export function fieldAttemptSeries(attempts: FieldAttempt[]): string {
+  return attempts
+    .map((attempt) => fieldAttemptNotation(attempt))
+    .filter((part) => part.length > 0)
+    .join(" / ");
 }
 
 export function resultCodeFromStatus(

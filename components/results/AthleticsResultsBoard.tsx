@@ -1,7 +1,12 @@
 "use client";
 
 import type { FixtureMatch, HeatParticipant } from "@/lib/types/cms";
-import { displayAthleticsMark, heatQueueTitle, isRelayEvent } from "@/lib/utils/athletics";
+import {
+  displayAthleticsMark,
+  fieldAttemptSeries,
+  heatQueueTitle,
+  isRelayEvent,
+} from "@/lib/utils/athletics";
 import { categoryNameFromLabel, orgCityLine } from "@/lib/utils/labels";
 import { isResultScoreVisible } from "@/lib/utils/resultsBoard";
 import { StatusBadge } from "@/components/ops";
@@ -73,7 +78,18 @@ function HeatTable({
                 ) : null}
               </td>
               <td className="px-4 py-2 font-mono">
-                {visible ? displayAthleticsMark(row) : "—"}
+                {visible ? (
+                  <div>
+                    <p>{displayAthleticsMark(row)}</p>
+                    {match.formatType === "field_attempts" && fieldAttemptSeries(row.attempts) ? (
+                      <p className="text-[11px] font-medium text-[var(--ops-text-muted)]">
+                        {fieldAttemptSeries(row.attempts)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="px-4 py-2 text-xs font-semibold uppercase">
                 {visible && row.qualified ? "Q" : ""}

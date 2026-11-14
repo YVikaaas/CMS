@@ -4,45 +4,130 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { fieldClass, fieldErrorClass } from "@/components/Modal";
 import { SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
+import { TimePartsInput } from "@/components/athletics/TimePartsInput";
 import { saveHeatScore } from "@/lib/services";
 import type { AthleticsResultCode, FieldAttempt, FixtureMatch } from "@/lib/types/cms";
+import { cn } from "@/lib/utils/cn";
 import { orgCityLine } from "@/lib/utils/labels";
 import {
   ATHLETICS_RESULT_CODES,
   bestFieldMark,
+  fieldAttemptNotation,
   fieldAttemptSlots,
+  fieldAttemptsAreNoMark,
   formatMark,
   padFieldAttempts,
-  formatTimeMs,
   isRelayEvent,
   parseMarkInput,
-  parseTimeToMs,
   rankAthletics,
   sanitizeMarkInput,
-  sanitizeTimeInput,
+  trackTimePartsFromMs,
+  trackTimePartsToMs,
+  type TrackTimeParts,
 } from "@/lib/utils/athletics";
 import { categoryNameFromLabel } from "@/lib/utils/labels";
 
 type RowState = {
   participantId: string;
   resultCode: AthleticsResultCode;
-  time: string;
+  time: TrackTimeParts;
   mark: string;
   qualified: boolean;
   attempts: FieldAttempt[];
+  attemptInputs: string[];
 };
+
+function attemptDraft(attempt: FieldAttempt): string {
+  if (attempt.status === "foul" || attempt.status === "pass") return fieldAttemptNotation(attempt);
+  if (attempt.mark == null) return "";
+  return formatMark(attempt.mark, "").trim();
+}
+
+function AttemptSlot({
+  attempt,
+  text,
+  index,
+  disabled,
+  onChange,
+}: {
+  attempt: FieldAttempt;
+  text: string;
+  index: number;
+  disabled: boolean;
+  onChange: (next: FieldAttempt, nextText: string) => void;
+}) {
+  const fouled = attempt.status === "foul";
+  const passed = attempt.status === "pass";
+  return (
+    <div className="flex w-20 flex-col gap-1">
+      <span className="text-[10px] font-semibold text-[var(--ops-text-muted)]">{index + 1}</span>
+      <input
+        value={text}
+        placeholder="0.00"
+        inputMode="decimal"
+        disabled={disabled}
+        readOnly={fouled || passed}
+        onChange={(event) => {
+          const raw = event.target.value.trim();
+          if (/^(x|foul)$/i.test(raw)) {
+            onChange({ mark: null, status: "foul" }, "X");
+            return;
+          }
+          const cleaned = sanitizeMarkInput(event.target.value);
+          onChange(
+            {
+              mark: parseMarkInput(cleaned),
+              status: "ok",
+            },
+            cleaned,
+          );
+        }}
+        className={cn(
+          "ops-control w-full px-1 text-center text-sm",
+          fouled &&
+            "border-[var(--ops-danger)] bg-[var(--ops-danger-soft)] font-semibold text-[var(--ops-danger)]",
+          passed && "bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]",
+        )}
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={fouled}
+        onClick={() =>
+          onChange(
+            fouled ? { mark: null, status: "ok" } : { mark: null, status: "foul" },
+            fouled ? "" : "X",
+          )
+        }
+        className={cn(
+          "min-h-9 rounded-lg border px-2 text-xs font-semibold",
+          fouled
+            ? "border-[var(--ops-danger)] bg-[var(--ops-danger)] text-white"
+            : "border-[var(--ops-line)] bg-white text-[var(--ops-text)] hover:bg-[var(--ops-danger-soft)]",
+          disabled && "opacity-45",
+        )}
+      >
+        Foul
+      </button>
+    </div>
+  );
+}
 
 function rowFromMatch(match: FixtureMatch): RowState[] {
   const field = match.formatType === "field_attempts";
   const slots = fieldAttemptSlots(match);
-  return match.participants.map((row) => ({
-    participantId: row.id,
-    resultCode: row.resultCode,
-    time: formatTimeMs(row.timeMs),
-    mark: row.mark == null ? "" : String(row.mark),
-    qualified: row.qualified,
-    attempts: field ? padFieldAttempts(row.attempts, slots) : [],
-  }));
+  return match.participants.map((row) => {
+    const attempts = field ? padFieldAttempts(row.attempts, slots) : [];
+    return {
+      participantId: row.id,
+      resultCode: row.resultCode,
+      time: trackTimePartsFromMs(row.timeMs),
+      mark: row.mark == null ? "" : String(row.mark),
+      qualified: row.qualified,
+      attempts,
+      attemptInputs: attempts.map(attemptDraft),
+    };
+  });
 }
 
 export function ScoreAthleticsBoard({
@@ -70,10 +155,8 @@ export function ScoreAthleticsBoard({
       rankAthletics(
         rows.map((row) => ({
           resultCode: row.resultCode,
-          timeMs: parseTimeToMs(row.time),
-          mark: track
-            ? null
-            : bestFieldMark(row.attempts) ?? parseMarkInput(row.mark),
+          timeMs: trackTimePartsToMs(row.time),
+          mark: track ? null : bestFieldMark(row.attempts) ?? parseMarkInput(row.mark),
         })),
         style,
       ),
@@ -91,19 +174,29 @@ export function ScoreAthleticsBoard({
     const nextErrors: Record<string, string> = {};
     const anyQualified = rows.some((row) => row.qualified);
     const payload = rows.map((row) => {
-      const timeMs = parseTimeToMs(row.time);
+      const timeMs = trackTimePartsToMs(row.time);
       const mark = track ? null : bestFieldMark(row.attempts) ?? parseMarkInput(row.mark);
       if (complete && row.resultCode === "ok" && track && timeMs == null) {
         nextErrors[row.participantId] = "Required";
       }
-      if (complete && row.resultCode === "ok" && !track && mark == null) {
+      const noMark = !track && mark == null && fieldAttemptsAreNoMark(row.attempts);
+      if (complete && row.resultCode === "ok" && !track && mark == null && !noMark) {
         nextErrors[row.participantId] = "Required";
       }
-      if (row.time && track && timeMs == null) nextErrors[row.participantId] = "Invalid";
+      if (track && (row.time.minutes || row.time.seconds || row.time.milliseconds) && timeMs == null) {
+        nextErrors[row.participantId] = "Invalid";
+      }
       if (row.mark && !track && mark == null) nextErrors[row.participantId] = "Invalid";
+      const unfinished = row.attemptInputs.some(
+        (text, index) =>
+          text.includes(".") &&
+          row.attempts[index]?.status === "ok" &&
+          row.attempts[index]?.mark == null,
+      );
+      if (complete && !track && unfinished) nextErrors[row.participantId] = "Invalid";
       return {
         participantId: row.participantId,
-        resultCode: row.resultCode,
+        resultCode: noMark && row.resultCode === "ok" ? "nm" : row.resultCode,
         timeMs,
         mark,
         unit: "m",
@@ -134,12 +227,12 @@ export function ScoreAthleticsBoard({
         <p className="text-sm font-semibold">{match.matchLabel || (track ? "Heat" : "Flight")}</p>
         <p className="text-xs text-[var(--ops-text-muted)]">
           {track
-            ? "Times, DNS / DNF / DQ, then place."
-            : `Best mark from ${match.attemptCount} attempts. NM / FOUL / DNS / DQ.`}
+            ? "Pick minutes, seconds and milliseconds. Time is saved in seconds."
+            : `Best mark from ${match.attemptCount} attempts. Tap Foul for a failed attempt (shown as X). NM if every attempt is a foul.`}
         </p>
       </div>
       <div className="overflow-x-auto rounded-xl border border-[var(--ops-line)]">
-        <table className="w-full min-w-[40rem] text-left text-sm">
+        <table className="w-full min-w-[48rem] text-left text-sm">
           <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">Ln</th>
@@ -185,14 +278,11 @@ export function ScoreAthleticsBoard({
                   </td>
                   <td className="px-3 py-2">
                     {track ? (
-                      <input
+                      <TimePartsInput
                         value={row.time}
-                        placeholder="12.34"
                         disabled={row.resultCode !== "ok"}
-                        onChange={(event) =>
-                          patch(row.participantId, { time: sanitizeTimeInput(event.target.value) })
-                        }
-                        className={invalid ? fieldErrorClass : fieldClass}
+                        invalid={invalid}
+                        onChange={(time) => patch(row.participantId, { time })}
                       />
                     ) : (
                       <input
@@ -208,43 +298,23 @@ export function ScoreAthleticsBoard({
                   </td>
                   {track ? null : (
                     <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {row.attempts.map((attempt, attemptIndex) => {
-                          const label = String(attemptIndex + 1);
-                          return (
-                            <div key={attemptIndex} className="flex flex-col gap-0.5">
-                              <span className="text-[10px] font-semibold text-[var(--ops-text-muted)]">
-                                {label}
-                              </span>
-                              <input
-                                value={
-                                  attempt.status === "foul"
-                                    ? "X"
-                                    : attempt.mark == null
-                                      ? ""
-                                      : String(attempt.mark)
-                                }
-                                placeholder={label}
-                                disabled={row.resultCode !== "ok"}
-                                onChange={(event) => {
-                                  const raw = event.target.value;
-                                  const next = [...row.attempts];
-                                  if (raw.trim().toUpperCase() === "X") {
-                                    next[attemptIndex] = { mark: null, status: "foul" };
-                                  } else {
-                                    const cleaned = sanitizeMarkInput(raw);
-                                    next[attemptIndex] = {
-                                      mark: cleaned ? parseMarkInput(cleaned) : null,
-                                      status: "ok",
-                                    };
-                                  }
-                                  patch(row.participantId, { attempts: next });
-                                }}
-                                className="w-16 rounded-lg border border-[var(--ops-line)] px-2 py-1 text-sm"
-                              />
-                            </div>
-                          );
-                        })}
+                      <div className="flex flex-wrap gap-2">
+                        {row.attempts.map((attempt, attemptIndex) => (
+                          <AttemptSlot
+                            key={attemptIndex}
+                            attempt={attempt}
+                            text={row.attemptInputs[attemptIndex] ?? ""}
+                            index={attemptIndex}
+                            disabled={row.resultCode !== "ok"}
+                            onChange={(nextAttempt, nextText) => {
+                              const next = [...row.attempts];
+                              const texts = [...row.attemptInputs];
+                              next[attemptIndex] = nextAttempt;
+                              texts[attemptIndex] = nextText;
+                              patch(row.participantId, { attempts: next, attemptInputs: texts });
+                            }}
+                          />
+                        ))}
                       </div>
                     </td>
                   )}

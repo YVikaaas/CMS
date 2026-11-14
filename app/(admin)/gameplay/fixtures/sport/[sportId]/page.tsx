@@ -548,6 +548,15 @@ export default function FixtureSportPage() {
                   selected={form.rounds}
                   onSelect={toggleRound}
                 />
+                {form.formatType === "field_attempts" ? (
+                  <p className="text-xs text-[var(--ops-text-muted)]">
+                    {form.rounds.includes("qualifying")
+                      ? "Qualifying has no athlete cap. The final is 8 athletes."
+                      : form.rounds.includes("final")
+                        ? "Direct final has no athlete cap."
+                        : ""}
+                  </p>
+                ) : null}
               </div>
             </>
           )}

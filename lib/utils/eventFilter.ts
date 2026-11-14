@@ -2,6 +2,7 @@ import type { Category, ChampionshipOffering, Gender, Sport } from "@/lib/types/
 import {
   ageGroupFromCategoryLabel,
   categoryEventName,
+  categoryGroupLabel,
   categoryNameFromLabel,
 } from "@/lib/utils/labels";
 
@@ -82,6 +83,37 @@ export function offeredCategories(
     if (!ids.has(row.id)) return false;
     if (sportId && row.sportId !== sportId) return false;
     return true;
+  });
+}
+
+export type CategoryPickGroup = {
+  key: string;
+  gender: Gender;
+  ageGroup: string;
+  label: string;
+  items: Category[];
+};
+
+export function groupCategoriesByGenderAge(categories: Category[]): CategoryPickGroup[] {
+  const groups = new Map<string, CategoryPickGroup>();
+  for (const category of categories) {
+    const key = `${category.gender}:${category.ageGroup}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.items.push(category);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      gender: category.gender,
+      ageGroup: category.ageGroup,
+      label: categoryGroupLabel(category),
+      items: [category],
+    });
+  }
+  return [...groups.values()].sort((left, right) => {
+    if (left.gender !== right.gender) return left.gender === "male" ? -1 : 1;
+    return left.ageGroup.localeCompare(right.ageGroup, undefined, { numeric: true });
   });
 }
 

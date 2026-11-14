@@ -61,7 +61,7 @@ Four controls: **Sport → Gender → Age → Category**. Age is U16. Category i
 |------|------------------|
 | Fixtures | `unlockInOrder`: Gender disabled until Sport; Age until Gender; Category until Age. Empty chip = All sports/categories. Picking Sport on `/gameplay/fixtures` navigates to `/gameplay/fixtures/sport/[sportId]`. |
 | Call Room | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round chips have no All. Solo heats mark athletes present/absent. Basketball and relays mark the team and each member. Team absent puts every player out; a player marked present brings the team back. |
-| Scoring | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round chips have no All and stay in heat → QF → SF → final → 3rd order. **Ranking** is the last chip (with a gap after the rounds) and is where places are set. Lock 1st, 2nd and 3rd after save so Podium can open. Field scoring uses that round’s attempt count (default 3 qualifying, 2 final). |
+| Scoring | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round chips have no All and stay in heat → QF → SF → final → 3rd order. **Ranking** is the last chip (with a gap after the rounds) and is where places are set. Lock 1st, 2nd and 3rd after save so Podium can open. Field scoring uses that round’s attempt count (default 3 qualifying, 2 final). Each attempt has a **Foul** button (World Athletics **X**, stored as `foul`). All fouls complete as NM. Track times use min / sec / ms selectors and are stored as `time_seconds`. |
 | Results | Board stays empty until Sport + Gender + Age + Category are all set (`isEventFilterComplete`). Round tabs have no All, plus a read-only **Ranking** tab. |
 | Podium | Board stays empty until Sport + Gender + Age + Category are all set. The category only appears after ranking is locked. Gold / silver / bronze delivery for those three; teams list every member, solo lists athlete details. |
 
@@ -133,7 +133,7 @@ Create-draw modal: athletics format comes from the category (no track/field pick
 
 Match create: two **different** live teams on that CSC (`createMatch`). Fields: round, match label, venue (default `"Court 1"`), schedule, status (`draft` / `scheduled` / `cancelled` at create), team1, team2.
 
-Athletics heat create: one dropdown per lane/slot (`HeatLaneSlots`). Empty lanes stay blank. Lane number is the row, not checkbox order.
+Athletics heat create: one dropdown per lane/slot (`HeatLaneSlots`). Empty lanes stay blank. Lane number is the row, not checkbox order. Field qualifying has no athlete cap. A final after qualifying is 8 athletes. A direct final (final only, no qualifying) has no cap.
 
 Workspace UI: `CMS/app/(admin)/gameplay/fixtures/[fixtureId]/page.tsx`.
 

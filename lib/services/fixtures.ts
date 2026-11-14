@@ -4,10 +4,12 @@ import {
   clampAttemptCount,
   clampHeatLanes,
   defaultFieldAttemptPlan,
+  fieldAttemptsAreNoMark,
   defaultHeatLabel,
   defaultParticipantsPerMatch,
   defaultScoringStyle,
   defaultVenue,
+  heatEntryLimit,
   heatScoreLine,
   isAthleticsFormat,
   isRelayEvent,
@@ -16,6 +18,7 @@ import {
   parseLane,
   qualifyCountForRound,
   rankAthletics,
+  secondsFromMs,
   statusForAthletics,
   athleticsScoreText,
   autoQualify,
@@ -1138,13 +1141,22 @@ async function assertHeatEntries(
   fixture: Fixture,
   ids: string[],
   asTeams: boolean,
+  roundType: FixtureRoundType,
 ): Promise<string | null> {
   const noun = asTeams ? "teams" : "athletes";
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length < 2) return `Pick at least two ${noun}.`;
   if (unique.length !== ids.length) return `Each ${noun.slice(0, -1)} can only be in this heat once.`;
-  if (unique.length > fixture.participantsPerMatch) {
-    return `This heat allows up to ${fixture.participantsPerMatch} ${noun}.`;
+  const cap = heatEntryLimit({
+    formatType: fixture.formatType,
+    roundType,
+    rounds: fixture.rounds,
+    participantsPerMatch: fixture.participantsPerMatch,
+  });
+  if (cap != null && unique.length > cap) {
+    return roundType === "final" && fixture.formatType === "field_attempts"
+      ? `The final allows ${cap} ${noun} after qualifying.`
+      : `This heat allows up to ${cap} ${noun}.`;
   }
   if (asTeams) {
     const teams = await listTeams({ cscId: fixture.cscId });
@@ -1226,6 +1238,7 @@ export async function createHeat(input: {
     fixture.data,
     entry.slots.map((slot) => slot.id),
     entry.asTeams,
+    round.roundType,
   );
   if (athletesErr) return { data: null, error: { message: athletesErr } };
 
@@ -1285,6 +1298,7 @@ export async function updateHeat(
     fixture.data,
     entry.slots.map((slot) => slot.id),
     entry.asTeams,
+    round.roundType,
   );
   if (athletesErr) return { data: null, error: { message: athletesErr } };
 
@@ -1361,7 +1375,13 @@ export async function saveHeatScore(input: {
     const existing = byId.get(row.participantId);
     const unit = row.unit ?? existing?.unit ?? "m";
     const attempts = row.attempts ?? existing?.attempts ?? [];
-    return { ...row, unit, attempts };
+    const noMark = style !== "time" && row.mark == null && fieldAttemptsAreNoMark(attempts);
+    return {
+      ...row,
+      unit,
+      attempts,
+      resultCode: noMark && row.resultCode === "ok" ? "nm" : row.resultCode,
+    };
   });
 
   if (prepared.some((row) => !byId.has(row.participantId))) {
@@ -1412,6 +1432,7 @@ export async function saveHeatScore(input: {
       score_detail: {
         scoring_style: style,
         result_code: row.resultCode,
+        time_seconds: secondsFromMs(row.timeMs),
         time_ms: row.timeMs,
         mark: row.mark,
         unit: row.unit,

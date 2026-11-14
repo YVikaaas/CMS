@@ -75,8 +75,10 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `listChampionshipOfferings(championshipId)` | — | `ServiceResult<ChampionshipOffering[]>` | CSM + CSC category ids per sport. |
 | `saveChampionshipOfferings(championshipId, offerings)` | `{ sportId, categoryIds[] }[]` | `ServiceResult<true>` | Restores or inserts CSM/CSC. Refuses to drop a category/sport that still has teams or fixtures. |
 | `addChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Assigns a master sport to the championship. |
+| `addChampionshipSports(id, sportIds, extras?)` | optional `categoriesBySport` | `ServiceResult<true>` | Assigns many sports. Optional category ids per sport are merged in the same write. |
 | `removeChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Unassigns a sport (blocked if it still has teams). |
 | `addChampionshipEvent(id, sportId, categoryId)` | — | `ServiceResult<true>` | Assigns a master category as a sport event. |
+| `addChampionshipEvents(id, sportId, categoryIds)` | category id list | `ServiceResult<true>` | Assigns many categories to one championship sport. Skips ids already offered. |
 | `removeChampionshipEvent(id, categoryId)` | — | `ServiceResult<true>` | Unassigns a sport event (blocked if it still has teams or fixtures). |
 
 ---
@@ -114,12 +116,12 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `getFixtureMatch(id)` | — | `ServiceResult<FixtureMatch>` | One live match with sides and scores. |
 | `createMatch({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, team1Id, team2Id })` | status `draft` / `scheduled` / `cancelled` | `ServiceResult<FixtureMatch>` | Two different live teams on that CSC. |
 | `updateMatch(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces sides. |
-| `createHeat({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, athleteIds?, teamIds? })` | 2–N athlete ids, or team ids for relays | `ServiceResult<FixtureMatch>` | Athletics heat/flight. Array index is the lane; blank entries stay empty. Relays insert `team_id` sides. |
+| `createHeat({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, athleteIds?, teamIds? })` | 2–N athlete ids, or team ids for relays | `ServiceResult<FixtureMatch>` | Athletics heat/flight. Array index is the lane; blank entries stay empty. Relays insert `team_id` sides. Field qualifying and a direct final have no athlete cap; a final after qualifying is 8. |
 | `updateHeat(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces heat athletes or relay teams, keeping lane numbers. |
 | `listFixtureRanking(fixtureId)` | fixture id | `ServiceResult<FixtureRankingEntry[]>` | Live manual ranking for that draw, ordered by rank. Includes `medalDeliveredAt`. |
 | `saveFixtureRanking(fixtureId, rows)` | `{ rank, teamId? \| athleteId? }[]` | `ServiceResult<FixtureRankingEntry[]>` | Replaces live ranking. Athletics solo uses athletes; basketball and relays use teams. Blocked while ranking is locked. |
 | `setFixtureRankingLocked(fixtureId, locked)` | boolean | `ServiceResult<Fixture>` | Lock requires saved 1st, 2nd and 3rd. Unlock is blocked if any of those medals is marked delivered. |
-| `saveHeatScore({ matchId, complete, rows })` | per athlete time/mark, result code, attempts, optional qualified | `ServiceResult<FixtureMatch>` | RPC `save_fixture_match_scores` then match `in_progress` / `completed`. Ranks by time or best mark. Non-final auto-qualifies top 8 if qualified is omitted. |
+| `saveHeatScore({ matchId, complete, rows })` | per athlete time/mark, result code, attempts, optional qualified | `ServiceResult<FixtureMatch>` | RPC `save_fixture_match_scores` then match `in_progress` / `completed`. Track times are stored as `time_seconds` (legacy `time_ms` still written and read). Ranks by time or best mark. Non-final auto-qualifies top 8 if qualified is omitted. |
 | `archiveMatch(id)` | — | `ServiceResult<true>` | Soft-deletes match, sides, player score events, and call-room attendance. |
 | `listMatchScoreEvents(matchId)` | — | `ServiceResult<MatchScoreEvent[]>` | Live 1/2/3 baskets for a match, newest first. |
 | `addMatchScoreEvent({ matchId, teamId, teamMemberId, points, scoringMode, team1Fouls?, team2Fouls? })` | points `1` / `2` / `3` | `ServiceResult<FixtureMatch>` | Inserts a basket and refreshes team totals. |
@@ -151,4 +153,4 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `getDashboardSummary(championshipId)` | — | `ServiceResult<DashboardSummary>` | Counts of offered sports, offered categories, and teams in that championship. |
+| `getDashboardSummary(championshipId)` | championship id | `ServiceResult<DashboardSummary>` | Live championship desk: setup (sports, gender/age/solo/relay/team categories, orgs, cities), coverage (entries and draws), fixture statuses and formats, round types, match statuses, call room present/absent, locked rankings and gold/silver/bronze, plus a per-sport breakdown. |

@@ -10,6 +10,7 @@ export function HeatLaneSlots({
   error,
   onChange,
   slotLabel,
+  hint,
 }: {
   laneCount: number;
   ids: string[];
@@ -17,6 +18,7 @@ export function HeatLaneSlots({
   error?: string;
   onChange: (ids: string[]) => void;
   slotLabel: string;
+  hint?: string;
 }) {
   const values = Array.from({ length: laneCount }, (_, index) => ids[index] ?? "");
   return (
@@ -28,6 +30,7 @@ export function HeatLaneSlots({
       <p className="text-sm font-medium">
         {slotLabel}s. Leave a row blank to keep that {slotLabel.toLowerCase()} empty.
       </p>
+      {hint ? <p className="text-xs text-[var(--ops-text-muted)]">{hint}</p> : null}
       {values.map((value, index) => {
         const taken = new Set(values.filter((id, other) => id && other !== index));
         return (

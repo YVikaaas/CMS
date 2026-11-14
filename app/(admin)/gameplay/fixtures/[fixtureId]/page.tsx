@@ -36,8 +36,11 @@ import { eventIdentityEyebrow } from "@/lib/utils/eventFilter";
 import { HeatLaneSlots } from "@/components/athletics/HeatLaneSlots";
 import {
   defaultVenue,
+  fieldFlightCapHint,
+  heatEntryLimit,
   heatQueueHint,
   heatQueueTitle,
+  heatSlotCount,
   isAthleticsFormat,
   isRelayEvent,
 } from "@/lib/utils/athletics";
@@ -146,17 +149,34 @@ export default function FixtureWorkspacePage() {
     }));
   }, [fixture, selectedMatchId]);
 
+  const slotsForRound = (nextRoundId?: string, filledCount = 0) => {
+    if (!fixture) return 8;
+    const targetId = nextRoundId ?? roundId ?? firstRoundId;
+    const round = fixture.rounds.find((item) => item.id === targetId) ?? fixture.rounds[0];
+    if (!round) return fixture.participantsPerMatch;
+    const relay = isRelayEvent(fixture.categoryName);
+    return heatSlotCount({
+      formatType: fixture.formatType,
+      roundType: round.roundType,
+      rounds: fixture.rounds,
+      participantsPerMatch: fixture.participantsPerMatch,
+      filledCount,
+      optionCount: relay ? teams.length : athletes.length,
+    });
+  };
+
   const startCreate = (nextRoundId?: string) => {
     setSelectedMatchId(null);
     setFieldErrors({});
+    const slots = slotsForRound(nextRoundId);
     setForm({
       ...emptyForm,
       roundId: nextRoundId ?? roundId ?? firstRoundId,
       venue: fixture ? defaultVenue(fixture.formatType) : "Court 1",
       team1Id: teams[0]?.id ?? "",
       team2Id: teams[1]?.id ?? "",
-      athleteIds: Array.from({ length: fixture?.participantsPerMatch ?? 8 }, () => ""),
-      teamIds: Array.from({ length: fixture?.participantsPerMatch ?? 8 }, () => ""),
+      athleteIds: Array.from({ length: slots }, () => ""),
+      teamIds: Array.from({ length: slots }, () => ""),
     });
   };
 
@@ -164,6 +184,7 @@ export default function FixtureWorkspacePage() {
     setSelectedMatchId(row.id);
     setRoundId(row.roundId);
     setFieldErrors({});
+    const slots = slotsForRound(row.roundId, row.participants.length);
     setForm({
       roundId: row.roundId,
       matchLabel: row.matchLabel,
@@ -172,8 +193,8 @@ export default function FixtureWorkspacePage() {
       status: MATCH_STATUSES.includes(row.status) ? row.status : "draft",
       team1Id: row.team1Id,
       team2Id: row.team2Id,
-      athleteIds: laneIdsFromMatch(row, fixture?.participantsPerMatch ?? row.participants.length, false),
-      teamIds: laneIdsFromMatch(row, fixture?.participantsPerMatch ?? row.participants.length, true),
+      athleteIds: laneIdsFromMatch(row, slots, false),
+      teamIds: laneIdsFromMatch(row, slots, true),
     });
   };
 
@@ -186,8 +207,25 @@ export default function FixtureWorkspacePage() {
     if (athletics && relay) {
       if (form.teamIds.filter(Boolean).length < 2) nextErrors.teamIds = "Pick at least two teams.";
     } else if (athletics) {
-      if (form.athleteIds.filter(Boolean).length < 2) {
+      const picked = form.athleteIds.filter(Boolean).length;
+      if (picked < 2) {
         nextErrors.athleteIds = "Pick at least two athletes.";
+      } else if (fixture) {
+        const round = fixture.rounds.find((item) => item.id === form.roundId);
+        const cap = round
+          ? heatEntryLimit({
+              formatType: fixture.formatType,
+              roundType: round.roundType,
+              rounds: fixture.rounds,
+              participantsPerMatch: fixture.participantsPerMatch,
+            })
+          : null;
+        if (cap != null && picked > cap) {
+          nextErrors.athleteIds =
+            round?.roundType === "final"
+              ? `The final allows ${cap} athletes after qualifying.`
+              : `This heat allows up to ${cap} athletes.`;
+        }
       }
     } else {
       if (!form.team1Id) nextErrors.team1Id = "Required";
@@ -286,6 +324,21 @@ export default function FixtureWorkspacePage() {
 
   const athletics = isAthleticsFormat(fixture.formatType);
   const relay = isRelayEvent(fixture.categoryName);
+  const activeRound =
+    orderedRounds.find((item) => item.id === (form.roundId || roundId)) ?? orderedRounds[0];
+  const heatSlots = activeRound
+    ? heatSlotCount({
+        formatType: fixture.formatType,
+        roundType: activeRound.roundType,
+        rounds: fixture.rounds,
+        participantsPerMatch: fixture.participantsPerMatch,
+        filledCount: (relay ? form.teamIds : form.athleteIds).filter(Boolean).length,
+        optionCount: relay ? teams.length : athletes.length,
+      })
+    : fixture.participantsPerMatch;
+  const flightHint = activeRound
+    ? fieldFlightCapHint(fixture.formatType, activeRound.roundType, fixture.rounds)
+    : "";
   const canAddMatch = athletics
     ? relay
       ? teams.length >= 2
@@ -400,9 +453,10 @@ export default function FixtureWorkspacePage() {
               </label>
               {athletics ? (
                 <HeatLaneSlots
-                  laneCount={fixture.participantsPerMatch}
+                  laneCount={heatSlots}
                   ids={relay ? form.teamIds : form.athleteIds}
                   slotLabel={fixture.formatType === "field_attempts" ? "Slot" : "Lane"}
+                  hint={flightHint}
                   error={fieldErrors.athleteIds || fieldErrors.teamIds}
                   options={
                     relay
