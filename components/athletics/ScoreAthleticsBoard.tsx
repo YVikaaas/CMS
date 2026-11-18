@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { fieldClass, fieldErrorClass } from "@/components/Modal";
-import { SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
+import { SoftButton, SoftSelect, StatusBadge, StickyActionBar } from "@/components/ops";
 import { TimePartsInput } from "@/components/athletics/TimePartsInput";
 import { saveHeatScore } from "@/lib/services";
 import type { AthleticsResultCode, FieldAttempt, FixtureMatch } from "@/lib/types/cms";
@@ -223,13 +223,27 @@ export function ScoreAthleticsBoard({
 
   return (
     <div className="grid gap-4">
-      <div>
-        <p className="text-sm font-semibold">{match.matchLabel || (track ? "Heat" : "Flight")}</p>
-        <p className="text-xs text-[var(--ops-text-muted)]">
-          {track
-            ? "Pick minutes, seconds and milliseconds (two places). Time is saved in seconds."
-            : `Best mark from ${match.attemptCount} attempts. Tap Foul for a failed attempt (shown as X). NM if every attempt is a foul.`}
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
+            {match.sportName} · {match.roundLabel}
+          </p>
+          <h2 className="text-xl font-semibold">
+            {categoryNameFromLabel(match.categoryLabel)} · {match.matchLabel || (track ? "Heat" : "Flight")}
+          </h2>
+          <p className="text-sm text-[var(--ops-text-muted)]">
+            {track
+              ? "Minutes, seconds, and milliseconds. Time is saved in seconds."
+              : `Best mark from ${match.attemptCount} attempts. Foul is X. NM if every attempt is a foul.`}
+          </p>
+        </div>
+        <StatusBadge
+          tone={
+            match.status === "completed" ? "success" : match.status === "in_progress" ? "warning" : "neutral"
+          }
+        >
+          {match.status.replace("_", " ")}
+        </StatusBadge>
       </div>
       <div className="ops-table">
         <table className="min-w-[48rem]">

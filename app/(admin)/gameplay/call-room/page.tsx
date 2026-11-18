@@ -204,20 +204,18 @@ function CallRoomDesk() {
                         setSelectedMatchId(row.id);
                         router.replace(`/gameplay/call-room?match=${row.id}`);
                       }}
-                      className={`flex w-full items-start justify-between gap-3 border-b border-[var(--ops-line)] px-1 py-3 text-left last:border-b-0 ${
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left ${
                         selectedMatchId === row.id
-                          ? "bg-[var(--ops-primary-soft)]"
-                          : "hover:bg-[var(--ops-row-hover)]"
+                          ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
+                          : "border-[var(--ops-line)] bg-white hover:bg-[var(--ops-row-hover)]"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold">
-                          {isHeatMatch(row) ? heatQueueTitle(row) : `${row.team1Name} vs ${row.team2Name}`}
-                        </p>
-                        <StatusBadge tone={callRoomQueueTone(row, attendance)}>
-                          {callRoomQueueHint(row, attendance)}
-                        </StatusBadge>
-                      </div>
+                      <span className="font-semibold">
+                        {isHeatMatch(row) ? heatQueueTitle(row) : `${row.team1Name} vs ${row.team2Name}`}
+                      </span>
+                      <StatusBadge tone={callRoomQueueTone(row, attendance)}>
+                        {callRoomQueueHint(row, attendance)}
+                      </StatusBadge>
                     </button>
                   ))
                 )}
@@ -225,7 +223,17 @@ function CallRoomDesk() {
             }
             board={
               selectedMatch && sheet && sheet.matchId === selectedMatch.id ? (
-                <CallRoomBoard sheet={sheet} saving={saving} onChange={(next, action) => void handleChange(next, action)} />
+                <CallRoomBoard
+                  sheet={sheet}
+                  saving={saving}
+                  eyebrow={`${selectedMatch.sportName} · ${selectedMatch.roundLabel}`}
+                  title={
+                    isHeatMatch(selectedMatch)
+                      ? `${selectedMatch.categoryLabel} · ${heatQueueTitle(selectedMatch)}`
+                      : `${selectedMatch.team1Name} vs ${selectedMatch.team2Name}`
+                  }
+                  onChange={(next, action) => void handleChange(next, action)}
+                />
               ) : selectedMatch ? (
                 <PageSkeleton kind="board" />
               ) : (

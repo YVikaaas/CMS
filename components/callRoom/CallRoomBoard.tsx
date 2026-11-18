@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Card from "@mui/material/Card";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import { SoftButton, SoftSearch, StatusBadge } from "@/components/ops";
+import { SoftButton, SoftSearch } from "@/components/ops";
 import { cn } from "@/lib/utils/cn";
 import type { CallRoomAction, CallRoomMark, CallRoomSheet, CallRoomUnit } from "@/lib/types/cms";
 import {
@@ -18,6 +17,8 @@ import { matchesQuery } from "@/lib/utils/table";
 type Props = {
   sheet: CallRoomSheet;
   saving?: boolean;
+  eyebrow?: string;
+  title?: string;
   onChange: (next: CallRoomSheet, action: CallRoomAction) => void;
 };
 
@@ -75,100 +76,7 @@ function filterUnit(unit: CallRoomUnit, query: string): CallRoomUnit {
   };
 }
 
-function AthleteRow({
-  unit,
-  disabled,
-  onPick,
-}: {
-  unit: CallRoomUnit;
-  disabled?: boolean;
-  onPick: (mark: CallRoomMark) => void;
-}) {
-  return (
-    <li
-      className={cn(
-        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
-        unit.mark === "absent" && "bg-[var(--ops-danger-soft)]/40",
-      )}
-    >
-      <div className="min-w-0">
-        <p className="font-semibold">{unit.name}</p>
-        {unit.detail ? <p className="text-sm text-[var(--ops-text-muted)]">{unit.detail}</p> : null}
-      </div>
-      <MarkButtons mark={unit.mark} disabled={disabled} onPick={onPick} label={unit.name} />
-    </li>
-  );
-}
-
-function TeamCard({
-  unit,
-  disabled,
-  onUnit,
-  onMember,
-}: {
-  unit: CallRoomUnit;
-  disabled?: boolean;
-  onUnit: (mark: CallRoomMark) => void;
-  onMember: (memberId: string, mark: CallRoomMark) => void;
-}) {
-  const teamOut = unit.mark === "absent";
-  const presentCount = unit.members.filter((member) => member.effective === "present").length;
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold">{unit.name}</p>
-            <StatusBadge tone={teamOut ? "danger" : unit.mark === "present" ? "success" : "neutral"}>
-              {teamOut ? "Team out" : unit.mark === "present" ? "Team in" : "Team unset"}
-            </StatusBadge>
-          </div>
-          <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
-            {unit.detail ? `${unit.detail} · ` : ""}
-            {unit.members.length === 0
-              ? "No members on this team"
-              : `${presentCount}/${unit.members.length} players in`}
-          </p>
-          {teamOut ? (
-            <p className="mt-1 text-sm text-[var(--ops-danger)]">
-              Team absent marks every player out. Tap Present on a player to bring the team back.
-            </p>
-          ) : null}
-        </div>
-        <MarkButtons mark={unit.mark} disabled={disabled} onPick={onUnit} label={unit.name} />
-      </div>
-      {unit.members.length > 0 ? (
-        <ul className="divide-y divide-[var(--ops-line)] border-t border-[var(--ops-line)]">
-          {unit.members.map((member) => (
-            <li
-              key={member.id}
-              className={cn(
-                "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
-                member.effective === "absent" ? "bg-[var(--ops-danger-soft)]/40" : "bg-[var(--ops-board-muted)]/60",
-              )}
-            >
-              <div className="min-w-0">
-                <p className="font-medium">{member.name}</p>
-                {teamOut && member.mark !== "absent" ? (
-                  <p className="text-xs text-[var(--ops-text-muted)]">Out with the team</p>
-                ) : null}
-              </div>
-              <MarkButtons
-                mark={member.effective}
-                disabled={disabled}
-                onPick={(mark) => onMember(member.id, mark)}
-                label={member.name}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </Card>
-  );
-}
-
-export function CallRoomBoard({ sheet, saving, onChange }: Props) {
+export function CallRoomBoard({ sheet, saving, eyebrow, title, onChange }: Props) {
   const [query, setQuery] = useState("");
   const progress = callRoomProgress(sheet);
   const visible = useMemo(
@@ -183,9 +91,12 @@ export function CallRoomBoard({ sheet, saving, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-semibold">{sheet.solo ? "Athletes" : "Teams"}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          {eyebrow ? (
+            <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">{eyebrow}</p>
+          ) : null}
+          <h2 className="text-xl font-semibold">{title || (sheet.solo ? "Athletes" : "Teams")}</h2>
           <p className="text-sm text-[var(--ops-text-muted)]">{callRoomStatusLabel(progress)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -210,30 +121,114 @@ export function CallRoomBoard({ sheet, saving, onChange }: Props) {
         <p className="text-sm text-[var(--ops-text-muted)]">
           {sheet.solo ? "No matching athletes" : "No matching teams"}
         </p>
-      ) : sheet.solo ? (
-        <Card component="ul" className="divide-y divide-[var(--ops-line)] overflow-hidden">
-          {visible.map((unit) => (
-            <AthleteRow
-              key={unit.key}
-              unit={unit}
-              disabled={saving}
-              onPick={(mark) => commit({ type: "unit", key: unit.key, mark })}
-            />
-          ))}
-        </Card>
       ) : (
-        <div className="flex flex-col gap-3">
-          {visible.map((unit) => (
-            <TeamCard
-              key={unit.key}
-              unit={unit}
-              disabled={saving}
-              onUnit={(mark) => commit({ type: "unit", key: unit.key, mark })}
-              onMember={(memberId, mark) => commit({ type: "member", key: unit.key, memberId, mark })}
-            />
-          ))}
+        <div className="ops-table">
+          <table>
+            <thead>
+              <tr>
+                <th className="w-14">#</th>
+                <th>{sheet.solo ? "Athlete" : "Team"}</th>
+                <th className="text-right">Call</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheet.solo
+                ? visible.map((unit, index) => (
+                    <tr key={unit.key} className={unit.mark === "absent" ? "bg-[var(--ops-danger-soft)]/40" : undefined}>
+                      <td className="tabular-nums">{unit.lane ?? index + 1}</td>
+                      <td>
+                        <p className="font-semibold">{unit.name}</p>
+                        {unit.detail ? <p className="text-sm text-[var(--ops-text-muted)]">{unit.detail}</p> : null}
+                      </td>
+                      <td className="text-right">
+                        <MarkButtons
+                          mark={unit.mark}
+                          disabled={saving}
+                          onPick={(mark) => commit({ type: "unit", key: unit.key, mark })}
+                          label={unit.name}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                : visible.map((unit) => (
+                    <TeamRows
+                      key={unit.key}
+                      unit={unit}
+                      disabled={saving}
+                      onUnit={(mark) => commit({ type: "unit", key: unit.key, mark })}
+                      onMember={(memberId, mark) => commit({ type: "member", key: unit.key, memberId, mark })}
+                    />
+                  ))}
+            </tbody>
+          </table>
         </div>
       )}
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--ops-text-muted)]">
+        <span>
+          Present: <strong className="text-[var(--ops-success)]">{progress.present}</strong>
+        </span>
+        <span>
+          Absent: <strong className="text-[var(--ops-danger)]">{progress.absent}</strong>
+        </span>
+        <span>
+          Unmarked: <strong className="text-[var(--ops-text)]">{progress.unset}</strong>
+        </span>
+        <span className="ml-auto">
+          Total: <strong className="text-[var(--ops-text)]">{progress.total}</strong>
+        </span>
+      </p>
     </div>
+  );
+}
+
+function TeamRows({
+  unit,
+  disabled,
+  onUnit,
+  onMember,
+}: {
+  unit: CallRoomUnit;
+  disabled?: boolean;
+  onUnit: (mark: CallRoomMark) => void;
+  onMember: (memberId: string, mark: CallRoomMark) => void;
+}) {
+  const teamOut = unit.mark === "absent";
+  const presentCount = unit.members.filter((member) => member.effective === "present").length;
+  return (
+    <>
+      <tr className="bg-[var(--ops-board-muted)]">
+        <td className="tabular-nums">{unit.lane ?? ""}</td>
+        <td>
+          <p className="font-semibold">{unit.name}</p>
+          <p className="text-sm text-[var(--ops-text-muted)]">
+            {unit.detail ? `${unit.detail} · ` : ""}
+            {unit.members.length === 0 ? "No members" : `${presentCount}/${unit.members.length} in`}
+            {teamOut ? " · team out" : ""}
+          </p>
+        </td>
+        <td className="text-right">
+          <MarkButtons mark={unit.mark} disabled={disabled} onPick={onUnit} label={unit.name} />
+        </td>
+      </tr>
+      {unit.members.map((member) => (
+        <tr key={member.id} className={member.effective === "absent" ? "bg-[var(--ops-danger-soft)]/40" : undefined}>
+          <td />
+          <td className="pl-8">
+            <p className="font-medium">{member.name}</p>
+            {teamOut && member.mark !== "absent" ? (
+              <p className="text-xs text-[var(--ops-text-muted)]">Out with the team</p>
+            ) : null}
+          </td>
+          <td className="text-right">
+            <MarkButtons
+              mark={member.effective}
+              disabled={disabled}
+              onPick={(mark) => onMember(member.id, mark)}
+              label={member.name}
+            />
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }

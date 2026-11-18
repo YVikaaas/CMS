@@ -89,7 +89,6 @@ export default function ResultsPage() {
   }, [teams]);
 
   const boards = visibleFixtures.filter((row) => (matchesByFixture.get(row.id) ?? []).length > 0);
-  const showTitles = boards.length > 1;
 
   if (loading || !ready) {
     return <PageSkeleton kind="desk" />;
@@ -131,7 +130,6 @@ export default function ResultsPage() {
               fixture={fixture}
               matches={matchesByFixture.get(fixture.id) ?? []}
               orgByTeamId={orgByTeamId}
-              showTitle={showTitles}
             />
           ))}
         </div>

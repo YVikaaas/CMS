@@ -11,10 +11,11 @@ import {
   PageHeader,
   PageSkeleton,
   SoftButton,
+  SoftCard,
   StatusBadge,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
-import { listChampionshipOfferings, listSports } from "@/lib/services";
+import { listChampionshipOfferings, listFixtures, listSports } from "@/lib/services";
 import type { ChampionshipOffering, Sport } from "@/lib/types/cms";
 import { compareNumber, compareText, type SortState } from "@/lib/utils/table";
 import {
@@ -32,6 +33,7 @@ export default function FixturesPage() {
   const skipFilterNav = useRef(true);
   const [sports, setSports] = useState<Sport[]>([]);
   const [offerings, setOfferings] = useState<ChampionshipOffering[]>([]);
+  const [drawCount, setDrawCount] = useState(0);
   const [filter, setFilter] = useState<EventFilterValue | null>(null);
   const [ready, setReady] = useState(false);
   const [sort, setSort] = useState<SortState<"name" | "code" | "mode" | "categories">>({
@@ -43,17 +45,21 @@ export default function FixturesPage() {
     if (!selected) {
       setSports([]);
       setOfferings([]);
+      setDrawCount(0);
       setReady(true);
       return;
     }
-    const [sportRes, offerRes] = await Promise.all([
+    const [sportRes, offerRes, fixtureRes] = await Promise.all([
       listSports(),
       listChampionshipOfferings(selected.id),
+      listFixtures(selected.id),
     ]);
     if (sportRes.error) toast.error(sportRes.error.message);
     if (offerRes.error) toast.error(offerRes.error.message);
+    if (fixtureRes.error) toast.error(fixtureRes.error.message);
     setOfferings(offerRes.data ?? []);
     setSports(offeredSports(sportRes.data ?? [], offerRes.data ?? []));
+    setDrawCount(fixtureRes.data?.length ?? 0);
     setReady(true);
   }, [selected]);
 
@@ -126,6 +132,27 @@ export default function FixturesPage() {
       ) : visibleSports.length === 0 ? (
         <EmptyState title="No sports for this filter" hint="Clear a chip to see more." />
       ) : (
+        <>
+        <SoftCard className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">Sports</p>
+            <p className="text-2xl font-semibold tabular-nums">{visibleSports.length}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">Categories</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {visibleSports.reduce(
+                (sum, sport) =>
+                  sum + (offerings.find((item) => item.sportId === sport.id)?.categoryIds.length ?? 0),
+                0,
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">Draws</p>
+            <p className="text-2xl font-semibold tabular-nums">{drawCount}</p>
+          </div>
+        </SoftCard>
         <TableCard title="Sports">
           <table>
             <thead>
@@ -158,6 +185,7 @@ export default function FixturesPage() {
             </tbody>
           </table>
         </TableCard>
+        </>
       )}
     </div>
   );

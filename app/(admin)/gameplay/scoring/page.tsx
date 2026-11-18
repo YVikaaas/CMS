@@ -198,25 +198,23 @@ function ScoringDesk() {
                         setPlayerPane(false);
                         router.replace(`/gameplay/scoring?match=${row.id}`);
                       }}
-                      className={`flex w-full items-start justify-between gap-3 border-b border-[var(--ops-line)] px-1 py-3 text-left last:border-b-0 ${
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left ${
                         selectedMatchId === row.id
-                          ? "bg-[var(--ops-primary-soft)]"
-                          : "hover:bg-[var(--ops-row-hover)]"
+                          ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
+                          : "border-[var(--ops-line)] bg-white hover:bg-[var(--ops-row-hover)]"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold">
-                          {isHeatMatch(row)
-                            ? heatQueueTitle(row)
-                            : `${row.team1Name} vs ${row.team2Name}`}
-                        </p>
-                        <StatusBadge tone={statusTone(row.status)}>
-                          {row.status.replace("_", " ")}
-                        </StatusBadge>
-                      </div>
-                      <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
-                        {isHeatMatch(row) ? heatQueueHint(row) : displayScore(row)}
-                      </p>
+                      <span className="min-w-0">
+                        <span className="block font-semibold">
+                          {isHeatMatch(row) ? heatQueueTitle(row) : `${row.team1Name} vs ${row.team2Name}`}
+                        </span>
+                        <span className="block text-sm text-[var(--ops-text-muted)]">
+                          {isHeatMatch(row) ? heatQueueHint(row) : displayScore(row)}
+                        </span>
+                      </span>
+                      <StatusBadge tone={statusTone(row.status)}>
+                        {row.status.replace("_", " ")}
+                      </StatusBadge>
                     </button>
                   ))
                 )}

@@ -17,12 +17,10 @@ export function CategoryResultsBoard({
   fixture,
   matches,
   orgByTeamId,
-  showTitle,
 }: {
   fixture: Fixture;
   matches: FixtureMatch[];
   orgByTeamId: Record<string, string | null>;
-  showTitle?: boolean;
 }) {
   const rounds = useMemo(
     () => sortRoundTypesPresent(matches.map((row) => row.roundType)),
@@ -51,14 +49,11 @@ export function CategoryResultsBoard({
 
   return (
     <section className="flex flex-col gap-4">
-      {showTitle ? (
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
-            {fixture.sportName}
-          </p>
-          <h2 className="text-base font-semibold">{fixture.categoryLabel}</h2>
-        </div>
-      ) : null}
+      <div className="rounded-xl bg-[var(--ops-primary)] px-4 py-3 text-[var(--ops-on-primary)]">
+        <p className="text-sm font-semibold">
+          {fixture.sportName} · {fixture.categoryLabel}
+        </p>
+      </div>
       <ResultsPhaseTabs ariaLabel="Rounds" tabs={tabs} value={tab} onChange={setTab} />
       {tab === "ranking" ? (
         <FixtureRankingBoard fixture={fixture} readOnly />

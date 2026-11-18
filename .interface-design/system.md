@@ -135,11 +135,11 @@ Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`
 
 ### Floor — Call Room (`/gameplay/call-room`)
 
-Wait for filters. Round chips no All. `SplitWorkspace`: match queue | present/absent. Solo heats mark athletes. Basketball and relays mark the team and each member; team absent puts every player out.
+Wait for filters. Round chips no All. `SplitWorkspace`: heat chips on the left, call table on the right. The board title is the sport, round, category, and heat from the selected match. Solo rows are lane, athlete, Present/Absent. Team rows group members under the team. Footer counts are present, absent, unmarked, and total from `callRoomProgress`. Present / Absent is an MUI `ToggleButtonGroup` (92px buttons, 44px tall). Picked = soft tint with dark text (`--ops-success-soft` / `--ops-danger-soft`), never a solid fill. No BIB, verification, delay, or sports-manager fields.
 
 ### Floor — Fixtures
 
-Present / Absent is an MUI `ToggleButtonGroup` (92px buttons, 44px tall). Picked = soft tint with dark text (`--ops-success-soft` / `--ops-danger-soft`), never a solid fill. Team header and player rows share one list with 16px side padding, so every toggle sits in the same column.
+A count strip above the sport table shows sports in the current filter, categories offered, and draws already created. Those numbers come from offerings and `listFixtures`. The table stays the way in.
 
 ```text
 /gameplay/fixtures                  Sport filter only
@@ -151,15 +151,15 @@ Default venue copy for basketball: `"Court 1"`. Athletics create-draw does not p
 
 ### Floor — Scoring (`/gameplay/scoring`)
 
-Wait for filters. Round chips no All. `SplitWorkspace`: match queue | `ScoreMatchBoard`. Sticky Save progress / Complete.
+Wait for filters. Round chips no All. `SplitWorkspace`: heat chips on the left, score table on the right. Athletics opens with sport, round, category, and heat, then lane, athlete, status, and time or mark. Sticky Save progress / Complete. No upload sheet and no auto-position control.
 
 ### Floor — Results (`/gameplay/results`)
 
-Wait for filters. One `CategoryResultsBoard` per fixture. **One** round-tab row, no All. League = `ResultMatchCard` grid. Knockout = `KnockoutResultsBoard`. Read-only.
+Wait for filters. One `CategoryResultsBoard` per fixture, with a teal identity bar (sport and category). **One** round-tab row, no All. Athletics heats are place, lane, athlete, and time. League = `ResultMatchCard` grid. Knockout = `KnockoutResultsBoard`. Read-only.
 
 ### Floor — Podium (`/gameplay/podium`)
 
-Wait for filters. Category appears only after scoring locks 1st–3rd. Gold / silver / bronze delivery. Teams list members; solo lists athlete details.
+Wait for filters. Category appears only after scoring locks 1st–3rd. Holders show bronze, then silver, then gold, with mark delivered. Teams list members; solo lists athlete details. No script, sound board, or ceremony queue.
 
 ### Account Setting (`/account`)
 

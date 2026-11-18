@@ -44,30 +44,37 @@ export function PodiumBoard({
     );
   }
 
+  const ordered = [...holders].sort((a, b) => b.rank - a.rank);
+  const delivered = holders.filter((holder) => holder.deliveredAt).length;
+
   return (
-    <div className="divide-y divide-[var(--ops-line)]">
-      {holders.map((holder) => {
+    <div className="flex flex-col gap-1">
+      <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
+        Medal order · {delivered}/{holders.length} delivered
+      </p>
+      <div className="divide-y divide-[var(--ops-line)]">
+      {ordered.map((holder) => {
         const place = orgCityLine(holder.orgName, holder.city);
-        const delivered = Boolean(holder.deliveredAt);
+        const handed = Boolean(holder.deliveredAt);
         return (
           <section key={holder.rankingId} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge tone={podiumTone(holder.rank)}>{podiumPlaceLabel(holder.rank)}</StatusBadge>
-                  <StatusBadge tone={delivered ? "success" : "neutral"}>
-                    {delivered ? "Delivered" : "Waiting"}
+                  <StatusBadge tone={handed ? "success" : "neutral"}>
+                    {handed ? "Delivered" : "Waiting"}
                   </StatusBadge>
                 </div>
                 <p className="mt-2 text-lg font-semibold">{holder.name}</p>
                 {place ? <p className="text-sm text-[var(--ops-text-muted)]">{place}</p> : null}
               </div>
               <SoftButton
-                variant={delivered ? "default" : "primary"}
+                variant={handed ? "default" : "primary"}
                 loading={savingId === holder.rankingId}
-                onClick={() => onDeliver(holder.rankingId, !delivered)}
+                onClick={() => onDeliver(holder.rankingId, !handed)}
               >
-                {delivered ? "Undo delivery" : "Mark delivered"}
+                {handed ? "Undo delivery" : "Mark delivered"}
               </SoftButton>
             </div>
             {holder.kind === "athlete" ? (
@@ -89,6 +96,7 @@ export function PodiumBoard({
           </section>
         );
       })}
+      </div>
     </div>
   );
 }
