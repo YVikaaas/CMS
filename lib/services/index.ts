@@ -3,8 +3,8 @@ export {
   browserAuthSignOut,
   browserAuthSubscribe,
 } from "./authSessionBrowser";
-export { authSendMagicLink, authSignInWithPassword } from "./authEmail";
-export { ensureCurrentUser, getCurrentAppUser, completeOnboarding } from "./users";
+export { authChangePassword, authSendMagicLink, authSignInWithPassword } from "./authEmail";
+export { ensureCurrentUser, getCurrentAppUser, completeOnboarding, updateProfile } from "./users";
 export {
   listSports,
   createSport,

@@ -85,10 +85,11 @@ export async function getCurrentAppUser(): Promise<ServiceResult<AppUser>> {
   return { data: toAppUser(data, roles), error: null };
 }
 
-export async function completeOnboarding(input: {
-  fullName: string;
-  phone: string;
-}): Promise<ServiceResult<AppUser>> {
+/** Shared write for onboarding and account settings: validates, then updates the signed-in user's row. */
+async function writeProfile(
+  input: { fullName: string; phone: string },
+  extra: { onboarded_at?: string } = {},
+): Promise<ServiceResult<AppUser>> {
   const supabase = createClient();
   const {
     data: { user },
@@ -105,11 +106,7 @@ export async function completeOnboarding(input: {
 
   const { data, error } = await supabase
     .from("users")
-    .update({
-      full_name: input.fullName.trim(),
-      phone: input.phone.trim(),
-      onboarded_at: new Date().toISOString(),
-    })
+    .update({ full_name: input.fullName.trim(), phone: input.phone.trim(), ...extra })
     .eq("id", user.id)
     .select("id, email, full_name, phone, onboarded_at")
     .single();
@@ -120,4 +117,19 @@ export async function completeOnboarding(input: {
 
   const roles = await loadRoles(supabase, user.id);
   return { data: toAppUser(data, roles), error: null };
+}
+
+export async function completeOnboarding(input: {
+  fullName: string;
+  phone: string;
+}): Promise<ServiceResult<AppUser>> {
+  return writeProfile(input, { onboarded_at: new Date().toISOString() });
+}
+
+/** Account settings: change name and phone. Email stays as Auth owns it. */
+export async function updateProfile(input: {
+  fullName: string;
+  phone: string;
+}): Promise<ServiceResult<AppUser>> {
+  return writeProfile(input);
 }

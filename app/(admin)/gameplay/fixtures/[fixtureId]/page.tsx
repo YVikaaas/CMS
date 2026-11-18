@@ -18,6 +18,7 @@ import {
   StatusBadge,
   StepCrumbs,
   StickyActionBar,
+  useConfirm,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
@@ -83,6 +84,7 @@ function statusTone(status: FixtureMatchStatus) {
 }
 
 export default function FixtureWorkspacePage() {
+  const confirm = useConfirm();
   const params = useParams<{ fixtureId: string }>();
   const fixtureId = params.fixtureId;
   const { selected, loading } = useChampionship();
@@ -407,7 +409,7 @@ export default function FixtureWorkspacePage() {
                   className={`rounded-xl border px-3 py-3 text-left ${
                     selectedMatchId === row.id
                       ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                      : "border-[var(--ops-line)] bg-white hover:bg-[var(--ops-board-muted)]"
+                      : "border-transparent bg-[var(--ops-board-muted)] hover:bg-[var(--ops-surface-hover)]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -440,7 +442,7 @@ export default function FixtureWorkspacePage() {
                     ? "New heat"
                     : "New match"}
               </p>
-              <label className="flex flex-col gap-1 text-sm font-medium">
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
                 {athletics ? "Heat label" : "Match label"}
                 <input
                   value={form.matchLabel}
@@ -486,7 +488,7 @@ export default function FixtureWorkspacePage() {
                 />
               ) : (
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-                <label className="flex flex-col gap-1 text-sm font-medium">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Team 1
                   <SoftSelect
                     value={form.team1Id}
@@ -504,7 +506,7 @@ export default function FixtureWorkspacePage() {
                   </SoftSelect>
                 </label>
                 <p className="pb-2 text-center text-sm font-semibold text-[var(--ops-text-muted)]">vs</p>
-                <label className="flex flex-col gap-1 text-sm font-medium">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Team 2
                   <SoftSelect
                     value={form.team2Id}
@@ -524,7 +526,7 @@ export default function FixtureWorkspacePage() {
               </div>
               )}
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 text-sm font-medium">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Venue
                   <input
                     value={form.venue}
@@ -534,7 +536,7 @@ export default function FixtureWorkspacePage() {
                     className={fieldClass}
                   />
                 </label>
-                <label className="flex flex-col gap-1 text-sm font-medium">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   {athletics ? "Start" : "Tip-off"}
                   <input
                     type="datetime-local"
@@ -546,7 +548,7 @@ export default function FixtureWorkspacePage() {
                   />
                 </label>
               </div>
-              <label className="flex flex-col gap-1 text-sm font-medium">
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
                 Status
                 <SoftSelect
                   value={form.status}
@@ -569,7 +571,7 @@ export default function FixtureWorkspacePage() {
                     variant="danger"
                     onClick={async () => {
                       const row = matches.find((item) => item.id === selectedMatchId);
-                      if (!row || !confirm(`Delete ${row.matchLabel}?`)) return;
+                      if (!row || !(await confirm({ title: `Delete ${row.matchLabel}?`, message: "The match and its scores are removed.", confirmLabel: "Delete" }))) return;
                       const { error } = await archiveMatch(row.id);
                       if (error) toast.error(error.message);
                       else {

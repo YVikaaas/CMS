@@ -1,14 +1,16 @@
+import Chip from "@mui/material/Chip";
 import { cn } from "@/lib/utils/cn";
 
 export type StatusBadgeTone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
 
+// NiceAdmin table chip: small, pill, 15% tint with the dark shade as text.
 const toneClass: Record<StatusBadgeTone, string> = {
-  neutral: "border-[var(--ops-line)] bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]",
-  primary: "border-[var(--ops-primary)]/20 bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]",
-  success: "border-[var(--ops-success)]/20 bg-[var(--ops-success-soft)] text-[var(--ops-success)]",
-  warning: "border-[var(--ops-warning)]/20 bg-[var(--ops-warning-soft)] text-[var(--ops-warning)]",
-  danger: "border-[var(--ops-danger)]/20 bg-[var(--ops-danger-soft)] text-[var(--ops-danger)]",
-  info: "border-[var(--ops-primary)]/20 bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]",
+  neutral: "bg-[var(--ops-surface-hover)] text-[var(--ops-text-muted)]",
+  primary: "bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]",
+  success: "bg-[var(--ops-success-soft)] text-[var(--ops-success)]",
+  warning: "bg-[var(--ops-warning-soft)] text-[var(--ops-warning)]",
+  danger: "bg-[var(--ops-danger-soft)] text-[var(--ops-danger)]",
+  info: "bg-[var(--ops-info-soft)] text-[var(--ops-info)]",
 };
 
 export function StatusBadge({
@@ -21,14 +23,10 @@ export function StatusBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-xs font-semibold leading-none",
-        toneClass[tone],
-        className,
-      )}
-    >
-      {children}
-    </span>
+    <Chip
+      size="small"
+      label={children}
+      className={cn("max-w-full rounded-full text-xs font-semibold", toneClass[tone], className)}
+    />
   );
 }

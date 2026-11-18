@@ -56,7 +56,7 @@ export function PlayerScoresModal({
             {sumPlayerPoints(events, match.team2Id)} {match.team2Name}
           </p>
           <TableControls search={search} onSearch={setSearch} placeholder="Search player">
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Points
               <select
                 value={pointsFilter}
@@ -143,28 +143,28 @@ function TeamScoreTable({
   onUndo: (event: MatchScoreEvent) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--cms-line)]">
-      <p className="border-b border-[var(--cms-line)] px-4 py-3 text-sm font-semibold">
+    <div className="ops-table">
+      <p className="border-b border-[var(--ops-line)] px-4 py-3 text-sm font-semibold">
         {teamName} · {total}
       </p>
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-[var(--cms-muted)]">
+      <table>
+        <thead>
           <tr>
             <SortTh label="Player" column="player" sort={sort} onSort={onSort} />
             <SortTh label="Pts" column="points" sort={sort} onSort={onSort} />
-            <th className="px-4 py-3 font-medium" />
+            <th className="p-4 font-medium" />
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-[var(--cms-line)]">
-              <td className="px-4 py-3">{row.teamMemberName}</td>
-              <td className="px-4 py-3">{row.points}</td>
-              <td className="px-4 py-3 text-right">
+            <tr key={row.id} className="border-t border-[var(--ops-line)] hover:bg-[var(--ops-row-hover)]">
+              <td className="p-4">{row.teamMemberName}</td>
+              <td className="p-4">{row.points}</td>
+              <td className="p-4 text-right">
                 <button
                   type="button"
                   disabled={Boolean(busyId)}
-                  className="text-red-600"
+                  className="text-[var(--ops-danger)]"
                   onClick={() => onUndo(row)}
                 >
                   Undo

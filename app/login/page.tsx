@@ -5,7 +5,7 @@ import EmailMagicLinkForm from "./EmailMagicLinkForm";
 function CmsMark() {
   return (
     <span
-      className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] text-xl font-semibold text-white"
+      className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] font-display text-xl font-bold text-[var(--ops-on-primary)]"
       aria-hidden
     >
       C
@@ -15,8 +15,8 @@ function CmsMark() {
 
 export default function LoginPage() {
   return (
-    <main className="ops-page-enter flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)] p-8 shadow-[var(--ops-shadow-card)]">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
+      <div className="soft-card w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-3">
           <CmsMark />
           <h1 className="text-xl font-semibold tracking-tight">CMS</h1>

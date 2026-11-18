@@ -124,7 +124,7 @@ export default function ResultsPage() {
       ) : boards.length === 0 ? (
         <EmptyState title="No results for this filter" hint="Try another sport / gender / age / category." />
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           {boards.map((fixture) => (
             <CategoryResultsBoard
               key={fixture.id}

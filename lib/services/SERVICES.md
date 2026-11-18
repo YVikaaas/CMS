@@ -36,6 +36,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 |----------|--------|--------|--------|
 | `authSignInWithPassword` | `{ email, password }` | `Promise<{ error: AuthError \| null }>` | Email + password. No mail sent. |
 | `authSendMagicLink` | `{ email, emailRedirectTo }` | `Promise<{ error: AuthError \| null }>` | `signInWithOtp` email; `shouldCreateUser: true`. Redirect must be on the Auth allowlist. |
+| `authChangePassword` | `{ currentPassword, newPassword }` | `Promise<{ error: { message } \| null }>` | Validates with `passwordError`; re-checks the current password with `signInWithPassword`, then `auth.updateUser({ password })`. |
 
 ---
 
@@ -46,6 +47,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `ensureCurrentUser()` | — | `ServiceResult<AppUser>` | Upserts `public.users` keyed to Auth `id`, then returns `getCurrentAppUser()`. |
 | `getCurrentAppUser()` | — | `ServiceResult<AppUser>` | `users` row + `user_roles`. `isOnboarded` requires name, phone, `onboarded_at`. |
 | `completeOnboarding({ fullName, phone })` | strings | `ServiceResult<AppUser>` | Writes name/phone/`onboarded_at` on the current user. |
+| `updateProfile({ fullName, phone })` | strings | `ServiceResult<AppUser>` | Account settings. Same validation as onboarding (`nameError`, `phoneError`); does not touch `onboarded_at` or email. |
 
 ---
 

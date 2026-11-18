@@ -1,28 +1,33 @@
 "use client";
 
+import InputAdornment from "@mui/material/InputAdornment";
+import OutlinedInput from "@mui/material/OutlinedInput";
 import type { InputHTMLAttributes } from "react";
-import { Search } from "lucide-react";
+import { IconSearch } from "@tabler/icons-react";
 import { cn } from "@/lib/utils/cn";
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "size"> & {
   onSearch?: () => void;
 };
 
-export function SoftSearch({ className, onSearch, ...rest }: Props) {
+export function SoftSearch({ className, onSearch, value, onChange, placeholder, disabled, ...rest }: Props) {
   return (
-    <label className="relative block min-w-0 flex-1">
-      <Search
-        size={16}
-        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--ops-text-muted)]"
-      />
-      <input
-        type="search"
-        onKeyDown={(event) => {
-          if (event.key === "Enter") onSearch?.();
-        }}
-        className={cn("ops-control w-full pl-9", className)}
-        {...rest}
-      />
-    </label>
+    <OutlinedInput
+      type="search"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={cn("min-w-0 flex-1", className)}
+      startAdornment={
+        <InputAdornment position="start">
+          <IconSearch size={16} />
+        </InputAdornment>
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Enter") onSearch?.();
+      }}
+      inputProps={rest}
+    />
   );
 }

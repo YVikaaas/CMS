@@ -1,9 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut, Menu, X } from "lucide-react";
+import AppBar from "@mui/material/AppBar";
+import Avatar from "@mui/material/Avatar";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
+import Toolbar from "@mui/material/Toolbar";
+import {
+  IconComponents,
+  IconLayoutDashboard,
+  IconLayoutSidebar,
+  IconLock,
+  IconLogout,
+  IconMail,
+  IconTrophy,
+  IconUserCircle,
+  IconX,
+} from "@tabler/icons-react";
 import { ChampionshipProvider, useChampionship } from "@/app/providers/ChampionshipProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
@@ -13,7 +34,6 @@ import {
   NAV_SECTIONS,
   isNavItemActive,
   needsChampionship,
-  pathTitle,
 } from "@/lib/utils/nav";
 import { cn } from "@/lib/utils/cn";
 
@@ -41,33 +61,28 @@ function Sidebar({
 }) {
   const pathname = usePathname();
   const showLabels = !collapsed || isMobile;
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    floor: true,
-    setup: true,
-    catalog: false,
-  });
 
-  const itemButton = (item: (typeof ADMIN_NAV)[number], nested: boolean) => {
+  const itemButton = (item: (typeof ADMIN_NAV)[number]) => {
     const Icon = item.icon;
     const active = isNavItemActive(pathname, item.href);
     return (
-      <Link
+      <ListItemButton
         key={item.href}
+        component={Link}
         href={item.href}
+        selected={active}
         aria-current={active ? "page" : undefined}
         title={!showLabels ? item.label : undefined}
         onClick={onClose}
-        className={cn(
-          "flex min-h-11 w-full items-center rounded-xl text-left text-sm font-semibold",
-          !showLabels ? "justify-center px-0" : nested ? "gap-3 py-2 pr-3 pl-3" : "gap-3 px-3",
-          active
-            ? "bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]"
-            : "text-[var(--ops-text-muted)] hover:bg-[var(--ops-surface-hover)] hover:text-[var(--ops-text)]",
-        )}
+        className={cn(!showLabels && "justify-center")}
       >
-        {Icon ? <Icon size={18} className="shrink-0" strokeWidth={active ? 2.25 : 1.75} /> : null}
-        {showLabels ? <span className="truncate">{item.label}</span> : null}
-      </Link>
+        {Icon ? (
+          <ListItemIcon className={cn(!showLabels && "min-w-0")}>
+            <Icon size={20} stroke={1.5} />
+          </ListItemIcon>
+        ) : null}
+        {showLabels ? <ListItemText primary={item.label} /> : null}
+      </ListItemButton>
     );
   };
 
@@ -75,59 +90,51 @@ function Sidebar({
     <aside
       className={cn(
         "z-40 flex h-dvh shrink-0 flex-col border-r border-[var(--ops-line)] bg-[var(--ops-surface)]",
-        collapsed && !isMobile ? "w-[76px]" : "w-[248px]",
-        isMobile && "w-full",
+        collapsed && !isMobile ? "w-[88px]" : "w-[270px]",
+        isMobile && "w-full border-r-0",
       )}
     >
-      <div className="relative flex shrink-0 items-center gap-2 px-3 py-4">
+      <div className={cn("relative flex h-[70px] shrink-0 items-center", showLabels ? "px-6" : "justify-center")}>
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2" onClick={onClose}>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ops-primary)] text-sm font-semibold text-white">
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#030e09] text-sm font-bold text-[var(--ops-accent)]">
             C
           </span>
-          {showLabels ? (
-            <span className="truncate text-sm font-semibold">CMS</span>
-          ) : null}
+          {showLabels ? <span className="truncate text-[22px] font-semibold text-[#030e09]">CMS</span> : null}
         </Link>
         {isMobile && onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-2 inline-flex size-10 items-center justify-center rounded-xl text-[var(--ops-text-muted)] hover:bg-[var(--ops-surface-hover)]"
-            aria-label="Close menu"
-          >
-            <X size={20} />
-          </button>
+          <IconButton onClick={onClose} aria-label="Close menu" className="absolute right-3">
+            <IconX size={20} />
+          </IconButton>
         ) : null}
       </div>
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {ADMIN_NAV.filter((item) => !item.section).map((item) => itemButton(item, false))}
+      <nav className={cn("flex-1 overflow-y-auto pb-6", showLabels ? "px-6" : "px-4")}>
+        <List disablePadding>
+          {showLabels ? <ListSubheader className="mt-6">Dashboard</ListSubheader> : null}
+          {ADMIN_NAV.filter((item) => !item.section).map(itemButton)}
+        </List>
         {NAV_SECTIONS.map((section) => {
           const items = ADMIN_NAV.filter((item) => item.section === section.id);
           if (items.length === 0) return null;
-          const open = openSections[section.id] ?? true;
           return (
-            <div key={section.id} className="mt-2">
-              {showLabels ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenSections((prev) => ({ ...prev, [section.id]: !open }))
-                  }
-                  className="flex min-h-9 w-full items-center justify-between rounded-lg px-2 text-[11px] font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase"
-                >
-                  {section.label}
-                  <ChevronDown size={14} className={cn("transition", open ? "rotate-0" : "-rotate-90")} />
-                </button>
-              ) : (
-                <div className="mx-auto my-2 h-px w-8 bg-[var(--ops-line)]" />
-              )}
-              {open || !showLabels ? items.map((item) => itemButton(item, true)) : null}
-            </div>
+            <List key={section.id} disablePadding>
+              <Divider className="my-4" />
+              {showLabels ? <ListSubheader className="mt-0">{section.label}</ListSubheader> : null}
+              {items.map(itemButton)}
+            </List>
           );
         })}
       </nav>
     </aside>
   );
+}
+
+function initials(name: string): string {
+  return name
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -138,17 +145,18 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { championships, selectedId, setSelectedId, loading } = useChampionship();
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     setCollapsed(screen !== "desktop");
   }, [screen]);
 
-  const title = useMemo(() => pathTitle(pathname), [pathname]);
   const gated = needsChampionship(pathname) && !loading && championships.length === 0;
+  const userName = appUser?.fullName || appUser?.email || "";
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[var(--ops-bg)]">
-      <div className="relative hidden h-full w-[76px] shrink-0 sm:block xl:w-auto">
+      <div className="relative hidden h-full w-[88px] shrink-0 sm:block xl:w-auto">
         <div className="absolute inset-y-0 left-0 z-40 xl:static">
           <Sidebar
             collapsed={collapsed}
@@ -159,47 +167,43 @@ function Shell({ children }: { children: React.ReactNode }) {
       {screen === "tablet" && !collapsed ? (
         <button
           type="button"
-          className="fixed inset-0 z-[35] hidden bg-black/30 sm:block xl:hidden"
+          className="fixed inset-0 z-[35] hidden bg-[var(--ops-overlay)] sm:block xl:hidden"
           aria-label="Collapse menu"
           onClick={() => setCollapsed(true)}
         />
       ) : null}
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 sm:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/30"
-            aria-label="Close menu"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative h-full w-[280px] bg-[var(--ops-surface)] shadow-xl">
-            <Sidebar isMobile onClose={() => setMobileOpen(false)} collapsed={false} />
-          </div>
-        </div>
-      ) : null}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-[var(--ops-line)] bg-[var(--ops-surface)] px-4 py-3">
-          <button
-            type="button"
-            className="inline-flex size-10 items-center justify-center rounded-xl border border-[var(--ops-line)] text-[var(--ops-text-muted)] hover:bg-[var(--ops-surface-hover)]"
-            aria-label="Menu"
-            onClick={() => {
-              if (screen === "mobile") setMobileOpen(true);
-              else setCollapsed((value) => !value);
-            }}
-          >
-            <Menu size={18} />
-          </button>
-          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h1>
-          <label className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="hidden shrink-0 text-[var(--ops-text-muted)] sm:inline">Championship</span>
+      <Drawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        className="sm:hidden"
+        slotProps={{ paper: { className: "w-[270px]" } }}
+      >
+        <Sidebar isMobile onClose={() => setMobileOpen(false)} collapsed={false} />
+      </Drawer>
+      <div className="flex min-w-0 flex-1 flex-col overflow-auto">
+        <AppBar position="sticky">
+          <Toolbar className="gap-2">
+            <IconButton
+              aria-label={screen === "mobile" ? "Open menu" : collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              color="inherit"
+              onClick={() => {
+                if (screen === "mobile") setMobileOpen(true);
+                else setCollapsed((value) => !value);
+              }}
+            >
+              <IconLayoutSidebar size={20} stroke={1.5} />
+            </IconButton>
+            {/* NiceAdmin puts search here; CMS puts the championship everything else depends on */}
             {loading ? (
-              <Shimmer className="h-11 w-40 sm:w-52" />
+              <Shimmer className="h-9 w-48 sm:w-64" />
             ) : (
               <SoftSelect
+                size="small"
                 value={selectedId ?? ""}
                 onChange={(event) => setSelectedId(event.target.value || null)}
-                className="max-w-[16rem]"
+                className="w-full min-w-0 max-w-[18rem]"
+                aria-label="Championship"
+                startIcon={<IconTrophy size={18} stroke={1.5} />}
               >
                 {championships.length === 0 ? (
                   <option value="">No championships yet</option>
@@ -212,36 +216,83 @@ function Shell({ children }: { children: React.ReactNode }) {
                 )}
               </SoftSelect>
             )}
-          </label>
-          <p className="hidden max-w-[10rem] truncate text-xs text-[var(--ops-text-muted)] xl:block">
-            {appUser?.fullName || appUser?.email}
-          </p>
-          <button
-            type="button"
-            onClick={() => void signOut("/login")}
-            className="inline-flex size-10 items-center justify-center rounded-xl border border-[var(--ops-line)] text-[var(--ops-text-muted)] hover:border-[var(--ops-danger)] hover:text-[var(--ops-danger)]"
-            aria-label="Sign out"
-          >
-            <LogOut size={18} />
-          </button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
-          <div key={pathname} className="ops-page-enter">
-            {gated ? (
-              <EmptyState
-                title="Create a championship to get started"
-                hint="Floor pages need a championship in the header."
-                action={
-                  <Link href="/championships">
-                    <SoftButton variant="primary">Championships</SoftButton>
-                  </Link>
-                }
-              />
-            ) : (
-              children
-            )}
+            <div className="flex-1" />
+            <IconButton
+              aria-label="Open profile"
+              aria-haspopup="dialog"
+              onClick={() => setProfileOpen(true)}
+              className="p-1"
+            >
+              <Avatar className="size-[34px] bg-[var(--ops-primary)] text-xs font-semibold text-[var(--ops-accent)]">
+                {initials(userName) || "?"}
+              </Avatar>
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+        <Drawer
+          anchor="right"
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          slotProps={{ paper: { className: "w-[270px]" } }}
+        >
+          <div className="flex h-full flex-col">
+            <div className="flex justify-end p-2">
+              <IconButton aria-label="Close profile" onClick={() => setProfileOpen(false)}>
+                <IconX size={20} />
+              </IconButton>
+            </div>
+            <div className="flex flex-col items-center gap-1 px-6 pb-6 text-center">
+              <Avatar className="mb-2 size-[72px] bg-[var(--ops-primary)] text-xl font-semibold text-[var(--ops-accent)]">
+                {initials(userName) || "?"}
+              </Avatar>
+              <p className="text-base font-semibold">{appUser?.fullName || "No name yet"}</p>
+              <p className="flex items-center gap-1 text-sm text-[var(--ops-text-muted)]">
+                <IconMail size={14} />
+                <span className="truncate">{appUser?.email}</span>
+              </p>
+              {appUser?.roles.length ? (
+                <p className="text-xs text-[var(--ops-text-muted)] capitalize">{appUser.roles.join(" · ")}</p>
+              ) : null}
+            </div>
+            <Divider />
+            <List className="px-3 py-3">
+              {[
+                { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
+                { href: "/account", label: "Account Setting", icon: IconUserCircle },
+                { href: "/account#security", label: "Change password", icon: IconLock },
+                { href: "/ui-kit", label: "UI Kit", icon: IconComponents },
+              ].map(({ href, label, icon: Icon }) => (
+                <ListItemButton key={href} component={Link} href={href} onClick={() => setProfileOpen(false)}>
+                  <ListItemIcon>
+                    <Icon size={20} stroke={1.5} />
+                  </ListItemIcon>
+                  <ListItemText primary={label} />
+                </ListItemButton>
+              ))}
+            </List>
+            <div className="mt-auto p-6">
+              <SoftButton variant="primary" className="w-full [&]:bg-[var(--ops-accent)] [&]:text-[var(--ops-on-accent)]" onClick={() => void signOut("/login")}>
+                <IconLogout size={18} className="mr-2" />
+                Log out
+              </SoftButton>
+            </div>
           </div>
-        </div>
+        </Drawer>
+        <main key={pathname} className="min-h-0 flex-1 px-4 pb-6 pt-6 sm:px-6">
+          {gated ? (
+            <EmptyState
+              title="Create a championship to get started"
+              hint="Floor pages need a championship in the header."
+              action={
+                <Link href="/championships">
+                  <SoftButton variant="primary">Championships</SoftButton>
+                </Link>
+              }
+            />
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

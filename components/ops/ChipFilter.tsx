@@ -21,49 +21,45 @@ export function ChipFilter<T extends string>({
   showAll?: boolean;
   gapBefore?: T;
 }) {
-  const chipClass = (active: boolean) =>
-    cn(
-      "inline-flex min-h-10 items-center rounded-lg border px-4 text-[13px] font-semibold",
-      active
-        ? "border-[var(--ops-primary)] bg-[var(--ops-primary)] text-white"
-        : "border-[var(--ops-line)] bg-white text-[var(--ops-text)] hover:border-slate-300 hover:bg-[var(--ops-board-muted)]",
-      disabled && "opacity-45",
-    );
+  // NiceAdmin segmented filter: tinted track, selected segment filled primary.
+  const chip = (key: string, label: string, active: boolean, onClick: () => void, className?: string) => (
+    <button
+      key={key}
+      type="button"
+      role="tab"
+      aria-selected={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "min-h-10 rounded-[12px] px-4 text-[13px]",
+        active
+          ? "bg-[var(--ops-primary)] font-semibold text-[var(--ops-on-primary)]"
+          : "font-medium text-[#030e09] hover:bg-[var(--ops-surface)]",
+        className,
+      )}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <div className="flex flex-wrap gap-2" role="tablist" aria-label={ariaLabel}>
-      {showAll ? (
-        <button
-          type="button"
-          role="tab"
-          aria-selected={value === ""}
-          disabled={disabled}
-          onClick={() => onChange("")}
-          className={chipClass(value === "")}
-        >
-          All
-        </button>
-      ) : null}
+    <div
+      className={cn("inline-flex flex-wrap items-center gap-0.5 rounded-[12px] bg-[rgba(3,14,9,0.05)] px-2 py-0.5", disabled && "opacity-45")}
+      role="tablist"
+      aria-label={ariaLabel}
+    >
+      {showAll ? chip("__all", "All", value === "", () => onChange("")) : null}
       {options.map((option, index) => {
         const active = value === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            disabled={disabled}
-            onClick={() => {
-              if (active && !allowEmpty) return;
-              onChange(active ? "" : option.value);
-            }}
-            className={cn(
-              chipClass(active),
-              gapBefore && option.value === gapBefore && index > 0 && "ml-3",
-            )}
-          >
-            {option.label}
-          </button>
+        return chip(
+          option.value,
+          option.label,
+          active,
+          () => {
+            if (active && !allowEmpty) return;
+            onChange(active ? "" : option.value);
+          },
+          gapBefore && option.value === gapBefore && index > 0 ? "ml-2" : undefined,
         );
       })}
     </div>

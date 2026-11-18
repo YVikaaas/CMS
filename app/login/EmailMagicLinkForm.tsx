@@ -77,20 +77,20 @@ export default function EmailMagicLinkForm() {
   return (
     <form onSubmit={onPasswordSignIn} className="flex w-full max-w-sm flex-col gap-4">
       {authError ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-lg bg-[var(--ops-danger-soft)] px-3 py-2 text-sm text-[var(--ops-danger)]">
           Sign-in link expired or was invalid. Request a new one, or use your
           password.
         </p>
       ) : null}
 
       {sentTo ? (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <p className="rounded-lg bg-[var(--ops-success-soft)] px-3 py-2 text-sm text-[var(--ops-success)]">
           Link sent to <span className="font-medium">{sentTo}</span>. Open it on
           this device.
         </p>
       ) : null}
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
         Email
         <input
           type="email"
@@ -106,7 +106,7 @@ export default function EmailMagicLinkForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
         Password
         <input
           type="password"
@@ -116,7 +116,7 @@ export default function EmailMagicLinkForm() {
           className={inputClass}
         />
         {fieldError ? (
-          <span className="text-xs font-normal text-red-600">{fieldError}</span>
+          <span className="text-xs font-normal text-[var(--ops-danger)]">{fieldError}</span>
         ) : null}
       </label>
 

@@ -1,86 +1,107 @@
 import {
-  Award,
-  CalendarDays,
-  ClipboardList,
-  Flag,
-  LayoutDashboard,
-  Trophy,
-  UserCheck,
-  type LucideIcon,
-} from "lucide-react";
+  IconAward,
+  IconCalendarEvent,
+  IconClipboardList,
+  IconComponents,
+  IconFlag,
+  IconLayoutDashboard,
+  IconMedal,
+  IconStack2,
+  IconTrophy,
+  IconUserCheck,
+  IconUserCircle,
+  type TablerIcon,
+} from "@tabler/icons-react";
 
-export type NavSectionId = "floor" | "setup" | "catalog";
+export type NavSectionId = "floor" | "setup" | "catalog" | "pages";
 
 export type NavItem = {
   href: string;
   label: string;
   pageRole: string;
   section?: NavSectionId;
-  icon?: LucideIcon;
+  icon?: TablerIcon;
 };
 
 export const NAV_SECTIONS: Array<{ id: NavSectionId; label: string }> = [
   { id: "floor", label: "Floor" },
   { id: "setup", label: "Setup" },
   { id: "catalog", label: "Catalog" },
+  { id: "pages", label: "Pages" },
 ];
 
 /** Sidebar destinations and the page role each will enforce later. */
 export const ADMIN_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", pageRole: "dashboard.view", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", pageRole: "dashboard.view", icon: IconLayoutDashboard },
   {
     href: "/gameplay/call-room",
     label: "Call Room",
     pageRole: "gameplay.manage",
     section: "floor",
-    icon: UserCheck,
+    icon: IconUserCheck,
   },
   {
     href: "/gameplay/fixtures",
     label: "Fixtures",
     pageRole: "gameplay.manage",
     section: "floor",
-    icon: CalendarDays,
+    icon: IconCalendarEvent,
   },
   {
     href: "/gameplay/scoring",
     label: "Scoring",
     pageRole: "gameplay.manage",
     section: "floor",
-    icon: ClipboardList,
+    icon: IconClipboardList,
   },
   {
     href: "/gameplay/results",
     label: "Results",
     pageRole: "gameplay.manage",
     section: "floor",
-    icon: Trophy,
+    icon: IconTrophy,
   },
   {
     href: "/gameplay/podium",
     label: "Podium",
     pageRole: "gameplay.manage",
     section: "floor",
-    icon: Award,
+    icon: IconAward,
   },
   {
     href: "/championships",
     label: "Championships",
     pageRole: "championship.manage",
     section: "setup",
-    icon: Flag,
+    icon: IconFlag,
   },
   {
     href: "/masters/sports",
     label: "Sport",
     pageRole: "masters.manage",
     section: "catalog",
+    icon: IconMedal,
   },
   {
     href: "/masters/categories",
     label: "Category",
     pageRole: "masters.manage",
     section: "catalog",
+    icon: IconStack2,
+  },
+  {
+    href: "/account",
+    label: "Account Setting",
+    pageRole: "account.self",
+    section: "pages",
+    icon: IconUserCircle,
+  },
+  {
+    href: "/ui-kit",
+    label: "UI Kit",
+    pageRole: "dashboard.view",
+    section: "pages",
+    icon: IconComponents,
   },
 ];
 
@@ -95,6 +116,8 @@ export function pathTitle(pathname: string): string {
   if (pathname.startsWith("/masters/sports")) return "Sport";
   if (pathname.startsWith("/masters/categories")) return "Category";
   if (pathname.startsWith("/masters")) return "Catalog";
+  if (pathname.startsWith("/account")) return "Account Setting";
+  if (pathname.startsWith("/ui-kit")) return "UI Kit";
   return "CMS";
 }
 

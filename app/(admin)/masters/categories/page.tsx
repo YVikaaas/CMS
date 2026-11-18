@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { CategoryNameInput } from "@/components/fields";
 import { RoundChips } from "@/components/RoundChips";
-import { SortTh, TableControls } from "@/components/table";
+import IconButton from "@mui/material/IconButton";
+import { IconArchive, IconPencil } from "@tabler/icons-react";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   ChipFilter,
   PageHeader,
@@ -13,6 +15,7 @@ import {
   SoftButton,
   SoftSelect,
   StatusBadge,
+  useConfirm,
 } from "@/components/ops";
 import {
   archiveCategory,
@@ -44,7 +47,7 @@ import {
 } from "@/lib/utils/eventFilter";
 import { categoryGroupLabel, categoryLabel } from "@/lib/utils/labels";
 import type { Category, FixtureFormatType, FixtureRoundType, Gender, Sport } from "@/lib/types/cms";
-import { compareNumber, compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import { compareNumber, compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { categoryNameError } from "@/lib/utils/validation";
 
 type CategoryForm = {
@@ -109,6 +112,7 @@ function fixtureTone(format: FixtureFormatType) {
 }
 
 export default function CategoriesPage() {
+  const confirm = useConfirm();
   const [sports, setSports] = useState<Sport[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filterSport, setFilterSport] = useState("");
@@ -126,6 +130,8 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ sportId?: string; name?: string; ageGroup?: string }>({});
   const [ready, setReady] = useState(false);
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
 
   const load = async () => {
     const [sportsRes, catsRes] = await Promise.all([listSports(), listCategories()]);
@@ -201,6 +207,7 @@ export default function CategoriesPage() {
       return compareText(a.name, b.name, sort.dir);
     });
   }, [categories, filterSport, fixtureFilter, genderFilter, ageFilter, search, sort, sports]);
+  const paged = pageRows(visible, page, perPage);
 
   const close = () => {
     setOpen(false);
@@ -280,6 +287,63 @@ export default function CategoriesPage() {
       <PageHeader
         title="Category"
         hint="All categories until you filter. Sport, then gender, then age, then fixture."
+      />
+
+      <TableCard
+        title="Categories"
+        search={
+          <TableSearch value={search} onChange={setSearch} placeholder="Search name, category, or fixture" />
+        }
+        toolbar={
+          <>
+            <ChipFilter
+              ariaLabel="Sport"
+              value={filterSport}
+              onChange={(value) => {
+                setFilterSport(value);
+                setGenderFilter("");
+                setAgeFilter("");
+                setFixtureFilter("");
+              }}
+              options={sports.map((sport) => ({ value: sport.id, label: sport.name }))}
+            />
+            <ChipFilter
+              ariaLabel="Gender"
+              value={genderFilter}
+              disabled={!filterSport}
+              onChange={(value) => {
+                setGenderFilter(value);
+                setAgeFilter("");
+                setFixtureFilter("");
+              }}
+              options={genderOptions.map((gender) => ({
+                value: gender,
+                label: genderLabel(gender),
+              }))}
+            />
+            <ChipFilter
+              ariaLabel="Age"
+              value={ageFilter}
+              disabled={!genderFilter}
+              onChange={(value) => {
+                setAgeFilter(value);
+                setFixtureFilter("");
+              }}
+              options={ageOptions.map((age) => ({ value: age, label: age }))}
+            />
+            <SoftSelect
+              value={fixtureFilter}
+              disabled={!ageFilter}
+              onChange={(event) => setFixtureFilter(event.target.value as "" | FixtureFormatType)}
+            >
+              {fixtureFilterOptions.map((option) => (
+                <option key={option.value || "all"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SoftSelect>
+          </>
+        }
         action={
           <SoftButton
             variant="primary"
@@ -294,94 +358,52 @@ export default function CategoriesPage() {
             Add category
           </SoftButton>
         }
-      />
-
-      <TableControls
-        search={search}
-        onSearch={setSearch}
-        placeholder="Search name, category, or fixture"
+        footer={
+          <TablePager
+            count={visible.length}
+            page={paged.page}
+            perPage={perPage}
+            onPage={setPage}
+            onPerPage={setPerPage}
+          />
+        }
       >
-        <ChipFilter
-          ariaLabel="Sport"
-          value={filterSport}
-          onChange={(value) => {
-            setFilterSport(value);
-            setGenderFilter("");
-            setAgeFilter("");
-            setFixtureFilter("");
-          }}
-          options={sports.map((sport) => ({ value: sport.id, label: sport.name }))}
-        />
-        <ChipFilter
-          ariaLabel="Gender"
-          value={genderFilter}
-          disabled={!filterSport}
-          onChange={(value) => {
-            setGenderFilter(value);
-            setAgeFilter("");
-            setFixtureFilter("");
-          }}
-          options={genderOptions.map((gender) => ({
-            value: gender,
-            label: genderLabel(gender),
-          }))}
-        />
-        <ChipFilter
-          ariaLabel="Age"
-          value={ageFilter}
-          disabled={!genderFilter}
-          onChange={(value) => {
-            setAgeFilter(value);
-            setFixtureFilter("");
-          }}
-          options={ageOptions.map((age) => ({ value: age, label: age }))}
-        />
-        <SoftSelect
-          value={fixtureFilter}
-          disabled={!ageFilter}
-          onChange={(event) => setFixtureFilter(event.target.value as "" | FixtureFormatType)}
-        >
-          {fixtureFilterOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SoftSelect>
-      </TableControls>
 
-      <div className="overflow-x-auto rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
+        <table>
+          <thead>
             <tr>
               <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
               <SortTh label="Category" column="category" sort={sort} onSort={setSort} />
               <SortTh label="Sport" column="sport" sort={sort} onSort={setSort} />
               <SortTh label="Fixture" column="fixture" sort={sort} onSort={setSort} />
               <SortTh label="Roster" column="roster" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium" />
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
-              <tr key={row.id} className="border-t border-[var(--cms-line)]">
-                <td className="px-4 py-3 font-medium">{row.name}</td>
-                <td className="px-4 py-3">{categoryGroupLabel(row)}</td>
-                <td className="px-4 py-3">{sportName(row.sportId)}</td>
-                <td className="px-4 py-3">
+            {paged.rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-semibold">{row.name}</td>
+                <td>{categoryGroupLabel(row)}</td>
+                <td>{sportName(row.sportId)}</td>
+                <td>
                   <StatusBadge tone={fixtureTone(row.fixtureConfig.format)}>
                     {fixtureConfigLabel(row.fixtureConfig)}
                   </StatusBadge>
                 </td>
-                <td className="px-4 py-3">
+                <td>
                   {isAthleticsSport(sportOf(row.sportId))
                     ? isRelayEvent(row.name)
                       ? "Relay 4"
                       : "Solo"
                     : `${row.teamSize}/${row.maxTeamSize}`}
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <SoftButton
-                    className="mr-2"
+                <td className="text-right whitespace-nowrap">
+                  <IconButton
+                    color="success"
+                    className="text-[var(--ops-success)]"
+                    aria-label={`Edit ${row.name}`}
+                    title="Edit"
                     onClick={() => {
                       setEditingId(row.id);
                       setForm({
@@ -401,25 +423,27 @@ export default function CategoriesPage() {
                       setOpen(true);
                     }}
                   >
-                    Edit
-                  </SoftButton>
-                  <SoftButton
-                    variant="danger"
+                    <IconPencil size={18} />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    aria-label={`Archive ${row.name}`}
+                    title="Archive"
                     onClick={async () => {
-                      if (!confirm("Archive this category?")) return;
+                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new championships. Existing data stays.", confirmLabel: "Archive" }))) return;
                       const { error } = await archiveCategory(row.id);
                       if (error) toast.error(error.message);
                       else await load();
                     }}
                   >
-                    Archive
-                  </SoftButton>
+                    <IconArchive size={18} />
+                  </IconButton>
                 </td>
               </tr>
             ))}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[var(--cms-muted)]">
+                <td colSpan={6} className="py-8 text-center text-[var(--ops-text-muted)]">
                   {categories.length === 0
                     ? "No categories yet."
                     : "No matching categories."}
@@ -428,7 +452,7 @@ export default function CategoriesPage() {
             ) : null}
           </tbody>
         </table>
-      </div>
+      </TableCard>
 
       <Modal
         open={open}
@@ -436,8 +460,8 @@ export default function CategoriesPage() {
         onClose={close}
         wide
       >
-        <form onSubmit={onSave} className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+        <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Sport
             <select
               value={form.sportId}
@@ -461,7 +485,7 @@ export default function CategoriesPage() {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             {athleticsForm ? "Event" : "Name"}
             <CategoryNameInput
               value={form.name}
@@ -488,6 +512,13 @@ export default function CategoriesPage() {
               className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
             {athleticsForm ? (
+              <span className="text-xs font-normal text-[var(--ops-text-muted)]">
+                {isRelayEvent(form.name)
+                  ? "Relay teams enter. Roster is 4."
+                  : "Solo event. Athletes enter one by one."}
+              </span>
+            ) : null}
+            {athleticsForm ? (
               <datalist id="athletics-events">
                 {ATHLETICS_EVENTS.map((event) => (
                   <option key={event.name} value={event.name} />
@@ -495,7 +526,7 @@ export default function CategoriesPage() {
               </datalist>
             ) : null}
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Gender
             <select
               value={form.gender}
@@ -508,7 +539,7 @@ export default function CategoriesPage() {
               <option value="female">Female</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Age group
             <input
               value={form.ageGroup}
@@ -520,7 +551,7 @@ export default function CategoriesPage() {
               className={fieldErrors.ageGroup ? fieldErrorClass : fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Age max
             <input
               type="number"
@@ -532,15 +563,9 @@ export default function CategoriesPage() {
               className={fieldClass}
             />
           </label>
-          {athleticsForm ? (
-            <p className="sm:col-span-2 text-sm text-[var(--ops-text-muted)]">
-              {isRelayEvent(form.name)
-                ? "Relay teams enter — roster is 4."
-                : "Solo event — athletes enter one by one, not as a team."}
-            </p>
-          ) : (
+          {athleticsForm ? null : (
             <>
-              <label className="flex flex-col gap-1 text-sm font-medium">
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
                 Team size
                 <input
                   type="number"
@@ -552,7 +577,7 @@ export default function CategoriesPage() {
                   className={fieldClass}
                 />
               </label>
-              <label className="flex flex-col gap-1 text-sm font-medium">
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
                 Max roster
                 <input
                   type="number"
@@ -567,7 +592,7 @@ export default function CategoriesPage() {
             </>
           )}
           {athleticsForm ? null : (
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Athletes / sides
               <input
                 type="number"
@@ -585,25 +610,27 @@ export default function CategoriesPage() {
             </label>
           )}
           <div className="grid gap-2 sm:col-span-2">
-            <p className="text-sm font-medium">Fixture type</p>
+            <p className="text-sm font-semibold">Fixture type</p>
             {editingId && athleticsForm ? (
               <p className="text-sm text-[var(--ops-text-muted)]">
                 {form.format === "field_attempts" ? "Field attempts" : "Track rounds"} is stored on
                 this category and does not change.
               </p>
             ) : null}
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Fixture type">
               {formatChoices(athleticsForm).map((option) => (
                 <button
                   key={option.value}
                   type="button"
+                  role="radio"
+                  aria-checked={form.format === option.value}
                   disabled={Boolean(editingId) && athleticsForm}
                   onClick={() => applyFormat(option.value)}
                   className={cn(
-                    "rounded-xl border p-4 text-left",
+                    "rounded-lg border p-4 text-left",
                     form.format === option.value
-                      ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                      : "border-[var(--ops-line)] hover:bg-[var(--ops-board-muted)]",
+                      ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)] outline outline-1 outline-[var(--ops-primary)]"
+                      : "border-[var(--ops-line-strong)] bg-[var(--ops-surface)] hover:border-[var(--ops-text)]",
                     editingId && athleticsForm && "cursor-not-allowed opacity-60",
                   )}
                 >
@@ -614,7 +641,7 @@ export default function CategoriesPage() {
             </div>
           </div>
           {form.format === "field_attempts" ? (
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Scoring
               <select
                 value={form.scoringStyle}
@@ -628,12 +655,12 @@ export default function CategoriesPage() {
               </select>
             </label>
           ) : (
-            <p className="self-end text-sm text-[var(--ops-text-muted)]">
-              Scoring {form.scoringStyle === "simple" ? "points" : form.scoringStyle}
+            <p className="-mt-2 text-xs text-[var(--ops-text-muted)] sm:col-span-2">
+              Scored by {form.scoringStyle === "simple" ? "points" : form.scoringStyle}.
             </p>
           )}
           <div className="grid gap-2 sm:col-span-2">
-            <p className="text-sm font-medium">Available rounds</p>
+            <p className="text-sm font-semibold">Available rounds</p>
             <RoundChips
               options={roundsForFormatFamily(form.format).map((round) => ({
                 value: round,
@@ -655,7 +682,7 @@ export default function CategoriesPage() {
               }}
             />
           </div>
-          <div className="flex gap-2 sm:col-span-2">
+          <div className="flex gap-2 border-t border-[var(--ops-line)] pt-4 sm:col-span-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Add category"}
             </SoftButton>

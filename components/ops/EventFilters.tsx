@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import {
   listCategories,
   listChampionshipOfferings,
@@ -55,7 +54,7 @@ function FilterChip({
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
-            "ops-control w-full appearance-none pr-8 font-semibold text-[var(--ops-text)]",
+            "ops-control w-full font-semibold text-[var(--ops-text)]",
             !value && "text-[var(--ops-text-muted)]",
           )}
         >
@@ -66,10 +65,6 @@ function FilterChip({
             </option>
           ))}
         </select>
-        <ChevronDown
-          size={16}
-          className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[var(--ops-text-muted)]"
-        />
       </span>
     </label>
   );

@@ -4,18 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import IconButton from "@mui/material/IconButton";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   EmptyState,
   PageHeader,
   PageLoader,
   PageSkeleton,
   SoftButton,
-  SoftCard,
-  SoftSearch,
   StatusBadge,
   StepCrumbs,
+  useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
 import {
@@ -26,12 +28,13 @@ import {
   updateTeamMember,
 } from "@/lib/services";
 import type { Team, TeamMember } from "@/lib/types/cms";
-import { compareText, matchesQuery } from "@/lib/utils/table";
+import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError, phoneError } from "@/lib/utils/validation";
 
 const emptyForm = { name: "", phone: "" };
 
 export default function ChampionshipTeamMembersPage() {
+  const confirm = useConfirm();
   const params = useParams<{
     championshipId: string;
     sportId: string;
@@ -45,6 +48,9 @@ export default function ChampionshipTeamMembersPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortState<"name" | "phone" | "gender">>({ key: "name", dir: "asc" });
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -138,8 +144,13 @@ export default function ChampionshipTeamMembersPage() {
     const filtered = members.filter((member) =>
       matchesQuery(search, member.name, member.phone, member.gender),
     );
-    return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
-  }, [members, search]);
+    return [...filtered].sort((a, b) => {
+      if (sort.key === "phone") return compareText(a.phone, b.phone, sort.dir);
+      if (sort.key === "gender") return compareText(a.gender, b.gender, sort.dir);
+      return compareText(a.name, b.name, sort.dir);
+    });
+  }, [members, search, sort]);
+  const paged = pageRows(visible, page, perPage);
 
   if (loading || (championship && !ready)) {
     return <PageSkeleton kind="table" />;
@@ -178,59 +189,76 @@ export default function ChampionshipTeamMembersPage() {
       <PageHeader
         title="Members"
         hint={`Roster must be ${team.teamSize}–${team.maxTeamSize} members, all ${team.gender}.`}
+      />
+
+      <TableCard
+        title="Members"
+        search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or phone" />}
         action={
           <SoftButton variant="primary" onClick={openCreate} disabled={atMax}>
             Add member
           </SoftButton>
         }
-      />
-
-      <SoftSearch
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search name or phone"
-      />
-
-      {visible.length === 0 ? (
-        <EmptyState title={members.length === 0 ? "No members yet" : "No matching members"} />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((member) => (
-            <SoftCard key={member.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{member.name}</p>
-                  <p className="mt-1 text-sm text-[var(--ops-text-muted)]">{member.phone}</p>
-                </div>
-                <StatusBadge>{member.gender}</StatusBadge>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <SoftButton onClick={() => openEdit(member)}>Edit</SoftButton>
-                <SoftButton
-                  variant="danger"
-                  disabled={atMin}
-                  onClick={async () => {
-                    if (!confirm(`Remove ${member.name}?`)) return;
-                    const { error } = await archiveTeamMember(member.id);
-                    if (error) toast.error(error.message);
-                    else await load();
-                  }}
-                >
-                  Remove
-                </SoftButton>
-              </div>
-            </SoftCard>
-          ))}
-        </div>
-      )}
+        footer={
+          <TablePager count={visible.length} page={paged.page} perPage={perPage} onPage={setPage} onPerPage={setPerPage} />
+        }
+      >
+        <table>
+          <thead>
+            <tr>
+              <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
+              <SortTh label="Phone" column="phone" sort={sort} onSort={setSort} />
+              <SortTh label="Gender" column="gender" sort={sort} onSort={setSort} />
+              <th className="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.rows.map((member) => (
+              <tr key={member.id}>
+                <td className="font-semibold">{member.name}</td>
+                <td>{member.phone}</td>
+                <td>
+                  <StatusBadge>{member.gender}</StatusBadge>
+                </td>
+                <td className="text-right whitespace-nowrap">
+                  <IconButton color="success" aria-label={`Edit ${member.name}`} title="Edit" onClick={() => openEdit(member)}>
+                    <IconPencil size={18} />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    aria-label={`Remove ${member.name}`}
+                    title="Remove"
+                    disabled={atMin}
+                    onClick={async () => {
+                      if (!(await confirm({ title: `Remove ${member.name}?`, message: "They are taken off this team.", confirmLabel: "Remove" }))) return;
+                      const { error } = await archiveTeamMember(member.id);
+                      if (error) toast.error(error.message);
+                      else await load();
+                    }}
+                  >
+                    <IconTrash size={18} />
+                  </IconButton>
+                </td>
+              </tr>
+            ))}
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-[var(--ops-text-muted)]">
+                  {members.length === 0 ? "No members yet." : "No matching members."}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </TableCard>
 
       <Modal
         open={formOpen}
         title={editingId ? "Edit member" : "Add member"}
         onClose={closeForm}
       >
-        <form onSubmit={onSave} className="grid gap-3">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+        <form onSubmit={onSave} className="grid gap-4">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
             <NameInput
               value={form.name}
@@ -241,7 +269,7 @@ export default function ChampionshipTeamMembersPage() {
               className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Phone
             <PhoneInput
               value={form.phone}

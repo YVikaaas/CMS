@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { TableCard } from "@/components/table";
 import {
   EmptyState,
   EventFilters,
   PageHeader,
   PageSkeleton,
   SoftButton,
-  SoftCard,
   StatusBadge,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
@@ -115,26 +115,38 @@ export default function FixturesPage() {
       ) : visibleSports.length === 0 ? (
         <EmptyState title="No sports for this filter" hint="Clear a chip to see more." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleSports.map((sport) => {
-            const eventCount =
-              offerings.find((item) => item.sportId === sport.id)?.categoryIds.length ?? 0;
-            return (
-              <SoftCard key={sport.id} interactive onClick={() => openSport(sport.id)}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{sport.name}</p>
-                    <p className="mt-1 text-sm text-[var(--ops-text-muted)]">{sport.code}</p>
-                  </div>
-                  <StatusBadge>{sport.eventMode}</StatusBadge>
-                </div>
-                <p className="mt-3 text-sm text-[var(--ops-text-muted)]">
-                  {eventCount} {eventCount === 1 ? "category" : "categories"}
-                </p>
-              </SoftCard>
-            );
-          })}
-        </div>
+        <TableCard title="Sports">
+          <table>
+            <thead>
+              <tr>
+                <th>Sport</th>
+                <th>Code</th>
+                <th>Mode</th>
+                <th>Categories</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleSports.map((sport) => {
+                const eventCount =
+                  offerings.find((item) => item.sportId === sport.id)?.categoryIds.length ?? 0;
+                return (
+                  <tr key={sport.id}>
+                    <td>
+                      <button type="button" className="font-semibold" onClick={() => openSport(sport.id)}>
+                        {sport.name}
+                      </button>
+                    </td>
+                    <td>{sport.code}</td>
+                    <td>
+                      <StatusBadge>{sport.eventMode}</StatusBadge>
+                    </td>
+                    <td>{eventCount}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableCard>
       )}
     </div>
   );

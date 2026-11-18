@@ -201,7 +201,7 @@ function ScoringDesk() {
                       className={`rounded-xl border px-3 py-3 text-left ${
                         selectedMatchId === row.id
                           ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                          : "border-[var(--ops-line)] bg-white hover:bg-[var(--ops-board-muted)]"
+                          : "border-transparent bg-[var(--ops-board-muted)] hover:bg-[var(--ops-surface-hover)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">

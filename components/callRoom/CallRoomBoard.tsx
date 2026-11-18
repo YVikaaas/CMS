@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SoftButton, SoftCard, SoftSearch, StatusBadge } from "@/components/ops";
+import Card from "@mui/material/Card";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import { SoftButton, SoftSearch, StatusBadge } from "@/components/ops";
+import { cn } from "@/lib/utils/cn";
 import type { CallRoomAction, CallRoomMark, CallRoomSheet, CallRoomUnit } from "@/lib/types/cms";
 import {
   applyCallRoomChange,
@@ -17,32 +21,42 @@ type Props = {
   onChange: (next: CallRoomSheet, action: CallRoomAction) => void;
 };
 
+// Soft segmented toggle: tinted fill + dark text when picked, never a solid green/red block.
+// Fixed widths keep team and player buttons in one column.
+const markClass = {
+  present:
+    "[&.Mui-selected]:border-[var(--ops-success)]/40 [&.Mui-selected]:bg-[var(--ops-success-soft)] [&.Mui-selected]:text-[var(--ops-success)] [&.Mui-selected:hover]:bg-[var(--ops-success-soft)]",
+  absent:
+    "[&.Mui-selected]:border-[var(--ops-danger)]/40 [&.Mui-selected]:bg-[var(--ops-danger-soft)] [&.Mui-selected]:text-[var(--ops-danger)] [&.Mui-selected:hover]:bg-[var(--ops-danger-soft)]",
+};
+
 function MarkButtons({
   mark,
   disabled,
   onPick,
+  label,
 }: {
   mark: CallRoomMark;
   disabled?: boolean;
   onPick: (mark: CallRoomMark) => void;
+  label: string;
 }) {
   return (
-    <div className="flex shrink-0 gap-2">
-      <SoftButton
-        variant={mark === "present" ? "success" : "default"}
-        disabled={disabled}
-        onClick={() => onPick(toggleCallRoomMark(mark, "present"))}
-      >
-        Present
-      </SoftButton>
-      <SoftButton
-        variant={mark === "absent" ? "danger" : "default"}
-        disabled={disabled}
-        onClick={() => onPick(toggleCallRoomMark(mark, "absent"))}
-      >
-        Absent
-      </SoftButton>
-    </div>
+    <ToggleButtonGroup exclusive value={mark} disabled={disabled} aria-label={`${label} attendance`} className="shrink-0">
+      {(["present", "absent"] as const).map((value) => (
+        <ToggleButton
+          key={value}
+          value={value}
+          onClick={() => onPick(toggleCallRoomMark(mark, value))}
+          className={cn(
+            "min-h-11 w-[92px] border-[var(--ops-line-strong)] text-[13px] font-semibold normal-case text-[var(--ops-text)]",
+            markClass[value],
+          )}
+        >
+          {value === "present" ? "Present" : "Absent"}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
   );
 }
 
@@ -71,13 +85,18 @@ function AthleteRow({
   onPick: (mark: CallRoomMark) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--ops-line)] bg-[var(--ops-surface)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      className={cn(
+        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
+        unit.mark === "absent" && "bg-[var(--ops-danger-soft)]/40",
+      )}
+    >
       <div className="min-w-0">
         <p className="font-semibold">{unit.name}</p>
         {unit.detail ? <p className="text-sm text-[var(--ops-text-muted)]">{unit.detail}</p> : null}
       </div>
-      <MarkButtons mark={unit.mark} disabled={disabled} onPick={onPick} />
-    </div>
+      <MarkButtons mark={unit.mark} disabled={disabled} onPick={onPick} label={unit.name} />
+    </li>
   );
 }
 
@@ -96,8 +115,8 @@ function TeamCard({
   const presentCount = unit.members.filter((member) => member.effective === "present").length;
 
   return (
-    <SoftCard className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <Card className="overflow-hidden">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold">{unit.name}</p>
@@ -117,18 +136,17 @@ function TeamCard({
             </p>
           ) : null}
         </div>
-        <MarkButtons mark={unit.mark} disabled={disabled} onPick={onUnit} />
+        <MarkButtons mark={unit.mark} disabled={disabled} onPick={onUnit} label={unit.name} />
       </div>
       {unit.members.length > 0 ? (
-        <ul className="flex flex-col gap-2">
+        <ul className="divide-y divide-[var(--ops-line)] border-t border-[var(--ops-line)]">
           {unit.members.map((member) => (
             <li
               key={member.id}
-              className={`flex flex-col gap-3 rounded-xl border px-3 py-3 sm:flex-row sm:items-center sm:justify-between ${
-                member.effective === "absent"
-                  ? "border-[var(--ops-danger)]/20 bg-[var(--ops-danger-soft)]/40"
-                  : "border-[var(--ops-line)] bg-[var(--ops-board-muted)]"
-              }`}
+              className={cn(
+                "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
+                member.effective === "absent" ? "bg-[var(--ops-danger-soft)]/40" : "bg-[var(--ops-board-muted)]/60",
+              )}
             >
               <div className="min-w-0">
                 <p className="font-medium">{member.name}</p>
@@ -140,12 +158,13 @@ function TeamCard({
                 mark={member.effective}
                 disabled={disabled}
                 onPick={(mark) => onMember(member.id, mark)}
+                label={member.name}
               />
             </li>
           ))}
         </ul>
       ) : null}
-    </SoftCard>
+    </Card>
   );
 }
 
@@ -192,7 +211,7 @@ export function CallRoomBoard({ sheet, saving, onChange }: Props) {
           {sheet.solo ? "No matching athletes" : "No matching teams"}
         </p>
       ) : sheet.solo ? (
-        <div className="flex flex-col gap-2">
+        <Card component="ul" className="divide-y divide-[var(--ops-line)] overflow-hidden">
           {visible.map((unit) => (
             <AthleteRow
               key={unit.key}
@@ -201,7 +220,7 @@ export function CallRoomBoard({ sheet, saving, onChange }: Props) {
               onPick={(mark) => commit({ type: "unit", key: unit.key, mark })}
             />
           ))}
-        </div>
+        </Card>
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map((unit) => (

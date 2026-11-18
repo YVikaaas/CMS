@@ -45,10 +45,10 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="ops-page-enter flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)] p-8 shadow-[var(--ops-shadow-card)]">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--ops-surface)] p-8">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] text-xl font-semibold text-white">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] font-display text-xl font-bold text-[var(--ops-on-primary)]">
             C
           </span>
           <h1 className="text-xl font-semibold tracking-tight">Your details</h1>
@@ -57,7 +57,7 @@ export default function OnboardingPage() {
           </p>
         </div>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--ops-text)]">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
             Full name
             <NameInput
               required
@@ -73,7 +73,7 @@ export default function OnboardingPage() {
               <span className="text-xs font-normal text-[var(--ops-danger)]">{fieldErrors.fullName}</span>
             ) : null}
           </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-[var(--ops-text)]">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
             Phone
             <PhoneInput
               required

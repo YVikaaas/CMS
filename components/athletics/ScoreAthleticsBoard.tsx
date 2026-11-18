@@ -102,8 +102,8 @@ function AttemptSlot({
         className={cn(
           "min-h-9 rounded-lg border px-2 text-xs font-semibold",
           fouled
-            ? "border-[var(--ops-danger)] bg-[var(--ops-danger)] text-white"
-            : "border-[var(--ops-line)] bg-white text-[var(--ops-text)] hover:bg-[var(--ops-danger-soft)]",
+            ? "border-[var(--ops-danger)] bg-[var(--ops-danger)] text-[var(--ops-on-primary)]"
+            : "border-[var(--ops-line-strong)] bg-[var(--ops-surface-raised)] text-[var(--ops-text)] hover:bg-[var(--ops-danger-soft)]",
           disabled && "opacity-45",
         )}
       >
@@ -231,17 +231,17 @@ export function ScoreAthleticsBoard({
             : `Best mark from ${match.attemptCount} attempts. Tap Foul for a failed attempt (shown as X). NM if every attempt is a foul.`}
         </p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-[var(--ops-line)]">
-        <table className="w-full min-w-[48rem] text-left text-sm">
-          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
+      <div className="ops-table">
+        <table className="min-w-[48rem]">
+          <thead>
             <tr>
-              <th className="px-3 py-2 font-medium">Ln</th>
-              <th className="px-3 py-2 font-medium">{relay ? "Team" : "Athlete"}</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">{track ? "Time" : "Mark"}</th>
-              {track ? null : <th className="px-3 py-2 font-medium">Attempts</th>}
-              {finalRound ? null : <th className="px-3 py-2 font-medium">Q</th>}
-              <th className="px-3 py-2 font-medium">Place</th>
+              <th className="p-4 font-medium">Ln</th>
+              <th className="p-4 font-medium">{relay ? "Team" : "Athlete"}</th>
+              <th className="p-4 font-medium">Status</th>
+              <th className="p-4 font-medium">{track ? "Time" : "Mark"}</th>
+              {track ? null : <th className="p-4 font-medium">Attempts</th>}
+              {finalRound ? null : <th className="p-4 font-medium">Q</th>}
+              <th className="p-4 font-medium">Place</th>
             </tr>
           </thead>
           <tbody>
@@ -249,9 +249,9 @@ export function ScoreAthleticsBoard({
               const athlete = match.participants.find((item) => item.id === row.participantId);
               const invalid = Boolean(fieldErrors[row.participantId]);
               return (
-                <tr key={row.participantId} className="border-t border-[var(--ops-line)]">
-                  <td className="px-3 py-2 font-mono text-xs">{athlete?.lane ?? index + 1}</td>
-                  <td className="px-3 py-2">
+                <tr key={row.participantId} className="border-t border-[var(--ops-line)] hover:bg-[var(--ops-row-hover)]">
+                  <td className="p-4 font-mono text-xs">{athlete?.lane ?? index + 1}</td>
+                  <td className="p-4">
                     <p className="font-medium">{athlete?.name ?? (relay ? "Team" : "Athlete")}</p>
                     {orgCityLine(athlete?.orgName, athlete?.city) ? (
                       <p className="text-[11px] text-[var(--ops-text-muted)]">
@@ -259,7 +259,7 @@ export function ScoreAthleticsBoard({
                       </p>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="p-4">
                     <SoftSelect
                       value={row.resultCode}
                       onChange={(event) =>
@@ -276,7 +276,7 @@ export function ScoreAthleticsBoard({
                       ))}
                     </SoftSelect>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="p-4">
                     {track ? (
                       <TimePartsInput
                         value={row.time}
@@ -297,7 +297,7 @@ export function ScoreAthleticsBoard({
                     )}
                   </td>
                   {track ? null : (
-                    <td className="px-3 py-2">
+                    <td className="p-4">
                       <div className="flex flex-wrap gap-2">
                         {row.attempts.map((attempt, attemptIndex) => (
                           <AttemptSlot
@@ -319,7 +319,7 @@ export function ScoreAthleticsBoard({
                     </td>
                   )}
                   {finalRound ? null : (
-                    <td className="px-3 py-2">
+                    <td className="p-4">
                       <input
                         type="checkbox"
                         checked={row.qualified}
@@ -329,7 +329,7 @@ export function ScoreAthleticsBoard({
                       />
                     </td>
                   )}
-                  <td className="px-3 py-2 font-mono">{ranked[index] ?? "—"}</td>
+                  <td className="p-4 font-mono">{ranked[index] ?? "—"}</td>
                 </tr>
               );
             })}

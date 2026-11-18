@@ -41,3 +41,10 @@ export function compareNumber(
   const n = left === right ? 0 : left < right ? -1 : 1;
   return dir === "asc" ? n : -n;
 }
+
+/** One page of rows. Clamps `page` so a filter that shrinks the list never shows an empty page. */
+export function pageRows<T>(rows: T[], page: number, perPage: number): { rows: T[]; page: number } {
+  const last = Math.max(0, Math.ceil(rows.length / perPage) - 1);
+  const safe = Math.min(Math.max(0, page), last);
+  return { rows: rows.slice(safe * perPage, safe * perPage + perPage), page: safe };
+}

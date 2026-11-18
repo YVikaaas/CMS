@@ -30,7 +30,7 @@ function HeatTable({
   });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
+    <div className="ops-table">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--ops-line)] px-4 py-3">
         <div>
           <p className="font-semibold">{heatQueueTitle(match)}</p>
@@ -50,26 +50,26 @@ function HeatTable({
           {match.status.replace("_", " ")}
         </StatusBadge>
       </div>
-      <table className="w-full text-left text-sm">
-        <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
+      <table>
+        <thead>
           <tr>
-            <th className="px-4 py-2 font-medium">Place</th>
-            <th className="px-4 py-2 font-medium">Ln</th>
-            <th className="px-4 py-2 font-medium">
+            <th className="p-4 font-medium">Place</th>
+            <th className="p-4 font-medium">Ln</th>
+            <th className="p-4 font-medium">
               {isRelayEvent(categoryNameFromLabel(match.categoryLabel)) ? "Team" : "Athlete"}
             </th>
-            <th className="px-4 py-2 font-medium">
+            <th className="p-4 font-medium">
               {match.formatType === "track_rounds" ? "Time" : "Mark"}
             </th>
-            <th className="px-4 py-2 font-medium">Q</th>
+            <th className="p-4 font-medium">Q</th>
           </tr>
         </thead>
         <tbody>
           {athletes.map((row) => (
-            <tr key={row.id} className="border-t border-[var(--ops-line)]">
-              <td className="px-4 py-2 font-mono font-semibold">{visible ? placeText(row) : "—"}</td>
-              <td className="px-4 py-2 font-mono text-xs">{row.lane || "—"}</td>
-              <td className="px-4 py-2">
+            <tr key={row.id} className="border-t border-[var(--ops-line)] hover:bg-[var(--ops-row-hover)]">
+              <td className="p-4 font-mono font-semibold">{visible ? placeText(row) : "—"}</td>
+              <td className="p-4 font-mono text-xs">{row.lane || "—"}</td>
+              <td className="p-4">
                 <p className="font-medium">{row.name}</p>
                 {orgCityLine(row.orgName, row.city) ? (
                   <p className="text-[11px] text-[var(--ops-text-muted)]">
@@ -77,7 +77,7 @@ function HeatTable({
                   </p>
                 ) : null}
               </td>
-              <td className="px-4 py-2 font-mono">
+              <td className="p-4 font-mono">
                 {visible ? (
                   <div>
                     <p>{displayAthleticsMark(row)}</p>
@@ -91,7 +91,7 @@ function HeatTable({
                   "—"
                 )}
               </td>
-              <td className="px-4 py-2 text-xs font-semibold uppercase">
+              <td className="p-4 text-xs font-semibold uppercase">
                 {visible && row.qualified ? "Q" : ""}
               </td>
             </tr>

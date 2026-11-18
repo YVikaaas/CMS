@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import IconButton from "@mui/material/IconButton";
+import { IconTrash } from "@tabler/icons-react";
 import { Modal } from "@/components/Modal";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   ChipFilter,
   EmptyState,
@@ -15,10 +18,9 @@ import {
   PickList,
   PickToolbar,
   SoftButton,
-  SoftCard,
   SoftSearch,
-  StatusBadge,
   StepCrumbs,
+  useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "../../../../useScopedChampionship";
 import {
@@ -44,7 +46,7 @@ import {
 import { isRelayEvent } from "@/lib/utils/athletics";
 import { isAthleticsSport } from "@/lib/utils/fixtures";
 import { categoryEventName, categoryLabel } from "@/lib/utils/labels";
-import { compareText, matchesQuery } from "@/lib/utils/table";
+import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 
 function toggleId(current: Set<string>, id: string): Set<string> {
   const next = new Set(current);
@@ -63,6 +65,7 @@ function setIds(current: Set<string>, ids: string[], on: boolean): Set<string> {
 }
 
 export default function ChampionshipCategoriesPage() {
+  const confirm = useConfirm();
   const router = useRouter();
   const params = useParams<{ championshipId: string; sportId: string }>();
   const { championshipId, sportId } = params;
@@ -74,6 +77,12 @@ export default function ChampionshipCategoriesPage() {
   const [genderFilter, setGenderFilter] = useState<"" | Gender>("");
   const [ageFilter, setAgeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
+  const [sort, setSort] = useState<SortState<"label" | "gender" | "age" | "roster">>({
+    key: "label",
+    dir: "asc",
+  });
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
   const [pickGender, setPickGender] = useState<"" | Gender>("");
@@ -132,8 +141,14 @@ export default function ChampionshipCategoriesPage() {
         category.gender,
       );
     });
-    return [...filtered].sort((a, b) => compareText(categoryLabel(a), categoryLabel(b), "asc"));
-  }, [assigned, search, genderFilter, ageFilter, nameFilter]);
+    return [...filtered].sort((a, b) => {
+      if (sort.key === "gender") return compareText(a.gender, b.gender, sort.dir);
+      if (sort.key === "age") return compareText(a.ageGroup, b.ageGroup, sort.dir);
+      if (sort.key === "roster") return compareText(String(a.teamSize), String(b.teamSize), sort.dir);
+      return compareText(categoryLabel(a), categoryLabel(b), sort.dir);
+    });
+  }, [assigned, search, genderFilter, ageFilter, nameFilter, sort]);
+  const paged = pageRows(visible, page, perPage);
 
   const pickGenderOptions = useMemo(() => gendersForSport(available), [available]);
   const pickAgeOptions = useMemo(
@@ -238,15 +253,6 @@ export default function ChampionshipCategoriesPage() {
       <PageHeader
         title="Categories"
         hint="All assigned categories until you filter. Add many at once with gender and age."
-        action={
-          <SoftButton
-            variant="primary"
-            onClick={openForm}
-            disabled={!offering || available.length === 0}
-          >
-            Add categories
-          </SoftButton>
-        }
       />
 
       {!offering ? (
@@ -260,87 +266,109 @@ export default function ChampionshipCategoriesPage() {
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <SoftSearch
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search category"
-        />
-        <ChipFilter
-          ariaLabel="Gender"
-          value={genderFilter}
-          onChange={(value) => {
-            setGenderFilter(value);
-            setAgeFilter("");
-            setNameFilter("");
-          }}
-          options={genderOptions.map((gender) => ({
-            value: gender,
-            label: genderLabel(gender),
-          }))}
-        />
-        <ChipFilter
-          ariaLabel="Age"
-          value={ageFilter}
-          disabled={!genderFilter}
-          onChange={(value) => {
-            setAgeFilter(value);
-            setNameFilter("");
-          }}
-          options={ageOptions.map((age) => ({ value: age, label: age }))}
-        />
-        <ChipFilter
-          ariaLabel="Category"
-          value={nameFilter}
-          disabled={!ageFilter}
-          onChange={setNameFilter}
-          options={nameOptions.map((name) => ({ value: name, label: name }))}
-        />
-      </div>
-
-      {visible.length === 0 ? (
-        <EmptyState
-          title={assigned.length === 0 ? "No categories yet" : "No matching categories"}
-          hint={assigned.length === 0 ? "Add a category to continue." : "Clear a chip to see more."}
-        />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((category) => (
-            <SoftCard key={category.id} interactive onClick={() => openCategory(category)}>
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-semibold">{categoryLabel(category)}</p>
-                <StatusBadge>{categoryEventName(category.name) ?? category.ageGroup}</StatusBadge>
-              </div>
-              <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
-                {isAthleticsSport(sport)
-                  ? isRelayEvent(category.name)
-                    ? "Relay teams of 4"
-                    : "Individual athletes"
-                  : `Roster ${category.teamSize}–${category.maxTeamSize}`}
-              </p>
-              <div
-                className="mt-4 flex justify-end"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <SoftButton
-                  variant="danger"
-                  onClick={async () => {
-                    if (!confirm(`Remove ${categoryLabel(category)}?`)) return;
-                    const { error } = await removeChampionshipEvent(championshipId, category.id);
-                    if (error) toast.error(error.message);
-                    else {
-                      toast.success("Category removed.");
-                      await load();
-                    }
-                  }}
-                >
-                  Remove
-                </SoftButton>
-              </div>
-            </SoftCard>
-          ))}
-        </div>
-      )}
+      <TableCard
+        title="Categories"
+        search={<TableSearch value={search} onChange={setSearch} placeholder="Search category" />}
+        toolbar={
+          <>
+            <ChipFilter
+              ariaLabel="Gender"
+              value={genderFilter}
+              onChange={(value) => {
+                setGenderFilter(value);
+                setAgeFilter("");
+                setNameFilter("");
+              }}
+              options={genderOptions.map((gender) => ({
+                value: gender,
+                label: genderLabel(gender),
+              }))}
+            />
+            <ChipFilter
+              ariaLabel="Age"
+              value={ageFilter}
+              disabled={!genderFilter}
+              onChange={(value) => {
+                setAgeFilter(value);
+                setNameFilter("");
+              }}
+              options={ageOptions.map((age) => ({ value: age, label: age }))}
+            />
+            <ChipFilter
+              ariaLabel="Category"
+              value={nameFilter}
+              disabled={!ageFilter}
+              onChange={setNameFilter}
+              options={nameOptions.map((name) => ({ value: name, label: name }))}
+            />
+          </>
+        }
+        action={
+          <SoftButton variant="primary" onClick={openForm} disabled={!offering || available.length === 0}>
+            Add categories
+          </SoftButton>
+        }
+        footer={
+          <TablePager count={visible.length} page={paged.page} perPage={perPage} onPage={setPage} onPerPage={setPerPage} />
+        }
+      >
+        <table>
+          <thead>
+            <tr>
+              <SortTh label="Category" column="label" sort={sort} onSort={setSort} />
+              <SortTh label="Gender" column="gender" sort={sort} onSort={setSort} />
+              <SortTh label="Age" column="age" sort={sort} onSort={setSort} />
+              <SortTh label="Roster" column="roster" sort={sort} onSort={setSort} />
+              <th className="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.rows.map((category) => (
+              <tr key={category.id}>
+                <td>
+                  <button type="button" className="font-semibold" onClick={() => openCategory(category)}>
+                    {categoryLabel(category)}
+                  </button>
+                </td>
+                <td className="capitalize">{category.gender}</td>
+                <td>{category.ageGroup}</td>
+                <td>
+                  {isAthleticsSport(sport)
+                    ? isRelayEvent(category.name)
+                      ? "Relay teams of 4"
+                      : "Individual athletes"
+                    : `${category.teamSize}–${category.maxTeamSize}`}
+                </td>
+                <td className="text-right">
+                  <IconButton
+                    color="error"
+                    aria-label={`Remove ${categoryLabel(category)}`}
+                    title="Remove"
+                    onClick={async () => {
+                      if (!(await confirm({ title: `Remove ${categoryLabel(category)}?`, message: "It is taken off this sport for this championship.", confirmLabel: "Remove" }))) return;
+                      const { error } = await removeChampionshipEvent(championshipId, category.id);
+                      if (error) toast.error(error.message);
+                      else {
+                        toast.success("Category removed.");
+                        await load();
+                      }
+                    }}
+                  >
+                    <IconTrash size={18} />
+                  </IconButton>
+                </td>
+              </tr>
+            ))}
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
+                  {assigned.length === 0 ? "No categories yet." : "No matching categories."}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </TableCard>
 
       <Modal open={formOpen} title="Add categories" wide onClose={() => setFormOpen(false)}>
         <form

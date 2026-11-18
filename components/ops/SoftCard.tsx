@@ -1,5 +1,6 @@
 "use client";
 
+import Card from "@mui/material/Card";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
@@ -13,8 +14,8 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 const paddingMap = {
   none: "",
   sm: "p-3",
-  md: "p-4 sm:p-5",
-  lg: "p-5 sm:p-6",
+  md: "p-6",
+  lg: "p-8",
 };
 
 export function SoftCard({
@@ -26,17 +27,17 @@ export function SoftCard({
   ...rest
 }: Props) {
   return (
-    <div
+    <Card
       className={cn(
-        "soft-card",
+        "border border-transparent",
         paddingMap[padding],
-        interactive && "cursor-pointer hover:border-[var(--ops-primary)]/40 hover:bg-[var(--ops-primary-soft)]/40",
+        interactive && "cursor-pointer hover:border-[var(--ops-primary)]/30 hover:bg-[var(--ops-primary-soft)]/40",
         selected && "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]",
         className,
       )}
       {...rest}
     >
       {children}
-    </div>
+    </Card>
   );
 }

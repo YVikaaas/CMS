@@ -365,7 +365,7 @@ function TeamScoreColumn({
   return (
     <div className="grid gap-3">
       <p className="text-sm font-semibold">{teamName}</p>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold">
         Points
         <input
           inputMode="numeric"
@@ -375,7 +375,7 @@ function TeamScoreColumn({
           className={fieldClass}
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold">
         Fouls
         <input
           inputMode="numeric"
@@ -385,12 +385,12 @@ function TeamScoreColumn({
         />
       </label>
       <div className="grid gap-2 rounded-xl border border-[var(--ops-line)] p-3">
-        <p className="text-sm font-medium">Player basket</p>
+        <p className="text-sm font-semibold">Player basket</p>
         {members.length === 0 ? (
           <p className="text-sm text-[var(--ops-text-muted)]">This team has no members.</p>
         ) : (
           <>
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Player
               <SoftSelect
                 value={playerId}

@@ -2,18 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import IconButton from "@mui/material/IconButton";
+import { IconArchive, IconPencil } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   ChipFilter,
-  EmptyState,
   PageHeader,
   PageSkeleton,
   SoftButton,
-  SoftCard,
-  SoftSearch,
   StatusBadge,
+  useConfirm,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
@@ -22,7 +23,7 @@ import {
   updateChampionship,
 } from "@/lib/services";
 import type { Championship, CompetitionStatus } from "@/lib/types/cms";
-import { compareText, matchesQuery } from "@/lib/utils/table";
+import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError } from "@/lib/utils/validation";
 
 const emptyForm = {
@@ -39,6 +40,7 @@ const statusTone: Record<CompetitionStatus, "warning" | "success" | "neutral"> =
 };
 
 export default function ChampionshipsPage() {
+  const confirm = useConfirm();
   const router = useRouter();
   const { championships, selectedId, setSelectedId, refresh, loading } = useChampionship();
   const [form, setForm] = useState(emptyForm);
@@ -47,6 +49,12 @@ export default function ChampionshipsPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | CompetitionStatus>("");
+  const [sort, setSort] = useState<SortState<"name" | "location" | "dates" | "status">>({
+    key: "name",
+    dir: "asc",
+  });
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string }>({});
 
   const openCreate = () => {
@@ -112,7 +120,7 @@ export default function ChampionshipsPage() {
   };
 
   const onArchive = async (id: string) => {
-    if (!confirm("Archive this championship?")) return;
+    if (!(await confirm({ title: "Archive this championship?", message: "It leaves the header picker. Its data stays.", confirmLabel: "Archive" }))) return;
     const { error } = await archiveChampionship(id);
     if (error) {
       toast.error(error.message);
@@ -127,8 +135,14 @@ export default function ChampionshipsPage() {
       if (statusFilter && row.status !== statusFilter) return false;
       return matchesQuery(search, row.name, row.location, row.status);
     });
-    return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
-  }, [championships, search, statusFilter]);
+    return [...filtered].sort((a, b) => {
+      if (sort.key === "location") return compareText(a.location, b.location, sort.dir);
+      if (sort.key === "dates") return compareText(a.startDate, b.startDate, sort.dir);
+      if (sort.key === "status") return compareText(a.status, b.status, sort.dir);
+      return compareText(a.name, b.name, sort.dir);
+    });
+  }, [championships, search, statusFilter, sort]);
+  const paged = pageRows(visible, page, perPage);
 
   if (loading) {
     return <PageSkeleton kind="table" />;
@@ -136,84 +150,92 @@ export default function ChampionshipsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <PageHeader title="Championships" hint="Pick a championship, then assign sports." />
+
+      <TableCard
         title="Championships"
-        hint="Pick a championship, then assign sports."
+        search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or location" />}
+        toolbar={
+          <ChipFilter
+            ariaLabel="Status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: "draft", label: "Draft" },
+              { value: "active", label: "Active" },
+              { value: "archived", label: "Archived" },
+            ]}
+          />
+        }
         action={
           <SoftButton variant="primary" onClick={openCreate}>
             New championship
           </SoftButton>
         }
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <SoftSearch
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search name or location"
-        />
-        <ChipFilter
-          ariaLabel="Status"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: "draft", label: "Draft" },
-            { value: "active", label: "Active" },
-            { value: "archived", label: "Archived" },
-          ]}
-        />
-      </div>
-
-      {visible.length === 0 ? (
-        <EmptyState
-          title={championships.length === 0 ? "No championships yet" : "No matching championships"}
-          hint="Create a championship to start assigning sports."
-        />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((row) => (
-            <SoftCard
-              key={row.id}
-              interactive
-              selected={selectedId === row.id}
-              onClick={() => openChampionship(row)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{row.name}</p>
-                  <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
-                    {row.location || "No location"}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--ops-text-muted)]">
-                    {row.startDate || "—"}
-                    {row.endDate ? ` – ${row.endDate}` : ""}
-                  </p>
-                </div>
-                <StatusBadge tone={statusTone[row.status]}>{row.status}</StatusBadge>
-              </div>
-              <div
-                className="mt-4 flex justify-end gap-2"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <SoftButton size="default" onClick={() => openEdit(row)}>
-                  Edit
-                </SoftButton>
-                <SoftButton variant="danger" onClick={() => void onArchive(row.id)}>
-                  Archive
-                </SoftButton>
-              </div>
-            </SoftCard>
-          ))}
-        </div>
-      )}
+        footer={
+          <TablePager
+            count={visible.length}
+            page={paged.page}
+            perPage={perPage}
+            onPage={setPage}
+            onPerPage={setPerPage}
+          />
+        }
+      >
+        <table>
+          <thead>
+            <tr>
+              <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
+              <SortTh label="Location" column="location" sort={sort} onSort={setSort} />
+              <SortTh label="Dates" column="dates" sort={sort} onSort={setSort} />
+              <SortTh label="Status" column="status" sort={sort} onSort={setSort} />
+              <th className="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.rows.map((row) => (
+              <tr key={row.id} data-selected={selectedId === row.id ? "true" : undefined}>
+                <td>
+                  <button type="button" className="font-semibold" onClick={() => openChampionship(row)}>
+                    {row.name}
+                  </button>
+                </td>
+                <td>{row.location || "No location"}</td>
+                <td className="whitespace-nowrap">
+                  {row.startDate || "—"}
+                  {row.endDate ? ` – ${row.endDate}` : ""}
+                </td>
+                <td>
+                  <StatusBadge tone={statusTone[row.status]}>{row.status}</StatusBadge>
+                </td>
+                <td className="text-right whitespace-nowrap">
+                  <IconButton color="success" aria-label={`Edit ${row.name}`} title="Edit" onClick={() => openEdit(row)}>
+                    <IconPencil size={18} />
+                  </IconButton>
+                  <IconButton color="error" aria-label={`Archive ${row.name}`} title="Archive" onClick={() => void onArchive(row.id)}>
+                    <IconArchive size={18} />
+                  </IconButton>
+                </td>
+              </tr>
+            ))}
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
+                  {championships.length === 0 ? "No championships yet." : "No matching championships."}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </TableCard>
 
       <Modal
         open={formOpen}
         title={editingId ? "Edit championship" : "New championship"}
         onClose={closeForm}
       >
-        <form onSubmit={onSave} className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+        <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
             <NameInput
               value={form.name}
@@ -224,7 +246,7 @@ export default function ChampionshipsPage() {
               className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Location
             <input
               value={form.location}
@@ -232,7 +254,7 @@ export default function ChampionshipsPage() {
               className={fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Start date
             <input
               type="date"
@@ -241,7 +263,7 @@ export default function ChampionshipsPage() {
               className={fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             End date
             <input
               type="date"

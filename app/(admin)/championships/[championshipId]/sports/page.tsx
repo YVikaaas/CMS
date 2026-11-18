@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import IconButton from "@mui/material/IconButton";
+import { IconTrash } from "@tabler/icons-react";
 import { Modal } from "@/components/Modal";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   ChipFilter,
   EmptyState,
@@ -14,10 +17,10 @@ import {
   PickList,
   PickToolbar,
   SoftButton,
-  SoftCard,
   SoftSearch,
   StatusBadge,
   StepCrumbs,
+  useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "../../useScopedChampionship";
 import {
@@ -29,7 +32,7 @@ import {
 } from "@/lib/services";
 import type { Category, ChampionshipOffering, Sport, SportEventMode } from "@/lib/types/cms";
 import { applySport, emptyEventFilter, writeEventFilter } from "@/lib/utils/eventFilter";
-import { compareText, matchesQuery } from "@/lib/utils/table";
+import { compareNumber, compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 
 function toggleId(current: Set<string>, id: string): Set<string> {
   const next = new Set(current);
@@ -39,6 +42,7 @@ function toggleId(current: Set<string>, id: string): Set<string> {
 }
 
 export default function ChampionshipSportsPage() {
+  const confirm = useConfirm();
   const router = useRouter();
   const params = useParams<{ championshipId: string }>();
   const championshipId = params.championshipId;
@@ -48,6 +52,12 @@ export default function ChampionshipSportsPage() {
   const [offerings, setOfferings] = useState<ChampionshipOffering[]>([]);
   const [search, setSearch] = useState("");
   const [modeFilter, setModeFilter] = useState<"" | SportEventMode>("");
+  const [sort, setSort] = useState<SortState<"name" | "code" | "mode" | "categories">>({
+    key: "name",
+    dir: "asc",
+  });
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
   const [pickMode, setPickMode] = useState<"" | SportEventMode>("");
@@ -88,8 +98,16 @@ export default function ChampionshipSportsPage() {
       if (modeFilter && sport.eventMode !== modeFilter) return false;
       return matchesQuery(search, sport.name, sport.code, sport.eventMode);
     });
-    return [...filtered].sort((a, b) => compareText(a.name, b.name, "asc"));
-  }, [assigned, search, modeFilter]);
+    const count = (sportId: string) =>
+      offerings.find((item) => item.sportId === sportId)?.categoryIds.length ?? 0;
+    return [...filtered].sort((a, b) => {
+      if (sort.key === "code") return compareText(a.code, b.code, sort.dir);
+      if (sort.key === "mode") return compareText(a.eventMode, b.eventMode, sort.dir);
+      if (sort.key === "categories") return compareNumber(count(a.id), count(b.id), sort.dir);
+      return compareText(a.name, b.name, sort.dir);
+    });
+  }, [assigned, search, modeFilter, sort, offerings]);
+  const paged = pageRows(visible, page, perPage);
 
   const pickVisible = useMemo(() => {
     const filtered = available.filter((sport) => {
@@ -156,80 +174,88 @@ export default function ChampionshipSportsPage() {
           { label: championship.name },
         ]}
       />
-      <PageHeader
+      <PageHeader title="Sports" hint="Pick one or more sports, then assign categories." />
+
+      <TableCard
         title="Sports"
-        hint="Pick one or more sports, then assign categories."
+        search={<TableSearch value={search} onChange={setSearch} placeholder="Search sport or code" />}
+        toolbar={
+          <ChipFilter
+            ariaLabel="Mode"
+            value={modeFilter}
+            onChange={setModeFilter}
+            options={[
+              { value: "team", label: "Team" },
+              { value: "solo", label: "Solo" },
+              { value: "both", label: "Both" },
+            ]}
+          />
+        }
         action={
           <SoftButton variant="primary" onClick={openForm} disabled={available.length === 0}>
             Add sports
           </SoftButton>
         }
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <SoftSearch
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search sport or code"
-        />
-        <ChipFilter
-          ariaLabel="Mode"
-          value={modeFilter}
-          onChange={setModeFilter}
-          options={[
-            { value: "team", label: "Team" },
-            { value: "solo", label: "Solo" },
-            { value: "both", label: "Both" },
-          ]}
-        />
-      </div>
-
-      {visible.length === 0 ? (
-        <EmptyState
-          title={assigned.length === 0 ? "No sports yet" : "No matching sports"}
-          hint="Add a sport to continue."
-        />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((sport) => {
-            const eventCount =
-              offerings.find((item) => item.sportId === sport.id)?.categoryIds.length ?? 0;
-            return (
-              <SoftCard key={sport.id} interactive onClick={() => openSport(sport)}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{sport.name}</p>
-                    <p className="mt-1 text-sm text-[var(--ops-text-muted)]">{sport.code}</p>
-                  </div>
-                  <StatusBadge>{sport.eventMode}</StatusBadge>
-                </div>
-                <p className="mt-3 text-sm text-[var(--ops-text-muted)]">
-                  {eventCount} {eventCount === 1 ? "category" : "categories"}
-                </p>
-                <div
-                  className="mt-4 flex justify-end"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <SoftButton
-                    variant="danger"
-                    onClick={async () => {
-                      if (!confirm(`Remove ${sport.name} from this championship?`)) return;
-                      const { error } = await removeChampionshipSport(championshipId, sport.id);
-                      if (error) toast.error(error.message);
-                      else {
-                        toast.success("Sport removed.");
-                        await load();
-                      }
-                    }}
-                  >
-                    Remove
-                  </SoftButton>
-                </div>
-              </SoftCard>
-            );
-          })}
-        </div>
-      )}
+        footer={
+          <TablePager count={visible.length} page={paged.page} perPage={perPage} onPage={setPage} onPerPage={setPerPage} />
+        }
+      >
+        <table>
+          <thead>
+            <tr>
+              <SortTh label="Sport" column="name" sort={sort} onSort={setSort} />
+              <SortTh label="Code" column="code" sort={sort} onSort={setSort} />
+              <SortTh label="Mode" column="mode" sort={sort} onSort={setSort} />
+              <SortTh label="Categories" column="categories" sort={sort} onSort={setSort} />
+              <th className="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.rows.map((sport) => {
+              const eventCount = offerings.find((item) => item.sportId === sport.id)?.categoryIds.length ?? 0;
+              return (
+                <tr key={sport.id}>
+                  <td>
+                    <button type="button" className="font-semibold" onClick={() => openSport(sport)}>
+                      {sport.name}
+                    </button>
+                  </td>
+                  <td>{sport.code}</td>
+                  <td>
+                    <StatusBadge>{sport.eventMode}</StatusBadge>
+                  </td>
+                  <td>{eventCount}</td>
+                  <td className="text-right">
+                    <IconButton
+                      color="error"
+                      aria-label={`Remove ${sport.name}`}
+                      title="Remove"
+                      onClick={async () => {
+                        if (!(await confirm({ title: `Remove ${sport.name}?`, message: "It is taken off this championship. The sport stays in the catalog.", confirmLabel: "Remove" }))) return;
+                        const { error } = await removeChampionshipSport(championshipId, sport.id);
+                        if (error) toast.error(error.message);
+                        else {
+                          toast.success("Sport removed.");
+                          await load();
+                        }
+                      }}
+                    >
+                      <IconTrash size={18} />
+                    </IconButton>
+                  </td>
+                </tr>
+              );
+            })}
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
+                  {assigned.length === 0 ? "No sports yet." : "No matching sports."}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </TableCard>
 
       <Modal
         open={formOpen}

@@ -172,18 +172,18 @@ export function FixtureRankingBoard({
             ? "Ranking is locked. Unlock it to change places, or open Podium to deliver medals."
             : "Set 1st, 2nd and 3rd, save, then lock. Podium only opens after lock."}
       </p>
-      <div className="overflow-hidden rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
+      <div className="ops-table">
+        <table>
+          <thead>
             <tr>
-              <th className="px-4 py-2 font-medium">Rank</th>
-              <th className="px-4 py-2 font-medium">{athleteMode ? "Athlete" : "Team"}</th>
+              <th className="p-4 font-medium">Rank</th>
+              <th className="p-4 font-medium">{athleteMode ? "Athlete" : "Team"}</th>
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
-              <tr key={row.key} className="border-t border-[var(--ops-line)]">
-                <td className="w-28 px-4 py-2">
+              <tr key={row.key} className="border-t border-[var(--ops-line)] hover:bg-[var(--ops-row-hover)]">
+                <td className="w-28 p-4">
                   {!canEdit ? (
                     <p className="font-medium">{row.rank || "—"}</p>
                   ) : (
@@ -210,7 +210,7 @@ export function FixtureRankingBoard({
                     </SoftSelect>
                   )}
                 </td>
-                <td className="px-4 py-2">
+                <td className="p-4">
                   <p className="font-medium">{row.name}</p>
                   {orgCityLine(row.orgName, row.city) ? (
                     <p className="text-[11px] text-[var(--ops-text-muted)]">

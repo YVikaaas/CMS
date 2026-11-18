@@ -3,18 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import IconButton from "@mui/material/IconButton";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Modal, fieldClass } from "@/components/Modal";
 import { RoundChips } from "@/components/RoundChips";
+import { TableCard } from "@/components/table";
 import {
   EmptyState,
   EventFilters,
   PageHeader,
   PageSkeleton,
   SoftButton,
-  SoftCard,
   StatusBadge,
   StepCrumbs,
+  useConfirm,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import {
@@ -81,6 +84,7 @@ const statusTone: Record<FixtureStatus, "neutral" | "primary" | "warning" | "suc
 };
 
 export default function FixtureSportPage() {
+  const confirm = useConfirm();
   const router = useRouter();
   const params = useParams<{ sportId: string }>();
   const sportId = params.sportId;
@@ -306,78 +310,90 @@ export default function FixtureSportPage() {
       ) : visibleCscs.length === 0 ? (
         <EmptyState title="No categories for this filter" hint="Clear a chip to see more." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleCscs.map((csc) => {
-            const fixture = fixtures.find((row) => row.cscId === csc.id) ?? null;
-            return (
-              <SoftCard
-                key={csc.id}
-                interactive={Boolean(fixture)}
-                onClick={() => {
-                  if (!fixture || !selected) return;
-                  writeEventFilter({
-                    championshipId: selected.id,
-                    sportId,
-                    gender: csc.categoryGender,
-                    ageGroup: csc.categoryAgeGroup,
-                    categoryId: csc.categoryId,
-                    categoryName: csc.categoryName,
-                  });
-                  router.push(`/gameplay/fixtures/${fixture.id}`);
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="font-semibold">{csc.categoryLabel}</p>
-                  {fixture ? (
-                    <StatusBadge tone={statusTone[fixture.status]}>
-                      {fixture.status.replace("_", " ")}
-                    </StatusBadge>
-                  ) : (
-                    <StatusBadge>No draw</StatusBadge>
-                  )}
-                </div>
-                {fixture ? (
-                  <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
-                    {formatLabel(fixture.formatType)} · {fixture.matchCount} matches
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-[var(--ops-text-muted)]">
-                    {formatLabel(csc.defaultFormat)}. Create a draw to add matches.
-                  </p>
-                )}
-                <div
-                  className="mt-4 flex justify-end gap-2"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {fixture ? (
-                    <>
-                      <SoftButton onClick={() => openEdit(fixture)}>Edit</SoftButton>
-                      <SoftButton
-                        variant="danger"
-                        onClick={async () => {
-                          if (!confirm(`Delete fixture for ${csc.categoryLabel}?`)) return;
-                          const { error } = await archiveFixture(fixture.id);
-                          if (error) toast.error(error.message);
-                          else await load();
-                        }}
-                      >
-                        Delete
-                      </SoftButton>
-                    </>
-                  ) : (
-                    <SoftButton
-                      variant="primary"
-                      disabled={usedCscIds.has(csc.id)}
-                      onClick={() => openCreate(csc.id)}
-                    >
-                      Create draw
-                    </SoftButton>
-                  )}
-                </div>
-              </SoftCard>
-            );
-          })}
-        </div>
+        <TableCard title="Categories">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Draw</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleCscs.map((csc) => {
+                const fixture = fixtures.find((row) => row.cscId === csc.id) ?? null;
+                return (
+                  <tr key={csc.id}>
+                    <td>
+                      {fixture && selected ? (
+                        <button
+                          type="button"
+                          className="font-semibold"
+                          onClick={() => {
+                            writeEventFilter({
+                              championshipId: selected.id,
+                              sportId,
+                              gender: csc.categoryGender,
+                              ageGroup: csc.categoryAgeGroup,
+                              categoryId: csc.categoryId,
+                              categoryName: csc.categoryName,
+                            });
+                            router.push(`/gameplay/fixtures/${fixture.id}`);
+                          }}
+                        >
+                          {csc.categoryLabel}
+                        </button>
+                      ) : (
+                        <span className="font-semibold">{csc.categoryLabel}</span>
+                      )}
+                    </td>
+                    <td>
+                      {fixture ? (
+                        <StatusBadge tone={statusTone[fixture.status]}>
+                          {fixture.status.replace("_", " ")}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge>No draw</StatusBadge>
+                      )}
+                    </td>
+                    <td>
+                      {fixture
+                        ? `${formatLabel(fixture.formatType)} · ${fixture.matchCount} matches`
+                        : `${formatLabel(csc.defaultFormat)}. Create a draw to add matches.`}
+                    </td>
+                    <td className="text-right whitespace-nowrap">
+                      {fixture ? (
+                        <>
+                          <IconButton color="success" aria-label={`Edit ${csc.categoryLabel}`} title="Edit" onClick={() => openEdit(fixture)}>
+                            <IconPencil size={18} />
+                          </IconButton>
+                          <IconButton
+                            color="error"
+                            aria-label={`Delete fixture for ${csc.categoryLabel}`}
+                            title="Delete"
+                            onClick={async () => {
+                              if (!(await confirm({ title: `Delete fixture for ${csc.categoryLabel}?`, message: "Its draw and matches are removed.", confirmLabel: "Delete" }))) return;
+                              const { error } = await archiveFixture(fixture.id);
+                              if (error) toast.error(error.message);
+                              else await load();
+                            }}
+                          >
+                            <IconTrash size={18} />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <SoftButton variant="primary" disabled={usedCscIds.has(csc.id)} onClick={() => openCreate(csc.id)}>
+                          Create draw
+                        </SoftButton>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableCard>
       )}
 
       <Modal
@@ -388,7 +404,7 @@ export default function FixtureSportPage() {
       >
         <form onSubmit={onSave} className="grid gap-4">
           {editingId ? (
-            <label className="flex flex-col gap-1 text-sm font-medium">
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Status
               <select
                 value={form.status}
@@ -412,7 +428,7 @@ export default function FixtureSportPage() {
                 </p>
               ) : (
                 <div className="grid gap-2">
-                  <p className="text-sm font-medium">Format</p>
+                  <p className="text-sm font-semibold">Format</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {(
                       [
@@ -436,7 +452,7 @@ export default function FixtureSportPage() {
                           "rounded-xl border p-4 text-left",
                           form.formatType === option.value
                             ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                            : "border-[var(--ops-line)] hover:bg-[var(--ops-board-muted)]",
+                            : "border-transparent bg-[var(--ops-board-muted)] hover:bg-[var(--ops-surface-hover)]",
                         )}
                       >
                         <p className="text-sm font-semibold">{option.title}</p>
@@ -447,7 +463,7 @@ export default function FixtureSportPage() {
                 </div>
               )}
               {form.formatType === "track_rounds" ? (
-                <label className="flex flex-col gap-1 text-sm font-medium">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Lanes per heat
                   <input
                     type="number"
@@ -466,7 +482,7 @@ export default function FixtureSportPage() {
               ) : null}
               {form.formatType === "field_attempts" ? (
                 <div className="grid gap-3">
-                  <p className="text-sm font-medium">Attempts per athlete</p>
+                  <p className="text-sm font-semibold">Attempts per athlete</p>
                   <p className="text-xs text-[var(--ops-text-muted)]">
                     Unique for each round. Default is 3 in qualifying and 2 in the final.
                   </p>
@@ -504,7 +520,7 @@ export default function FixtureSportPage() {
                 </div>
               ) : null}
               <div className="grid gap-2">
-                <p className="text-sm font-medium">Rounds</p>
+                <p className="text-sm font-semibold">Rounds</p>
                 {athleticsDraw ? null : (
                 <div className="flex flex-wrap gap-2">
                   <SoftButton
@@ -560,7 +576,7 @@ export default function FixtureSportPage() {
               </div>
             </>
           )}
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Start date
             <input
               type="date"
@@ -571,7 +587,7 @@ export default function FixtureSportPage() {
               className={fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             End date
             <input
               type="date"

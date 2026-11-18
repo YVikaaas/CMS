@@ -68,6 +68,14 @@ export function optionalNameError(value: string, label: string): string | null {
   return nameError(value, label);
 }
 
+export const PASSWORD_MIN_LENGTH = 8;
+
+export function passwordError(value: string, label = "Password"): string | null {
+  if (!value) return `${label} is required.`;
+  if (value.length < PASSWORD_MIN_LENGTH) return `${label} must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  return null;
+}
+
 /** Keep digits only (basketball points / fouls). */
 export function sanitizeDigitInput(raw: string, maxLen = 3): string {
   return raw.replace(/\D/g, "").slice(0, maxLen);

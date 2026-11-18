@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
-import { SortTh } from "@/components/table";
+import IconButton from "@mui/material/IconButton";
+import { IconArchive, IconPencil } from "@tabler/icons-react";
+import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
   ChipFilter,
   PageHeader,
   PageSkeleton,
   SoftButton,
-  SoftSearch,
+  useConfirm,
 } from "@/components/ops";
 import {
   archiveSport,
@@ -19,12 +21,13 @@ import {
   updateSport,
 } from "@/lib/services";
 import type { Sport, SportEventMode } from "@/lib/types/cms";
-import { compareText, matchesQuery, type SortState } from "@/lib/utils/table";
+import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError } from "@/lib/utils/validation";
 
 const empty = { name: "", code: "", eventMode: "team" as SportEventMode };
 
 export default function SportsPage() {
+  const confirm = useConfirm();
   const [sports, setSports] = useState<Sport[]>([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,6 +41,8 @@ export default function SportsPage() {
   });
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; code?: string }>({});
   const [ready, setReady] = useState(false);
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(10);
 
   const load = async () => {
     const { data, error } = await listSports();
@@ -100,6 +105,14 @@ export default function SportsPage() {
       return compareText(a.name, b.name, sort.dir);
     });
   }, [sports, search, modeFilter, sort]);
+  const paged = pageRows(visible, page, perPage);
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(empty);
+    setFieldErrors({});
+    setOpen(true);
+  };
 
   if (!ready) {
     return <PageSkeleton kind="table" />;
@@ -107,61 +120,59 @@ export default function SportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Sport"
-        hint="Global sport catalog."
+      <PageHeader title="Sport" hint="Global sport catalog." />
+
+      <TableCard
+        title="Sports"
+        search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or code" />}
+        toolbar={
+          <ChipFilter
+            ariaLabel="Mode"
+            value={modeFilter}
+            onChange={setModeFilter}
+            options={[
+              { value: "team", label: "Team" },
+              { value: "solo", label: "Solo" },
+              { value: "both", label: "Both" },
+            ]}
+          />
+        }
         action={
-          <SoftButton
-            variant="primary"
-            onClick={() => {
-              setEditingId(null);
-              setForm(empty);
-              setFieldErrors({});
-              setOpen(true);
-            }}
-          >
+          <SoftButton variant="primary" onClick={openCreate}>
             Add sport
           </SoftButton>
         }
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <SoftSearch
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search name or code"
-        />
-        <ChipFilter
-          ariaLabel="Mode"
-          value={modeFilter}
-          onChange={setModeFilter}
-          options={[
-            { value: "team", label: "Team" },
-            { value: "solo", label: "Solo" },
-            { value: "both", label: "Both" },
-          ]}
-        />
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-surface)]">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[var(--ops-board-muted)] text-[var(--ops-text-muted)]">
+        footer={
+          <TablePager
+            count={visible.length}
+            page={paged.page}
+            perPage={perPage}
+            onPage={setPage}
+            onPerPage={setPerPage}
+          />
+        }
+      >
+        <table>
+          <thead>
             <tr>
               <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
               <SortTh label="Code" column="code" sort={sort} onSort={setSort} />
               <SortTh label="Mode" column="mode" sort={sort} onSort={setSort} />
-              <th className="px-4 py-3 font-medium" />
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
-              <tr key={row.id} className="border-t border-[var(--cms-line)]">
-                <td className="px-4 py-3 font-medium">{row.name}</td>
-                <td className="px-4 py-3">{row.code}</td>
-                <td className="px-4 py-3 capitalize">{row.eventMode}</td>
-                <td className="px-4 py-3 text-right">
-                  <SoftButton
-                    className="mr-2"
+            {paged.rows.map((row) => (
+              <tr key={row.id}>
+                <td className="font-semibold">{row.name}</td>
+                <td>{row.code}</td>
+                <td className="capitalize">{row.eventMode}</td>
+                <td className="text-right whitespace-nowrap">
+                  <IconButton
+                    color="success"
+                    className="text-[var(--ops-success)]"
+                    aria-label={`Edit ${row.name}`}
+                    title="Edit"
                     onClick={() => {
                       setEditingId(row.id);
                       setForm({
@@ -173,36 +184,38 @@ export default function SportsPage() {
                       setOpen(true);
                     }}
                   >
-                    Edit
-                  </SoftButton>
-                  <SoftButton
-                    variant="danger"
+                    <IconPencil size={18} />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    aria-label={`Archive ${row.name}`}
+                    title="Archive"
                     onClick={async () => {
-                      if (!confirm("Archive this sport?")) return;
+                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new championships. Existing data stays.", confirmLabel: "Archive" }))) return;
                       const { error } = await archiveSport(row.id);
                       if (error) toast.error(error.message);
                       else await load();
                     }}
                   >
-                    Archive
-                  </SoftButton>
+                    <IconArchive size={18} />
+                  </IconButton>
                 </td>
               </tr>
             ))}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-[var(--cms-muted)]">
+                <td colSpan={4} className="py-8 text-center text-[var(--ops-text-muted)]">
                   {sports.length === 0 ? "No sports yet." : "No matching sports."}
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </TableCard>
 
       <Modal open={open} title={editingId ? "Edit sport" : "Add sport"} onClose={close}>
-        <form onSubmit={onSave} className="grid gap-3">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+        <form onSubmit={onSave} className="grid gap-4">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
             <NameInput
               value={form.name}
@@ -213,7 +226,7 @@ export default function SportsPage() {
               className={fieldErrors.name ? fieldErrorClass : fieldClass}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Code
             <input
               value={form.code}
@@ -226,7 +239,7 @@ export default function SportsPage() {
               className={`${fieldErrors.code ? fieldErrorClass : fieldClass} uppercase disabled:bg-[var(--ops-board-muted)]`}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Event mode
             <select
               value={form.eventMode}

@@ -27,7 +27,7 @@ export function HeatLaneSlots({
         error ? "border-[var(--ops-danger)]" : "border-[var(--ops-line)]"
       }`}
     >
-      <p className="text-sm font-medium">
+      <p className="text-sm font-semibold">
         {slotLabel}s. Leave a row blank to keep that {slotLabel.toLowerCase()} empty.
       </p>
       {hint ? <p className="text-xs text-[var(--ops-text-muted)]">{hint}</p> : null}
