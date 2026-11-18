@@ -150,9 +150,10 @@ export function CallRoomBoard({ sheet, saving, eyebrow, title, onChange }: Props
                       </td>
                     </tr>
                   ))
-                : visible.map((unit) => (
+                : visible.map((unit, index) => (
                     <TeamRows
                       key={unit.key}
+                      index={index}
                       unit={unit}
                       disabled={saving}
                       onUnit={(mark) => commit({ type: "unit", key: unit.key, mark })}
@@ -182,53 +183,68 @@ export function CallRoomBoard({ sheet, saving, eyebrow, title, onChange }: Props
 }
 
 function TeamRows({
+  index,
   unit,
   disabled,
   onUnit,
   onMember,
 }: {
+  index: number;
   unit: CallRoomUnit;
   disabled?: boolean;
   onUnit: (mark: CallRoomMark) => void;
   onMember: (memberId: string, mark: CallRoomMark) => void;
 }) {
   const teamOut = unit.mark === "absent";
-  const presentCount = unit.members.filter((member) => member.effective === "present").length;
   return (
     <>
-      <tr className="bg-[var(--ops-board-muted)]">
-        <td className="tabular-nums">{unit.lane ?? ""}</td>
+      <tr>
+        <td className="tabular-nums">{index + 1}</td>
         <td>
           <p className="font-semibold">{unit.name}</p>
           <p className="text-sm text-[var(--ops-text-muted)]">
-            {unit.detail ? `${unit.detail} · ` : ""}
-            {unit.members.length === 0 ? "No members" : `${presentCount}/${unit.members.length} in`}
-            {teamOut ? " · team out" : ""}
+            Team · {unit.members.length} {unit.members.length === 1 ? "athlete" : "athletes"}
           </p>
+          {unit.detail ? <p className="text-sm text-[var(--ops-text-muted)]">{unit.detail}</p> : null}
         </td>
         <td className="text-right">
           <MarkButtons mark={unit.mark} disabled={disabled} onPick={onUnit} label={unit.name} />
         </td>
       </tr>
-      {unit.members.map((member) => (
-        <tr key={member.id} className={member.effective === "absent" ? "bg-[var(--ops-danger-soft)]/40" : undefined}>
+      {unit.members.length > 0 ? (
+        <tr>
           <td />
-          <td className="pl-8">
-            <p className="font-medium">{member.name}</p>
-            {teamOut && member.mark !== "absent" ? (
-              <p className="text-xs text-[var(--ops-text-muted)]">Out with the team</p>
-            ) : null}
-          </td>
-          <td className="text-right">
-            <MarkButtons
-              mark={member.effective}
-              disabled={disabled}
-              onPick={(mark) => onMember(member.id, mark)}
-              label={member.name}
-            />
+          <td colSpan={2}>
+            <details>
+              <summary className="cursor-pointer text-sm font-semibold">Players</summary>
+              <ul className="mt-2 divide-y divide-[var(--ops-line)]">
+                {unit.members.map((member) => (
+                  <li
+                    key={member.id}
+                    className={cn(
+                      "flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between",
+                      member.effective === "absent" && "bg-[var(--ops-danger-soft)]/40",
+                    )}
+                  >
+                    <div>
+                      <p className="font-medium">{member.name}</p>
+                      {teamOut && member.mark !== "absent" ? (
+                        <p className="text-xs text-[var(--ops-text-muted)]">Out with the team</p>
+                      ) : null}
+                    </div>
+                    <MarkButtons
+                      mark={member.effective}
+                      disabled={disabled}
+                      onPick={(mark) => onMember(member.id, mark)}
+                      label={member.name}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </details>
           </td>
         </tr>
-      ))}
+      ) : null}
     </>
   );
 }

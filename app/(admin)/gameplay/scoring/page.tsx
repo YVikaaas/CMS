@@ -29,6 +29,7 @@ import {
 } from "@/lib/utils/eventFilter";
 import { heatQueueHint, heatQueueTitle, isHeatMatch } from "@/lib/utils/athletics";
 import { displayScore, uniqueRoundLabelsInOrder } from "@/lib/utils/fixtures";
+import { formatMatchWhen } from "@/lib/utils/resultsBoard";
 
 const RANKING_TAB = "ranking";
 
@@ -209,7 +210,11 @@ function ScoringDesk() {
                           {isHeatMatch(row) ? heatQueueTitle(row) : `${row.team1Name} vs ${row.team2Name}`}
                         </span>
                         <span className="block text-sm text-[var(--ops-text-muted)]">
-                          {isHeatMatch(row) ? heatQueueHint(row) : displayScore(row)}
+                          {isHeatMatch(row)
+                            ? heatQueueHint(row)
+                            : [row.scheduledAt ? formatMatchWhen(row.scheduledAt) : null, displayScore(row)]
+                                .filter(Boolean)
+                                .join(" · ")}
                         </span>
                       </span>
                       <StatusBadge tone={statusTone(row.status)}>

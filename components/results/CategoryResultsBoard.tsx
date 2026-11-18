@@ -34,6 +34,9 @@ export function CategoryResultsBoard({
     [rounds],
   );
   const [tab, setTab] = useState<ResultsTab>(rounds[0] ?? "ranking");
+  const [teamRanking, setTeamRanking] = useState(false);
+  const athletics = isAthleticsFormat(fixture.formatType);
+  const teamKnockout = !athletics && rounds.some((type) => type !== "league");
 
   useEffect(() => {
     const allowed = tabs.map((item) => item.id);
@@ -49,20 +52,37 @@ export function CategoryResultsBoard({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="rounded-xl bg-[var(--ops-primary)] px-4 py-3 text-[var(--ops-on-primary)]">
+      <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--ops-primary)] px-4 py-3 text-[var(--ops-on-primary)]">
         <p className="text-sm font-semibold">
           {fixture.sportName} · {fixture.categoryLabel}
         </p>
+        {teamKnockout ? (
+          <button
+            type="button"
+            onClick={() => setTeamRanking((current) => !current)}
+            className="shrink-0 text-sm font-semibold"
+          >
+            {teamRanking ? "Matches" : "Final rankings"}
+          </button>
+        ) : null}
       </div>
-      <ResultsPhaseTabs ariaLabel="Rounds" tabs={tabs} value={tab} onChange={setTab} />
-      {tab === "ranking" ? (
-        <FixtureRankingBoard fixture={fixture} readOnly />
-      ) : isAthleticsFormat(fixture.formatType) ? (
-        <AthleticsResultsBoard matches={roundMatches} />
-      ) : tab === "league" ? (
-        <LeagueResultsBoard matches={roundMatches} orgByTeamId={orgByTeamId} />
+      {teamKnockout ? (
+        teamRanking ? (
+          <FixtureRankingBoard fixture={fixture} readOnly />
+        ) : (
+          <KnockoutResultsBoard matches={matches} orgByTeamId={orgByTeamId} />
+        )
       ) : (
-        <KnockoutResultsBoard matches={roundMatches} orgByTeamId={orgByTeamId} />
+        <>
+          <ResultsPhaseTabs ariaLabel="Rounds" tabs={tabs} value={tab} onChange={setTab} />
+          {tab === "ranking" ? (
+            <FixtureRankingBoard fixture={fixture} readOnly />
+          ) : athletics ? (
+            <AthleticsResultsBoard matches={roundMatches} />
+          ) : (
+            <LeagueResultsBoard matches={roundMatches} orgByTeamId={orgByTeamId} />
+          )}
+        </>
       )}
     </section>
   );

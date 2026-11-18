@@ -1,14 +1,9 @@
 "use client";
 
-import { IconTrophy } from "@tabler/icons-react";
 import { StatusBadge } from "@/components/ops";
 import type { FixtureMatch, FixtureParticipantResult } from "@/lib/types/cms";
 import { cn } from "@/lib/utils/cn";
-import {
-  formatMatchId,
-  formatMatchWhen,
-  isResultScoreVisible,
-} from "@/lib/utils/resultsBoard";
+import { formatMatchWhen, isResultScoreVisible } from "@/lib/utils/resultsBoard";
 import { sidePoints } from "@/lib/utils/fixtures";
 
 function TeamRow({
@@ -49,10 +44,9 @@ function TeamRow({
           </p>
           {bye && scoreVisible ? (
             <StatusBadge tone="warning">Bye</StatusBadge>
-          ) : (
-            winner &&
-            scoreVisible && <IconTrophy size={14} className="mt-0.5 shrink-0 text-[var(--ops-success)]" aria-label="Winner" />
-          )}
+          ) : winner && scoreVisible ? (
+            <StatusBadge tone="success">Winner</StatusBadge>
+          ) : null}
         </div>
         {org ? <p className="truncate text-xs text-[var(--ops-text-muted)]">{org}</p> : null}
       </div>
@@ -94,11 +88,13 @@ export function ResultMatchCard({
           variant === "bracket" && "min-h-11 border-b",
         )}
       >
-        <span className="text-sm font-semibold tabular-nums">
-          {formatMatchId(match.matchLabel, match.matchNumber)}
+        <span className="text-sm font-semibold">
+          {match.matchLabel.trim() && !/^M-/i.test(match.matchLabel.trim())
+            ? match.matchLabel.trim()
+            : `Match ${match.matchNumber}`}
         </span>
         <span className="min-w-0 flex-1 truncate text-xs text-[var(--ops-text-muted)]">
-          {formatMatchWhen(match.scheduledAt)}
+          {[formatMatchWhen(match.scheduledAt), match.venue].filter(Boolean).join(" · ")}
         </span>
         {live ? <StatusBadge tone="success">Live</StatusBadge> : null}
       </header>

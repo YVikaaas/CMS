@@ -135,7 +135,7 @@ Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`
 
 ### Floor — Call Room (`/gameplay/call-room`)
 
-Wait for filters. Round chips no All. `SplitWorkspace`: heat chips on the left, call table on the right. The board title is the sport, round, category, and heat from the selected match. Solo rows are lane, athlete, Present/Absent. Team rows group members under the team. Footer counts are present, absent, unmarked, and total from `callRoomProgress`. Present / Absent is an MUI `ToggleButtonGroup` (92px buttons, 44px tall). Picked = soft tint with dark text (`--ops-success-soft` / `--ops-danger-soft`), never a solid fill. No BIB, verification, delay, or sports-manager fields.
+Wait for filters. Round chips no All. `SplitWorkspace`: match chips on the left, call table on the right. Solo title is category and heat. Team title is sport, round, and match. Solo rows are lane, athlete, Present/Absent. Team rows are number, team, athlete count, and school when it is on the unit; players stay under a Players disclosure. Footer counts are present, absent, unmarked, and total from `callRoomProgress`. Present / Absent is an MUI `ToggleButtonGroup` (92px buttons, 44px tall). Picked = soft tint with dark text (`--ops-success-soft` / `--ops-danger-soft`), never a solid fill. No BIB, retake, verification, delay, or sports-manager fields.
 
 ### Floor — Fixtures
 
@@ -151,11 +151,11 @@ Default venue copy for basketball: `"Court 1"`. Athletics create-draw does not p
 
 ### Floor — Scoring (`/gameplay/scoring`)
 
-Wait for filters. Round chips no All. `SplitWorkspace`: heat chips on the left, score table on the right. Athletics opens with sport, round, category, and heat, then lane, athlete, status, and time or mark. Sticky Save progress / Complete. No upload sheet and no auto-position control.
+Wait for filters. Round chips no All. `SplitWorkspace`: heat or match chips on the left, the board on the right. Athletics opens with sport, round, category, and heat, then lane, athlete, status, and time or mark. Team matches open as two rows: initials, name, athlete count, foul stepper, score stepper, and Mark winner. Player baskets stay inside each row. Sticky Save / Submit scoring. No shootout, no-show pair, upload sheet, or auto-position control.
 
 ### Floor — Results (`/gameplay/results`)
 
-Wait for filters. One `CategoryResultsBoard` per fixture, with a teal identity bar (sport and category). **One** round-tab row, no All. Athletics heats are place, lane, athlete, and time. League = `ResultMatchCard` grid. Knockout = `KnockoutResultsBoard`. Read-only.
+Wait for filters. One `CategoryResultsBoard` per fixture, with a teal identity bar (sport and category). Athletics keeps one round-tab row, no All, then place, lane, athlete, and time. Team knockout shows every round as a column of match cards (teams, score, Winner). Final rankings switches that board to the locked ranking. League-only stays a card grid. Read-only.
 
 ### Floor — Podium (`/gameplay/podium`)
 

@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { fieldClass, RequiredMark } from "@/components/Modal";
-import { SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
+import { SoftButton, SoftSelect, StatusBadge, StickyActionBar } from "@/components/ops";
 import {
   addMatchScoreEvent,
   archiveMatchScoreEvent,
@@ -28,6 +29,8 @@ import {
   winnerFromResults,
 } from "@/lib/utils/fixtures";
 import { sanitizeDigitInput } from "@/lib/utils/validation";
+import { formatMatchWhen } from "@/lib/utils/resultsBoard";
+import { cn } from "@/lib/utils/cn";
 
 const SCORING_MODE = "both" as const;
 
@@ -206,8 +209,26 @@ export function ScoreMatchBoard({
     onSaved();
   };
 
+  const matchTitle = `${match.sportName} ${match.roundLabel} · ${
+    match.matchLabel.trim() || `Match ${match.matchNumber}`
+  }`;
+  const statusTone =
+    match.status === "completed" ? "success" : match.status === "in_progress" ? "warning" : "neutral";
+
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
+            {match.sportName} · {match.roundLabel}
+          </p>
+          <h2 className="text-xl font-semibold">{matchTitle}</h2>
+          {match.scheduledAt ? (
+            <p className="text-sm text-[var(--ops-text-muted)]">{formatMatchWhen(match.scheduledAt)}</p>
+          ) : null}
+        </div>
+        <StatusBadge tone={statusTone}>{match.status.replace("_", " ")}</StatusBadge>
+      </div>
       <div className="flex gap-2">
         <SoftButton variant={pane === "score" ? "primary" : "default"} onClick={() => setPane("score")}>
           Score
@@ -216,67 +237,52 @@ export function ScoreMatchBoard({
           Player baskets{events.length ? ` (${events.length})` : ""}
         </SoftButton>
       </div>
-      <p className="text-center text-lg font-semibold">
-        {display1} – {display2}
-      </p>
       {pane === "score" ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
-            <TeamScoreColumn
-              teamName={match.team1Name}
-              teamId={match.team1Id}
-              points={team1Points}
-              fouls={team1Fouls}
-              displayPoints={display1}
-              totalsLocked={totalsLocked}
-              members={team1Members}
-              playerId={player1Id}
-              logging={logging}
-              onPoints={(value) => setTeam1Points(sanitizeDigitInput(value))}
-              onFouls={(value) => setTeam1Fouls(sanitizeDigitInput(value))}
-              onPlayer={setPlayer1Id}
-              onBasket={(points) => void logBasket(match.team1Id, player1Id, points)}
-            />
-            <p className="pt-8 text-center text-sm font-semibold text-[var(--ops-text-muted)]">vs</p>
-            <TeamScoreColumn
-              teamName={match.team2Name}
-              teamId={match.team2Id}
-              points={team2Points}
-              fouls={team2Fouls}
-              displayPoints={display2}
-              totalsLocked={totalsLocked}
-              members={team2Members}
-              playerId={player2Id}
-              logging={logging}
-              onPoints={(value) => setTeam2Points(sanitizeDigitInput(value))}
-              onFouls={(value) => setTeam2Fouls(sanitizeDigitInput(value))}
-              onPlayer={setPlayer2Id}
-              onBasket={(points) => void logBasket(match.team2Id, player2Id, points)}
-            />
-          </div>
-          <fieldset className="grid gap-2">
-            <legend className="text-sm font-medium">Winner</legend>
+          <TeamScoreRow
+            side="1"
+            teamName={match.team1Name}
+            teamId={match.team1Id}
+            points={team1Points}
+            fouls={team1Fouls}
+            displayPoints={display1}
+            totalsLocked={totalsLocked}
+            members={team1Members}
+            playerId={player1Id}
+            logging={logging}
+            winner={winner === "1"}
+            onPoints={(value) => setTeam1Points(sanitizeDigitInput(value))}
+            onFouls={(value) => setTeam1Fouls(sanitizeDigitInput(value))}
+            onPlayer={setPlayer1Id}
+            onBasket={(points) => void logBasket(match.team1Id, player1Id, points)}
+            onWinner={() => setWinner("1")}
+          />
+          <p className="text-center text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">vs</p>
+          <TeamScoreRow
+            side="2"
+            teamName={match.team2Name}
+            teamId={match.team2Id}
+            points={team2Points}
+            fouls={team2Fouls}
+            displayPoints={display2}
+            totalsLocked={totalsLocked}
+            members={team2Members}
+            playerId={player2Id}
+            logging={logging}
+            winner={winner === "2"}
+            onPoints={(value) => setTeam2Points(sanitizeDigitInput(value))}
+            onFouls={(value) => setTeam2Fouls(sanitizeDigitInput(value))}
+            onPlayer={setPlayer2Id}
+            onBasket={(points) => void logBasket(match.team2Id, player2Id, points)}
+            onWinner={() => setWinner("2")}
+          />
+          {league ? (
             <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="radio" name="winner" checked={winner === "1"} onChange={() => setWinner("1")} />
-              {match.team1Name}
+              <input type="radio" name="winner" checked={winner === "draw"} onChange={() => setWinner("draw")} />
+              Draw
             </label>
-            <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="radio" name="winner" checked={winner === "2"} onChange={() => setWinner("2")} />
-              {match.team2Name}
-            </label>
-            {league ? (
-              <label className="flex min-h-11 items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="winner"
-                  checked={winner === "draw"}
-                  onChange={() => setWinner("draw")}
-                />
-                Draw
-              </label>
-            ) : null}
-            {autoHint ? <p className="text-xs text-[var(--ops-text-muted)]">{autoHint}</p> : null}
-          </fieldset>
+          ) : null}
+          {autoHint ? <p className="text-sm text-[var(--ops-text-muted)]">{autoHint}</p> : null}
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -299,11 +305,7 @@ export function ScoreMatchBoard({
                       <span>
                         {row.teamMemberName} · {row.points}
                       </span>
-                      <SoftButton
-                        variant="ghost"
-                        disabled={Boolean(undoId)}
-                        onClick={() => void undoEvent(row)}
-                      >
+                      <SoftButton variant="ghost" disabled={Boolean(undoId)} onClick={() => void undoEvent(row)}>
                         Undo
                       </SoftButton>
                     </div>
@@ -315,25 +317,77 @@ export function ScoreMatchBoard({
         </div>
       )}
       <StickyActionBar>
-        <SoftButton
-          disabled={Boolean(saving) || Boolean(logging)}
-          onClick={() => void submit(false)}
-        >
-          {saving === "progress" ? "Saving…" : "Save progress"}
+        <SoftButton disabled={Boolean(saving) || Boolean(logging)} onClick={() => void submit(false)}>
+          {saving === "progress" ? "Saving…" : "Save"}
         </SoftButton>
         <SoftButton
           variant="primary"
           disabled={Boolean(saving) || Boolean(logging)}
           onClick={() => void submit(true)}
         >
-          {saving === "complete" ? "Saving…" : "Complete"}
+          {saving === "complete" ? "Saving…" : "Submit scoring"}
         </SoftButton>
       </StickyActionBar>
     </div>
   );
 }
 
-function TeamScoreColumn({
+function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "T";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
+}
+
+function CountStepper({
+  label,
+  value,
+  onChange,
+  disabled,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  emphasis?: boolean;
+}) {
+  const parsed = Number.parseInt(value, 10);
+  const current = Number.isFinite(parsed) ? parsed : 0;
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label={`Lower ${label}`}
+        disabled={disabled}
+        onClick={() => onChange(String(Math.max(0, current - 1)))}
+        className="flex size-11 items-center justify-center rounded-full border border-[var(--ops-line-strong)] bg-white text-[var(--ops-text)] disabled:opacity-45"
+      >
+        <IconMinus size={16} />
+      </button>
+      <span
+        className={cn(
+          "min-w-8 text-center font-semibold tabular-nums",
+          emphasis ? "text-2xl" : "text-base",
+        )}
+      >
+        {current}
+      </span>
+      <button
+        type="button"
+        aria-label={`Raise ${label}`}
+        disabled={disabled}
+        onClick={() => onChange(String(current + 1))}
+        className="flex size-11 items-center justify-center rounded-full border border-[var(--ops-line-strong)] bg-white text-[var(--ops-text)] disabled:opacity-45"
+      >
+        <IconPlus size={16} />
+      </button>
+    </div>
+  );
+}
+
+function TeamScoreRow({
+  side,
   teamName,
   teamId,
   points,
@@ -343,11 +397,14 @@ function TeamScoreColumn({
   members,
   playerId,
   logging,
+  winner,
   onPoints,
   onFouls,
   onPlayer,
   onBasket,
+  onWinner,
 }: {
+  side: "1" | "2";
   teamName: string;
   teamId: string;
   points: string;
@@ -357,71 +414,96 @@ function TeamScoreColumn({
   members: TeamMember[];
   playerId: string;
   logging: string | null;
+  winner: boolean;
   onPoints: (value: string) => void;
   onFouls: (value: string) => void;
   onPlayer: (value: string) => void;
   onBasket: (points: BasketPoints) => void;
+  onWinner: () => void;
 }) {
+  const scoreValue = totalsLocked ? String(displayPoints) : points;
   return (
-    <div className="grid gap-3">
-      <p className="text-sm font-semibold">{teamName}</p>
-      <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Points
-        <input
-          inputMode="numeric"
-          value={totalsLocked ? String(displayPoints) : points}
-          readOnly={totalsLocked}
-          onChange={(event) => onPoints(event.target.value)}
-          className={fieldClass}
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border",
+        winner ? "border-[var(--ops-success)]/40 bg-[var(--ops-success-soft)]" : "border-[var(--ops-line)] bg-white",
+      )}
+    >
+    <div
+      className={cn(
+        "flex flex-col gap-3 px-3 py-3",
+        side === "2" ? "sm:flex-row-reverse sm:items-center" : "sm:flex-row sm:items-center",
+      )}
+    >
+      <div className={cn("flex min-w-0 flex-1 items-center gap-3", side === "2" && "sm:flex-row-reverse sm:text-right")}>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--ops-primary-soft)] text-sm font-semibold text-[var(--ops-primary)]">
+          {teamInitials(teamName)}
+        </span>
+        <div className="min-w-0">
+          <div className={cn("flex flex-wrap items-center gap-2", side === "2" && "sm:justify-end")}>
+            <p className="font-semibold">{teamName}</p>
+            {winner ? <StatusBadge tone="success">Winner</StatusBadge> : null}
+          </div>
+          <p className="text-sm text-[var(--ops-text-muted)]">
+            Team · {members.length} {members.length === 1 ? "athlete" : "athletes"}
+          </p>
+        </div>
+      </div>
+      <div className={cn("flex flex-wrap items-center gap-3", side === "2" && "sm:flex-row-reverse")}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">Fouls</span>
+          <CountStepper label={`${teamName} fouls`} value={fouls} onChange={onFouls} />
+        </div>
+        <CountStepper
+          label={`${teamName} score`}
+          value={scoreValue}
+          onChange={onPoints}
+          disabled={totalsLocked}
+          emphasis
         />
-      </label>
-      <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Fouls
-        <input
-          inputMode="numeric"
-          value={fouls}
-          onChange={(event) => onFouls(event.target.value)}
-          className={fieldClass}
-        />
-      </label>
-      <div className="grid gap-2 rounded-xl border border-[var(--ops-line)] p-3">
-        <p className="text-sm font-semibold">Player basket</p>
-        {members.length === 0 ? (
-          <p className="text-sm text-[var(--ops-text-muted)]">This team has no members.</p>
-        ) : (
-          <>
-            <label className="flex flex-col gap-1.5 text-sm font-semibold">
-              <span>
-                Player
-                <RequiredMark />
-              </span>
-              <SoftSelect
-                value={playerId}
-                onChange={(event) => onPlayer(event.target.value)}
-                className={fieldClass}
-              >
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </SoftSelect>
-            </label>
-            <div className="flex gap-2">
-              {BASKET_POINTS.map((value) => (
-                <SoftButton
-                  key={value}
-                  disabled={!playerId || Boolean(logging)}
-                  onClick={() => onBasket(value)}
-                  className="flex-1"
-                >
-                  {logging === `${teamId}-${value}` ? "…" : `+${value}`}
-                </SoftButton>
-              ))}
-            </div>
-          </>
+        {winner ? null : (
+          <button type="button" onClick={onWinner} className="min-h-11 px-2 text-sm font-semibold text-[var(--ops-primary)]">
+            Mark winner
+          </button>
         )}
       </div>
+    </div>
+      <details className="border-t border-[var(--ops-line)] px-3 py-2">
+        <summary className="cursor-pointer text-sm font-semibold">Player basket</summary>
+        <div className="mt-2 grid min-w-56 gap-2">
+          {members.length === 0 ? (
+            <p className="text-sm text-[var(--ops-text-muted)]">This team has no members.</p>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
+                <span>
+                  Player
+                  <RequiredMark />
+                </span>
+                <SoftSelect value={playerId} onChange={(event) => onPlayer(event.target.value)} className={fieldClass}>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </SoftSelect>
+              </label>
+              <div className="flex gap-2">
+                {BASKET_POINTS.map((value) => (
+                  <SoftButton
+                    key={value}
+                    disabled={!playerId || Boolean(logging)}
+                    onClick={() => onBasket(value)}
+                    className="flex-1"
+                  >
+                    {logging === `${teamId}-${value}` ? "…" : `+${value}`}
+                  </SoftButton>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

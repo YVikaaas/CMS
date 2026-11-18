@@ -230,7 +230,9 @@ function CallRoomDesk() {
                   title={
                     isHeatMatch(selectedMatch)
                       ? `${selectedMatch.categoryLabel} · ${heatQueueTitle(selectedMatch)}`
-                      : `${selectedMatch.team1Name} vs ${selectedMatch.team2Name}`
+                      : `${selectedMatch.sportName} ${selectedMatch.roundLabel} · ${
+                          selectedMatch.matchLabel.trim() || `Match ${selectedMatch.matchNumber}`
+                        }`
                   }
                   onChange={(next, action) => void handleChange(next, action)}
                 />
