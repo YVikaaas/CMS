@@ -46,7 +46,7 @@ function FilterChip({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex min-w-[8.5rem] flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">
+    <label className="flex min-w-[8.5rem] flex-1 flex-col gap-1.5 text-sm font-semibold">
       {label}
       <span className="relative">
         <select

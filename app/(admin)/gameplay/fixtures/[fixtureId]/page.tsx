@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { fieldClass, fieldErrorClass } from "@/components/Modal";
+import { fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import {
   ChipFilter,
   EmptyState,
@@ -406,10 +406,10 @@ export default function FixtureWorkspacePage() {
                   key={row.id}
                   type="button"
                   onClick={() => openMatch(row)}
-                  className={`rounded-xl border px-3 py-3 text-left ${
+                  className={`flex w-full items-start justify-between gap-3 border-b border-[var(--ops-line)] px-1 py-3 text-left last:border-b-0 ${
                     selectedMatchId === row.id
-                      ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                      : "border-transparent bg-[var(--ops-board-muted)] hover:bg-[var(--ops-surface-hover)]"
+                      ? "bg-[var(--ops-primary-soft)]"
+                      : "hover:bg-[var(--ops-row-hover)]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -490,6 +490,7 @@ export default function FixtureWorkspacePage() {
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Team 1
+                  <RequiredMark />
                   <SoftSelect
                     value={form.team1Id}
                     onChange={(event) => {
@@ -508,6 +509,7 @@ export default function FixtureWorkspacePage() {
                 <p className="pb-2 text-center text-sm font-semibold text-[var(--ops-text-muted)]">vs</p>
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Team 2
+                  <RequiredMark />
                   <SoftSelect
                     value={form.team2Id}
                     onChange={(event) => {

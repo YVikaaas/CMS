@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import IconButton from "@mui/material/IconButton";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
-import { Modal, fieldClass } from "@/components/Modal";
+import { Modal, fieldClass, RequiredMark } from "@/components/Modal";
 import { RoundChips } from "@/components/RoundChips";
 import { SortTh, TableCard } from "@/components/table";
 import {
@@ -444,7 +444,10 @@ export default function FixtureSportPage() {
                 </p>
               ) : (
                 <div className="grid gap-2">
-                  <p className="text-sm font-semibold">Format</p>
+                  <p className="text-sm font-semibold">
+                    Format
+                    <RequiredMark />
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {(
                       [
@@ -481,6 +484,7 @@ export default function FixtureSportPage() {
               {form.formatType === "track_rounds" ? (
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   Lanes per heat
+                  <RequiredMark />
                   <input
                     type="number"
                     min={2}
@@ -536,7 +540,10 @@ export default function FixtureSportPage() {
                 </div>
               ) : null}
               <div className="grid gap-2">
-                <p className="text-sm font-semibold">Rounds</p>
+                <p className="text-sm font-semibold">
+                  Rounds
+                  <RequiredMark />
+                </p>
                 {athleticsDraw ? null : (
                 <div className="flex flex-wrap gap-2">
                   <SoftButton

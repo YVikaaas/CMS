@@ -1,6 +1,6 @@
 "use client";
 
-import { fieldClass, fieldErrorClass } from "@/components/Modal";
+import { fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { SoftSelect } from "@/components/ops";
 
 export function HeatLaneSlots({
@@ -28,7 +28,11 @@ export function HeatLaneSlots({
       }`}
     >
       <p className="text-sm font-semibold">
-        {slotLabel}s. Leave a row blank to keep that {slotLabel.toLowerCase()} empty.
+        {slotLabel}s
+        <RequiredMark />
+        <span className="ml-2 font-normal text-[var(--ops-text-muted)]">
+          Leave a row blank to keep that {slotLabel.toLowerCase()} empty.
+        </span>
       </p>
       {hint ? <p className="text-xs text-[var(--ops-text-muted)]">{hint}</p> : null}
       {values.map((value, index) => {

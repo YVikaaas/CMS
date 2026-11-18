@@ -534,6 +534,7 @@ export default function ChampionshipCategoryTeamsPage() {
                 >
                   <label className="flex flex-col gap-1.5 text-sm font-semibold">
                     Name
+                    <RequiredMark />
                     <NameInput
                       value={member.name}
                       onChange={(value) => {
@@ -547,6 +548,7 @@ export default function ChampionshipCategoryTeamsPage() {
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-semibold">
                     Phone
+                    <RequiredMark />
                     <PhoneInput
                       value={member.phone}
                       onChange={(value) => {

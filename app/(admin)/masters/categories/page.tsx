@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { CategoryNameInput } from "@/components/fields";
 import { RoundChips } from "@/components/RoundChips";
 import IconButton from "@mui/material/IconButton";
@@ -463,6 +463,7 @@ export default function CategoriesPage() {
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Sport
+            <RequiredMark />
             <select
               value={form.sportId}
               disabled={Boolean(editingId)}
@@ -487,6 +488,7 @@ export default function CategoriesPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             {athleticsForm ? "Event" : "Name"}
+            <RequiredMark />
             <CategoryNameInput
               value={form.name}
               list={athleticsForm ? "athletics-events" : undefined}
@@ -541,6 +543,7 @@ export default function CategoriesPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Age group
+            <RequiredMark />
             <input
               value={form.ageGroup}
               placeholder="U14"

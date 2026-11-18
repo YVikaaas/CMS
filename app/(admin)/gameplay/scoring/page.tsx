@@ -198,10 +198,10 @@ function ScoringDesk() {
                         setPlayerPane(false);
                         router.replace(`/gameplay/scoring?match=${row.id}`);
                       }}
-                      className={`rounded-xl border px-3 py-3 text-left ${
+                      className={`flex w-full items-start justify-between gap-3 border-b border-[var(--ops-line)] px-1 py-3 text-left last:border-b-0 ${
                         selectedMatchId === row.id
-                          ? "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]"
-                          : "border-transparent bg-[var(--ops-board-muted)] hover:bg-[var(--ops-surface-hover)]"
+                          ? "bg-[var(--ops-primary-soft)]"
+                          : "hover:bg-[var(--ops-row-hover)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">

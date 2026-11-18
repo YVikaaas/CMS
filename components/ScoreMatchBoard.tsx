@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { fieldClass } from "@/components/Modal";
+import { fieldClass, RequiredMark } from "@/components/Modal";
 import { SoftButton, SoftSelect, StickyActionBar } from "@/components/ops";
 import {
   addMatchScoreEvent,
@@ -392,6 +392,7 @@ function TeamScoreColumn({
           <>
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Player
+              <RequiredMark />
               <SoftSelect
                 value={playerId}
                 onChange={(event) => onPlayer(event.target.value)}

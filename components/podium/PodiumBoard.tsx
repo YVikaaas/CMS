@@ -1,6 +1,6 @@
 "use client";
 
-import { SoftButton, SoftCard, StatusBadge } from "@/components/ops";
+import { SoftButton, StatusBadge } from "@/components/ops";
 import type { PodiumHolder, PodiumPerson } from "@/lib/types/cms";
 import { orgCityLine } from "@/lib/utils/labels";
 import { podiumPlaceLabel, podiumTone } from "@/lib/utils/podium";
@@ -45,12 +45,12 @@ export function PodiumBoard({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="divide-y divide-[var(--ops-line)]">
       {holders.map((holder) => {
         const place = orgCityLine(holder.orgName, holder.city);
         const delivered = Boolean(holder.deliveredAt);
         return (
-          <SoftCard key={holder.rankingId} className="flex flex-col gap-4">
+          <section key={holder.rankingId} className="flex flex-col gap-4 py-4 first:pt-0 last:pb-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -86,7 +86,7 @@ export function PodiumBoard({
                 ))}
               </div>
             )}
-          </SoftCard>
+          </section>
         );
       })}
     </div>
