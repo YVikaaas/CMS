@@ -461,8 +461,10 @@ export default function ChampionshipCategoryTeamsPage() {
       >
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            {solo ? "Athlete name" : "Team name"}
-            <RequiredMark />
+            <span>
+              {solo ? "Athlete name" : "Team name"}
+              <RequiredMark />
+            </span>
             <NameInput
               value={teamName}
               onChange={(value) => {
@@ -474,8 +476,10 @@ export default function ChampionshipCategoryTeamsPage() {
           </label>
           {solo ? (
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
-              Phone
-              <RequiredMark />
+              <span>
+                Phone
+                <RequiredMark />
+              </span>
               <PhoneInput
                 value={athletePhone}
                 onChange={(value) => {
@@ -533,8 +537,10 @@ export default function ChampionshipCategoryTeamsPage() {
                   className="grid gap-3 rounded-xl border border-[var(--ops-line)] p-3 sm:col-span-2 sm:grid-cols-2"
                 >
                   <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                    Name
-                    <RequiredMark />
+                    <span>
+                      Name
+                      <RequiredMark />
+                    </span>
                     <NameInput
                       value={member.name}
                       onChange={(value) => {
@@ -547,8 +553,10 @@ export default function ChampionshipCategoryTeamsPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                    Phone
-                    <RequiredMark />
+                    <span>
+                      Phone
+                      <RequiredMark />
+                    </span>
                     <PhoneInput
                       value={member.phone}
                       onChange={(value) => {

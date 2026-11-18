@@ -95,8 +95,10 @@ function AccountTab() {
         <CardContent>
           <form onSubmit={onSave} className="grid gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
-              Full name
-              <RequiredMark />
+              <span>
+                Full name
+                <RequiredMark />
+              </span>
               <NameInput
                 value={fullName}
                 onChange={(value) => {
@@ -109,8 +111,10 @@ function AccountTab() {
               <FieldError message={errors.fullName} />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
-              Phone
-              <RequiredMark />
+              <span>
+                Phone
+                <RequiredMark />
+              </span>
               <PhoneInput
                 value={phone}
                 onChange={(value) => {
@@ -179,8 +183,10 @@ function SecurityTab() {
 
   const field = (key: keyof typeof form, label: string, autoComplete: string) => (
     <label className="flex flex-col gap-1.5 text-sm font-semibold">
-      {label}
-      <RequiredMark />
+      <span>
+        {label}
+        <RequiredMark />
+      </span>
       <input
         type="password"
         value={form[key]}

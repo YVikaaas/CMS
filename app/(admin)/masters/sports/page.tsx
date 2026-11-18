@@ -216,8 +216,10 @@ export default function SportsPage() {
       <Modal open={open} title={editingId ? "Edit sport" : "Add sport"} onClose={close}>
         <form onSubmit={onSave} className="grid gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Name
-            <RequiredMark />
+            <span>
+              Name
+              <RequiredMark />
+            </span>
             <NameInput
               value={form.name}
               onChange={(value) => {
@@ -228,8 +230,10 @@ export default function SportsPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Code
-            <RequiredMark />
+            <span>
+              Code
+              <RequiredMark />
+            </span>
             <input
               value={form.code}
               disabled={Boolean(editingId)}

@@ -259,8 +259,10 @@ export default function ChampionshipTeamMembersPage() {
       >
         <form onSubmit={onSave} className="grid gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Name
-            <RequiredMark />
+            <span>
+              Name
+              <RequiredMark />
+            </span>
             <NameInput
               value={form.name}
               onChange={(name) => {
@@ -271,8 +273,10 @@ export default function ChampionshipTeamMembersPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Phone
-            <RequiredMark />
+            <span>
+              Phone
+              <RequiredMark />
+            </span>
             <PhoneInput
               value={form.phone}
               onChange={(phone) => {

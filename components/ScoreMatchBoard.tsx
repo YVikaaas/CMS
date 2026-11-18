@@ -391,8 +391,10 @@ function TeamScoreColumn({
         ) : (
           <>
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
-              Player
-              <RequiredMark />
+              <span>
+                Player
+                <RequiredMark />
+              </span>
               <SoftSelect
                 value={playerId}
                 onChange={(event) => onPlayer(event.target.value)}

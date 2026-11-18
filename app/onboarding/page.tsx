@@ -58,8 +58,10 @@ export default function OnboardingPage() {
         </div>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
-            Full name
-            <RequiredMark />
+            <span>
+              Full name
+              <RequiredMark />
+            </span>
             <NameInput
               required
               value={fullName}
@@ -75,8 +77,10 @@ export default function OnboardingPage() {
             ) : null}
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
-            Phone
-            <RequiredMark />
+            <span>
+              Phone
+              <RequiredMark />
+            </span>
             <PhoneInput
               required
               value={phone}

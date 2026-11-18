@@ -489,8 +489,10 @@ export default function FixtureWorkspacePage() {
               ) : (
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                  Team 1
-                  <RequiredMark />
+                  <span>
+                    Team 1
+                    <RequiredMark />
+                  </span>
                   <SoftSelect
                     value={form.team1Id}
                     onChange={(event) => {
@@ -508,8 +510,10 @@ export default function FixtureWorkspacePage() {
                 </label>
                 <p className="pb-2 text-center text-sm font-semibold text-[var(--ops-text-muted)]">vs</p>
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                  Team 2
-                  <RequiredMark />
+                  <span>
+                    Team 2
+                    <RequiredMark />
+                  </span>
                   <SoftSelect
                     value={form.team2Id}
                     onChange={(event) => {

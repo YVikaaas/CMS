@@ -236,8 +236,10 @@ export default function ChampionshipsPage() {
       >
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Name
-            <RequiredMark />
+            <span>
+              Name
+              <RequiredMark />
+            </span>
             <NameInput
               value={form.name}
               onChange={(value) => {

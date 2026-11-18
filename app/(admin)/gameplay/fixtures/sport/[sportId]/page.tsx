@@ -483,8 +483,10 @@ export default function FixtureSportPage() {
               )}
               {form.formatType === "track_rounds" ? (
                 <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                  Lanes per heat
-                  <RequiredMark />
+                  <span>
+                    Lanes per heat
+                    <RequiredMark />
+                  </span>
                   <input
                     type="number"
                     min={2}

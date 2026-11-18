@@ -92,8 +92,10 @@ export default function EmailMagicLinkForm() {
       ) : null}
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
-        Email
-        <RequiredMark />
+        <span>
+          Email
+          <RequiredMark />
+        </span>
         <input
           type="email"
           autoComplete="email"

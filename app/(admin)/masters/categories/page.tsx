@@ -462,8 +462,10 @@ export default function CategoriesPage() {
       >
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Sport
-            <RequiredMark />
+            <span>
+              Sport
+              <RequiredMark />
+            </span>
             <select
               value={form.sportId}
               disabled={Boolean(editingId)}
@@ -487,8 +489,10 @@ export default function CategoriesPage() {
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            {athleticsForm ? "Event" : "Name"}
-            <RequiredMark />
+            <span>
+              {athleticsForm ? "Event" : "Name"}
+              <RequiredMark />
+            </span>
             <CategoryNameInput
               value={form.name}
               list={athleticsForm ? "athletics-events" : undefined}
@@ -542,8 +546,10 @@ export default function CategoriesPage() {
             </select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            Age group
-            <RequiredMark />
+            <span>
+              Age group
+              <RequiredMark />
+            </span>
             <input
               value={form.ageGroup}
               placeholder="U14"
