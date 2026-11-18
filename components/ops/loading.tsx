@@ -94,7 +94,7 @@ export function PageSkeleton({
           <Shimmer className="h-11 w-28" />
           <Shimmer className="h-11 w-28" />
         </div>
-        <div className="overflow-hidden rounded-2xl border border-[var(--ops-line)]">
+        <div className="overflow-hidden rounded-xl border border-[var(--ops-line)]">
           <Shimmer className="h-11 w-full rounded-none" />
           <Shimmer className="h-14 w-full rounded-none" />
           <Shimmer className="h-14 w-full rounded-none" />
@@ -114,9 +114,9 @@ export function PageSkeleton({
           <Shimmer className="h-4 w-64" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Shimmer className="h-28 rounded-2xl" />
-          <Shimmer className="h-28 rounded-2xl" />
-          <Shimmer className="h-28 rounded-2xl" />
+          <Shimmer className="h-28 rounded-xl" />
+          <Shimmer className="h-28 rounded-xl" />
+          <Shimmer className="h-28 rounded-xl" />
         </div>
       </div>
     );
@@ -146,8 +146,8 @@ export function PageSkeleton({
         <Shimmer className="h-6 w-40" />
         <Shimmer className="h-4 w-56" />
       </div>
-      <Shimmer className="h-36 w-full rounded-2xl" />
-      <Shimmer className="h-36 w-full rounded-2xl" />
+      <Shimmer className="h-36 w-full rounded-xl" />
+      <Shimmer className="h-36 w-full rounded-xl" />
     </div>
   );
 }

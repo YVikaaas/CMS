@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { EntrySheetModal } from "@/components/EntrySheetModal";
-import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
 import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
@@ -462,6 +462,7 @@ export default function ChampionshipCategoryTeamsPage() {
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             {solo ? "Athlete name" : "Team name"}
+            <RequiredMark />
             <NameInput
               value={teamName}
               onChange={(value) => {
@@ -474,6 +475,7 @@ export default function ChampionshipCategoryTeamsPage() {
           {solo ? (
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Phone
+              <RequiredMark />
               <PhoneInput
                 value={athletePhone}
                 onChange={(value) => {

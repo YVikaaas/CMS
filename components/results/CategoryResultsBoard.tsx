@@ -53,7 +53,7 @@ export function CategoryResultsBoard({
     <section className="flex flex-col gap-4">
       {showTitle ? (
         <div>
-          <p className="text-[11px] font-extrabold tracking-wide text-[var(--ops-text-muted)] uppercase">
+          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
             {fixture.sportName}
           </p>
           <h2 className="text-base font-semibold">{fixture.categoryLabel}</h2>

@@ -17,7 +17,7 @@ export function SplitWorkspace({ queue, board, className, splitAt = "lg" }: Prop
   return (
     <div
       className={cn(
-        "grid grid-cols-1 overflow-hidden rounded-2xl border border-[var(--ops-line)] bg-[var(--ops-board)]",
+        "soft-card grid grid-cols-1 overflow-hidden bg-[var(--ops-board)]",
         SPLIT[splitAt],
         className,
       )}

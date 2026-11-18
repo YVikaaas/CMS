@@ -62,7 +62,7 @@ function TeamRow({
             {sidePoints(points)}
           </span>
         ) : (
-          <span className="text-[10px] font-semibold text-[var(--ops-text-muted)]">—</span>
+          <span className="text-xs font-semibold text-[var(--ops-text-muted)]">—</span>
         )}
       </div>
     </div>

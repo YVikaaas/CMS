@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { TableCard } from "@/components/table";
+import { SortTh, TableCard } from "@/components/table";
 import {
   EmptyState,
   EventFilters,
@@ -16,6 +16,7 @@ import {
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { listChampionshipOfferings, listSports } from "@/lib/services";
 import type { ChampionshipOffering, Sport } from "@/lib/types/cms";
+import { compareNumber, compareText, type SortState } from "@/lib/utils/table";
 import {
   applySport,
   emptyEventFilter,
@@ -33,6 +34,10 @@ export default function FixturesPage() {
   const [offerings, setOfferings] = useState<ChampionshipOffering[]>([]);
   const [filter, setFilter] = useState<EventFilterValue | null>(null);
   const [ready, setReady] = useState(false);
+  const [sort, setSort] = useState<SortState<"name" | "code" | "mode" | "categories">>({
+    key: "name",
+    dir: "asc",
+  });
 
   const load = useCallback(async () => {
     if (!selected) {
@@ -57,10 +62,16 @@ export default function FixturesPage() {
   }, [loading, load]);
 
   const activeFilter = filter ?? emptyEventFilter(selected?.id ?? "");
-  const visibleSports = useMemo(
-    () => sports.filter((sport) => !activeFilter.sportId || sport.id === activeFilter.sportId),
-    [sports, activeFilter.sportId],
-  );
+  const visibleSports = useMemo(() => {
+    const filtered = sports.filter((sport) => !activeFilter.sportId || sport.id === activeFilter.sportId);
+    const count = (sportId: string) => offerings.find((item) => item.sportId === sportId)?.categoryIds.length ?? 0;
+    return [...filtered].sort((a, b) => {
+      if (sort.key === "code") return compareText(a.code, b.code, sort.dir);
+      if (sort.key === "mode") return compareText(a.eventMode, b.eventMode, sort.dir);
+      if (sort.key === "categories") return compareNumber(count(a.id), count(b.id), sort.dir);
+      return compareText(a.name, b.name, sort.dir);
+    });
+  }, [sports, activeFilter.sportId, offerings, sort]);
 
   const openSport = (sportId: string) => {
     if (!selected) return;
@@ -72,7 +83,7 @@ export default function FixturesPage() {
   };
 
   if (loading || !ready) {
-    return <PageSkeleton kind="cards" />;
+    return <PageSkeleton kind="table" />;
   }
   if (!selected) {
     return (
@@ -119,10 +130,10 @@ export default function FixturesPage() {
           <table>
             <thead>
               <tr>
-                <th>Sport</th>
-                <th>Code</th>
-                <th>Mode</th>
-                <th>Categories</th>
+                <SortTh label="Sport" column="name" sort={sort} onSort={setSort} />
+                <SortTh label="Code" column="code" sort={sort} onSort={setSort} />
+                <SortTh label="Mode" column="mode" sort={sort} onSort={setSort} />
+                <SortTh label="Categories" column="categories" sort={sort} onSort={setSort} />
               </tr>
             </thead>
             <tbody>

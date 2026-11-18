@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import IconButton from "@mui/material/IconButton";
 import { IconArchive, IconPencil } from "@tabler/icons-react";
 import { toast } from "sonner";
-import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
 import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
@@ -237,6 +237,7 @@ export default function ChampionshipsPage() {
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
+            <RequiredMark />
             <NameInput
               value={form.name}
               onChange={(value) => {

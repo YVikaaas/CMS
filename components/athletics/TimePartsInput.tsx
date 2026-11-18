@@ -28,7 +28,7 @@ function UnitSelect({
   const box = invalid ? fieldErrorClass : fieldClass;
   return (
     <label className="flex min-w-[4.25rem] flex-col gap-0.5">
-      <span className="text-[10px] font-semibold uppercase text-[var(--ops-text-muted)]">{label}</span>
+      <span className="text-xs font-semibold text-[var(--ops-text-muted)]">{label}</span>
       <SoftSelect
         aria-label={ariaLabel}
         disabled={disabled}

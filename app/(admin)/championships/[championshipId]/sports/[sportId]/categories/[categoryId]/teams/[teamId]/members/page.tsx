@@ -6,7 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
-import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
 import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import {
@@ -260,6 +260,7 @@ export default function ChampionshipTeamMembersPage() {
         <form onSubmit={onSave} className="grid gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
+            <RequiredMark />
             <NameInput
               value={form.name}
               onChange={(name) => {
@@ -271,6 +272,7 @@ export default function ChampionshipTeamMembersPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Phone
+            <RequiredMark />
             <PhoneInput
               value={form.phone}
               onChange={(phone) => {

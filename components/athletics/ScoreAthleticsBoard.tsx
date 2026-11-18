@@ -60,7 +60,7 @@ function AttemptSlot({
   const passed = attempt.status === "pass";
   return (
     <div className="flex w-20 flex-col gap-1">
-      <span className="text-[10px] font-semibold text-[var(--ops-text-muted)]">{index + 1}</span>
+      <span className="text-xs font-semibold text-[var(--ops-text-muted)]">{index + 1}</span>
       <input
         value={text}
         placeholder="0.00"

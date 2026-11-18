@@ -10,7 +10,7 @@ export default function WaitingPage() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
-      <div className="max-w-md rounded-2xl bg-[var(--ops-surface)] p-8 text-center">
+      <div className="soft-card max-w-md p-8 text-center">
         <h1 className="text-lg font-semibold">Waiting for access</h1>
         <p className="mt-3 text-sm text-[var(--ops-text-muted)]">
           {appUser?.email

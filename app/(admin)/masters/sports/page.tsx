@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Modal, fieldClass, fieldErrorClass } from "@/components/Modal";
+import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
 import IconButton from "@mui/material/IconButton";
 import { IconArchive, IconPencil } from "@tabler/icons-react";
@@ -217,6 +217,7 @@ export default function SportsPage() {
         <form onSubmit={onSave} className="grid gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Name
+            <RequiredMark />
             <NameInput
               value={form.name}
               onChange={(value) => {
@@ -228,6 +229,7 @@ export default function SportsPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Code
+            <RequiredMark />
             <input
               value={form.code}
               disabled={Boolean(editingId)}

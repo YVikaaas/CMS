@@ -11,7 +11,7 @@ import Tabs from "@mui/material/Tabs";
 import { IconLock, IconUserCircle } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
-import { fieldClass, fieldErrorClass } from "@/components/Modal";
+import { fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
 import { PageHeader, PageSkeleton, SoftButton, StatusBadge } from "@/components/ops";
 import { authChangePassword, updateProfile } from "@/lib/services";
@@ -96,6 +96,7 @@ function AccountTab() {
           <form onSubmit={onSave} className="grid gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Full name
+              <RequiredMark />
               <NameInput
                 value={fullName}
                 onChange={(value) => {
@@ -109,6 +110,7 @@ function AccountTab() {
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
               Phone
+              <RequiredMark />
               <PhoneInput
                 value={phone}
                 onChange={(value) => {
@@ -178,6 +180,7 @@ function SecurityTab() {
   const field = (key: keyof typeof form, label: string, autoComplete: string) => (
     <label className="flex flex-col gap-1.5 text-sm font-semibold">
       {label}
+      <RequiredMark />
       <input
         type="password"
         value={form[key]}

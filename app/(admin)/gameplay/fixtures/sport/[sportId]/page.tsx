@@ -8,7 +8,7 @@ import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Modal, fieldClass } from "@/components/Modal";
 import { RoundChips } from "@/components/RoundChips";
-import { TableCard } from "@/components/table";
+import { SortTh, TableCard } from "@/components/table";
 import {
   EmptyState,
   EventFilters,
@@ -56,6 +56,7 @@ import {
   roundsForFormat,
   validateFixtureRounds,
 } from "@/lib/utils/fixtures";
+import { compareText, type SortState } from "@/lib/utils/table";
 
 const emptyForm = {
   cscId: "",
@@ -97,6 +98,7 @@ export default function FixtureSportPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [filter, setFilter] = useState<EventFilterValue | null>(null);
+  const [sort, setSort] = useState<SortState<"label" | "status" | "draw">>({ key: "label", dir: "asc" });
 
   const load = useCallback(async () => {
     if (!selected) {
@@ -123,8 +125,22 @@ export default function FixtureSportPage() {
   const sportName = cscs[0]?.sportName ?? fixtures[0]?.sportName ?? "Sport";
   const activeFilter = filter ?? emptyEventFilter(selected?.id ?? "");
   const visibleCscs = useMemo(() => {
-    return cscs.filter((row) => cscPassesEventFilter(row, activeFilter));
-  }, [cscs, activeFilter]);
+    const filtered = cscs.filter((row) => cscPassesEventFilter(row, activeFilter));
+    const fixtureFor = (cscId: string) => fixtures.find((row) => row.cscId === cscId) ?? null;
+    return [...filtered].sort((a, b) => {
+      const left = fixtureFor(a.id);
+      const right = fixtureFor(b.id);
+      if (sort.key === "status") return compareText(left?.status ?? "", right?.status ?? "", sort.dir);
+      if (sort.key === "draw") {
+        return compareText(
+          formatLabel(left?.formatType ?? a.defaultFormat),
+          formatLabel(right?.formatType ?? b.defaultFormat),
+          sort.dir,
+        );
+      }
+      return compareText(a.categoryLabel, b.categoryLabel, sort.dir);
+    });
+  }, [cscs, activeFilter, fixtures, sort]);
   const usedCscIds = useMemo(() => new Set(fixtures.map((item) => item.cscId)), [fixtures]);
   const selectedCsc = cscs.find((item) => item.id === form.cscId) ?? null;
   const athleticsDraw = selectedCsc
@@ -267,7 +283,7 @@ export default function FixtureSportPage() {
   };
 
   if (loading || !ready) {
-    return <PageSkeleton kind="cards" />;
+    return <PageSkeleton kind="table" />;
   }
   if (!selected) {
     return (
@@ -314,9 +330,9 @@ export default function FixtureSportPage() {
           <table>
             <thead>
               <tr>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Draw</th>
+                <SortTh label="Category" column="label" sort={sort} onSort={setSort} />
+                <SortTh label="Status" column="status" sort={sort} onSort={setSort} />
+                <SortTh label="Draw" column="draw" sort={sort} onSort={setSort} />
                 <th className="text-right">Actions</th>
               </tr>
             </thead>

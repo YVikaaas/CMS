@@ -7,7 +7,7 @@ import { completeOnboarding } from "@/lib/services";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
 import { NameInput, PhoneInput } from "@/components/fields";
 import { SoftButton } from "@/components/ops";
-import { fieldClass, fieldErrorClass } from "@/components/Modal";
+import { fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { nameError, phoneError } from "@/lib/utils/validation";
 
 export default function OnboardingPage() {
@@ -46,7 +46,7 @@ export default function OnboardingPage() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-[var(--ops-bg)] px-6 py-12">
-      <div className="w-full max-w-sm rounded-2xl bg-[var(--ops-surface)] p-8">
+      <div className="soft-card w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-3">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ops-primary)] font-display text-xl font-bold text-[var(--ops-on-primary)]">
             C
@@ -59,6 +59,7 @@ export default function OnboardingPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
             Full name
+            <RequiredMark />
             <NameInput
               required
               value={fullName}
@@ -75,6 +76,7 @@ export default function OnboardingPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
             Phone
+            <RequiredMark />
             <PhoneInput
               required
               value={phone}

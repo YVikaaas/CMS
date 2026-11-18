@@ -53,3 +53,13 @@ export function Modal({
 
 export const fieldClass = "ops-control w-full";
 export const fieldErrorClass = "ops-control ops-control-error w-full";
+
+/** Red asterisk for a required field. Optional fields stay unmarked. */
+export function RequiredMark() {
+  return (
+    <span className="text-[var(--ops-danger)]" aria-hidden>
+      {" "}
+      *
+    </span>
+  );
+}

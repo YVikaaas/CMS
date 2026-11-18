@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { authSendMagicLink, authSignInWithPassword } from "@/lib/services";
 import { safeNextPathAfterLogin } from "@/lib/utils/routes";
 import { cn } from "@/lib/utils/cn";
+import { RequiredMark } from "@/components/Modal";
 import { SoftButton } from "@/components/ops";
 
 function isValidEmail(value: string): boolean {
@@ -92,6 +93,7 @@ export default function EmailMagicLinkForm() {
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold text-[var(--ops-text)]">
         Email
+        <RequiredMark />
         <input
           type="email"
           autoComplete="email"
