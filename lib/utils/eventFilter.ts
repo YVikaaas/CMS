@@ -117,6 +117,29 @@ export function groupCategoriesByGenderAge(categories: Category[]): CategoryPick
   });
 }
 
+export type SportDisciplineGroup = {
+  sport: Sport;
+  groups: CategoryPickGroup[];
+};
+
+export function groupDisciplinesBySport(
+  categories: Category[],
+  sports: Sport[],
+): SportDisciplineGroup[] {
+  const bySport = new Map<string, Category[]>();
+  for (const category of categories) {
+    const list = bySport.get(category.sportId) ?? [];
+    list.push(category);
+    bySport.set(category.sportId, list);
+  }
+  return sports
+    .map((sport) => ({
+      sport,
+      groups: groupCategoriesByGenderAge(bySport.get(sport.id) ?? []),
+    }))
+    .filter((row) => row.groups.length > 0);
+}
+
 export function gendersForSport(categories: Category[]): Gender[] {
   const set = new Set<Gender>();
   categories.forEach((row) => set.add(row.gender));

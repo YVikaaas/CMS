@@ -7,16 +7,19 @@ export function PickList({
   children,
   empty,
   invalid,
+  className,
 }: {
   children: ReactNode;
   empty?: ReactNode;
   invalid?: boolean;
+  className?: string;
 }) {
   return (
     <div
       className={cn(
         "max-h-72 overflow-y-auto rounded-xl border bg-[var(--ops-surface)]",
         invalid ? "border-[var(--ops-danger)]" : "border-[var(--ops-line)]",
+        className,
       )}
     >
       {children ?? empty}

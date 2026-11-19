@@ -16,7 +16,6 @@ import {
 } from "@/components/ops";
 import {
   archiveSport,
-  createSport,
   listSports,
   updateSport,
 } from "@/lib/services";
@@ -64,32 +63,26 @@ export default function SportsPage() {
 
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!editingId) return;
     const nextErrors: { name?: string; code?: string } = {};
     const sportNameErr = nameError(form.name, "Name");
     if (sportNameErr) nextErrors.name = sportNameErr;
-    if (!editingId && form.code.trim().length !== 3) nextErrors.code = "A 3-letter code is required.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       toast.error("Fill the highlighted fields.");
       return;
     }
     setSaving(true);
-    const result = editingId
-      ? await updateSport(editingId, {
-          name: form.name,
-          eventMode: form.eventMode,
-        })
-      : await createSport({
-          name: form.name,
-          code: form.code,
-          eventMode: form.eventMode,
-        });
+    const result = await updateSport(editingId, {
+      name: form.name,
+      eventMode: form.eventMode,
+    });
     setSaving(false);
     if (result.error) {
       toast.error(result.error.message);
       return;
     }
-    toast.success(editingId ? "Sport updated." : "Sport created.");
+    toast.success("Sport updated.");
     close();
     await load();
   };
@@ -106,13 +99,6 @@ export default function SportsPage() {
     });
   }, [sports, search, modeFilter, sort]);
   const paged = pageRows(visible, page, perPage);
-
-  const openCreate = () => {
-    setEditingId(null);
-    setForm(empty);
-    setFieldErrors({});
-    setOpen(true);
-  };
 
   if (!ready) {
     return <PageSkeleton kind="table" />;
@@ -159,11 +145,6 @@ export default function SportsPage() {
               )
             }
           />
-        }
-        action={
-          <SoftButton variant="primary" onClick={openCreate}>
-            Add sport
-          </SoftButton>
         }
         footer={
           <TablePager
@@ -236,7 +217,7 @@ export default function SportsPage() {
         </table>
       </TableCard>
 
-      <Modal open={open} title={editingId ? "Edit sport" : "Add sport"} onClose={close}>
+      <Modal open={open} title="Edit sport" onClose={close}>
         <form onSubmit={onSave} className="grid gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             <span>
@@ -284,7 +265,7 @@ export default function SportsPage() {
           </label>
           <div className="flex gap-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
-              {editingId ? "Save changes" : "Add sport"}
+              Save changes
             </SoftButton>
             <SoftButton type="button" onClick={close}>
               Cancel

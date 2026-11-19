@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
-import { IconTrash } from "@tabler/icons-react";
+import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { Modal } from "@/components/Modal";
-import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
 import { exportTable } from "@/lib/utils/exportTable";
 import {
   ChipFilter,
@@ -19,7 +19,9 @@ import {
   PickList,
   PickToolbar,
   SoftButton,
+  SoftCard,
   SoftSearch,
+  SoftSelect,
   useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "../../../../useScopedChampionship";
@@ -28,9 +30,10 @@ import {
   listCategories,
   listChampionshipOfferings,
   listSports,
+  listTeams,
   removeChampionshipEvent,
 } from "@/lib/services";
-import type { Category, ChampionshipOffering, Gender, Sport } from "@/lib/types/cms";
+import type { Category, ChampionshipOffering, Gender, Sport, Team } from "@/lib/types/cms";
 import {
   agesForSportGender,
   applyAge,
@@ -43,10 +46,10 @@ import {
   namesForSportGenderAge,
   writeEventFilter,
 } from "@/lib/utils/eventFilter";
-import { isRelayEvent } from "@/lib/utils/athletics";
+import { isRelayEvent, isSoloAthleticsEvent } from "@/lib/utils/athletics";
 import { isAthleticsSport } from "@/lib/utils/fixtures";
-import { categoryEventName, categoryLabel } from "@/lib/utils/labels";
-import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
+import { categoryEventName, categoryGroupLabel, categoryLabel } from "@/lib/utils/labels";
+import { compareNumber, compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 
 function toggleId(current: Set<string>, id: string): Set<string> {
   const next = new Set(current);
@@ -64,6 +67,25 @@ function setIds(current: Set<string>, ids: string[], on: boolean): Set<string> {
   return next;
 }
 
+function isSoloCategory(sport: Sport | null, category: Category): boolean {
+  if (isAthleticsSport(sport)) return isSoloAthleticsEvent(category.name);
+  return category.teamSize <= 1;
+}
+
+function entryStats(
+  sport: Sport | null,
+  category: Category,
+  teams: Team[],
+): { solo: boolean; count: number; label: string } {
+  const solo = isSoloCategory(sport, category);
+  const rows = teams.filter((team) => team.categoryId === category.id);
+  const count = solo
+    ? rows.reduce((sum, team) => sum + team.memberCount, 0) || rows.length
+    : rows.length;
+  const unit = solo ? (count === 1 ? "athlete" : "athletes") : count === 1 ? "team" : "teams";
+  return { solo, count, label: `${count} ${unit}` };
+}
+
 export default function ChampionshipCategoriesPage() {
   const confirm = useConfirm();
   const router = useRouter();
@@ -77,12 +99,13 @@ export default function ChampionshipCategoriesPage() {
   const [genderFilter, setGenderFilter] = useState<"" | Gender>("");
   const [ageFilter, setAgeFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
-  const [sort, setSort] = useState<SortState<"label" | "gender" | "age" | "roster">>({
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [sort, setSort] = useState<SortState<"label" | "gender" | "age" | "entries">>({
     key: "label",
     dir: "asc",
   });
   const [page, setPage] = useState(0);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(25);
   const [formOpen, setFormOpen] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
   const [pickGender, setPickGender] = useState<"" | Gender>("");
@@ -94,17 +117,20 @@ export default function ChampionshipCategoriesPage() {
   const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
-    const [sportRes, catRes, offerRes] = await Promise.all([
+    const [sportRes, catRes, offerRes, teamRes] = await Promise.all([
       listSports(),
       listCategories(sportId),
       listChampionshipOfferings(championshipId),
+      listTeams({ championshipId, sportId }),
     ]);
     if (sportRes.error) toast.error(sportRes.error.message);
     if (catRes.error) toast.error(catRes.error.message);
     if (offerRes.error) toast.error(offerRes.error.message);
+    if (teamRes.error) toast.error(teamRes.error.message);
     setSports(sportRes.data ?? []);
     setCategories(catRes.data ?? []);
     setOfferings(offerRes.data ?? []);
+    setTeams(teamRes.data ?? []);
     setReady(true);
   }, [championshipId, sportId]);
 
@@ -144,10 +170,16 @@ export default function ChampionshipCategoriesPage() {
     return [...filtered].sort((a, b) => {
       if (sort.key === "gender") return compareText(a.gender, b.gender, sort.dir);
       if (sort.key === "age") return compareText(a.ageGroup, b.ageGroup, sort.dir);
-      if (sort.key === "roster") return compareText(String(a.teamSize), String(b.teamSize), sort.dir);
+      if (sort.key === "entries") {
+        return compareNumber(
+          entryStats(sport, a, teams).count,
+          entryStats(sport, b, teams).count,
+          sort.dir,
+        );
+      }
       return compareText(categoryLabel(a), categoryLabel(b), sort.dir);
     });
-  }, [assigned, search, genderFilter, ageFilter, nameFilter, sort]);
+  }, [assigned, search, genderFilter, ageFilter, nameFilter, sort, sport, teams]);
   const paged = pageRows(visible, page, perPage);
 
   const pickGenderOptions = useMemo(() => gendersForSport(available), [available]);
@@ -320,13 +352,8 @@ export default function ChampionshipCategoriesPage() {
                   { header: "Gender", value: (row) => genderLabel(row.gender) },
                   { header: "Age group", value: (row) => row.ageGroup },
                   {
-                    header: "Roster",
-                    value: (row) =>
-                      isAthleticsSport(sport)
-                        ? isRelayEvent(row.name)
-                          ? "Relay teams of 4"
-                          : "Individual athletes"
-                        : `${row.teamSize}–${row.maxTeamSize}`,
+                    header: "Entries",
+                    value: (row) => entryStats(sport, row, teams).label,
                   },
                 ],
                 `${sport?.name ?? "sport"} categories`,
@@ -334,6 +361,24 @@ export default function ChampionshipCategoriesPage() {
               )
             }
           />
+        }
+        toolbar={
+          <SoftSelect
+            size="small"
+            value={sort.key}
+            aria-label="Sort"
+            className="min-w-[8.5rem] [&_.MuiSelect-select]:font-medium"
+            startIcon={<span className="text-sm text-[var(--ops-text-muted)]">Sort</span>}
+            onChange={(event) => {
+              const key = event.target.value as typeof sort.key;
+              setSort({ key, dir: key === "entries" ? "desc" : "asc" });
+            }}
+          >
+            <option value="label">Category</option>
+            <option value="gender">Gender</option>
+            <option value="age">Age</option>
+            <option value="entries">Entries</option>
+          </SoftSelect>
         }
         action={
           <SoftButton variant="primary" onClick={openForm} disabled={!offering || available.length === 0}>
@@ -343,41 +388,66 @@ export default function ChampionshipCategoriesPage() {
         footer={
           <TablePager count={visible.length} page={paged.page} perPage={perPage} onPage={setPage} onPerPage={setPerPage} />
         }
+        plain
       >
-        <table>
-          <thead>
-            <tr>
-              <SortTh label="Category" column="label" sort={sort} onSort={setSort} />
-              <SortTh label="Gender" column="gender" sort={sort} onSort={setSort} />
-              <SortTh label="Age" column="age" sort={sort} onSort={setSort} />
-              <SortTh label="Roster" column="roster" sort={sort} onSort={setSort} />
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.rows.map((category) => (
-              <tr key={category.id}>
-                <td>
-                  <button type="button" className="font-semibold" onClick={() => openCategory(category)}>
-                    {categoryLabel(category)}
-                  </button>
-                </td>
-                <td className="capitalize">{category.gender}</td>
-                <td>{category.ageGroup}</td>
-                <td>
-                  {isAthleticsSport(sport)
-                    ? isRelayEvent(category.name)
-                      ? "Relay teams of 4"
-                      : "Individual athletes"
-                    : `${category.teamSize}–${category.maxTeamSize}`}
-                </td>
-                <td className="text-right">
+        {visible.length === 0 ? (
+          <p className="py-8 text-center text-sm text-[var(--ops-text-muted)]">
+            {assigned.length === 0 ? "No categories yet." : "No matching categories."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {paged.rows.map((category) => {
+              const event = categoryEventName(category.name);
+              const title = event ?? categoryLabel(category);
+              const hint = event ? categoryGroupLabel(category) : `${genderLabel(category.gender)} · ${category.ageGroup}`;
+              const entries = entryStats(sport, category, teams);
+              return (
+                <SoftCard
+                  key={category.id}
+                  interactive
+                  padding="sm"
+                  role="link"
+                  tabIndex={0}
+                  className="flex items-center gap-3"
+                  onClick={() => openCategory(category)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openCategory(category);
+                    }
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{title}</p>
+                    <p className="truncate text-xs text-[var(--ops-text-muted)]">{hint}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-lg leading-6 font-medium tabular-nums">{entries.count}</p>
+                    <p className="text-xs text-[var(--ops-text-muted)]">
+                      {entries.solo
+                        ? entries.count === 1
+                          ? "athlete"
+                          : "athletes"
+                        : entries.count === 1
+                          ? "team"
+                          : "teams"}
+                    </p>
+                  </div>
                   <IconButton
                     color="error"
                     aria-label={`Remove ${categoryLabel(category)}`}
                     title="Remove"
-                    onClick={async () => {
-                      if (!(await confirm({ title: `Remove ${categoryLabel(category)}?`, message: "It is taken off this sport for this event.", confirmLabel: "Remove" }))) return;
+                    onClick={async (event) => {
+                      event.stopPropagation();
+                      if (
+                        !(await confirm({
+                          title: `Remove ${categoryLabel(category)}?`,
+                          message: "It is taken off this sport for this event.",
+                          confirmLabel: "Remove",
+                        }))
+                      ) {
+                        return;
+                      }
                       const { error } = await removeChampionshipEvent(championshipId, category.id);
                       if (error) toast.error(error.message);
                       else {
@@ -388,18 +458,16 @@ export default function ChampionshipCategoriesPage() {
                   >
                     <IconTrash size={18} />
                   </IconButton>
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
-                  {assigned.length === 0 ? "No categories yet." : "No matching categories."}
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+                  <IconChevronRight
+                    size={18}
+                    aria-hidden
+                    className="shrink-0 text-[var(--ops-text-muted)]"
+                  />
+                </SoftCard>
+              );
+            })}
+          </div>
+        )}
       </TableCard>
 
       <Modal open={formOpen} title="Add categories" wide onClose={() => setFormOpen(false)}>

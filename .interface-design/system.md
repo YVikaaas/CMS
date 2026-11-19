@@ -124,7 +124,7 @@ Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scorin
 
 ### Dashboard (`/dashboard`)
 
-Greeting banner with event name and status, four overview `StatCard`s, then one detail table (setup through podium), a by-sport table, and a short next-step list. Links land on the first hop of each flow.
+Greeting banner with event name and status, four overview `StatCard`s, then a **Setup wizard** always on the selected event (one sport as tab cards → Boys | Girls columns → age cards → leftover discipline cards, all preselected → Add), then a **Fixtures** hop listing offered sports (opens the sport’s fixtures board with sport locked and Gender prompted), then one detail table (setup through podium), a by-sport table, and a short next-step list for the floor. Links land on the first hop of each flow.
 
 ### Setup (nested hops — do not flatten)
 

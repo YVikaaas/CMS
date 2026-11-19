@@ -11,6 +11,8 @@ import { exportTable } from "@/lib/utils/exportTable";
 import {
   EmptyState,
   ErrorBanner,
+  EventSetupWizard,
+  FixtureSportHops,
   GreetingBanner,
   PageSkeleton,
   Shimmer,
@@ -46,11 +48,27 @@ function championshipHint(row: Championship): string {
   return bits.join(" · ");
 }
 
-function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
+function Section({
+  title,
+  action,
+  children,
+  extra,
+  className,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+  extra?: ReactNode;
+  className?: string;
+}) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-[var(--ops-text-muted)]">{title}</h2>
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-[var(--ops-text-muted)]">{title}</h2>
+        {action}
+      </div>
       <div className={cn("grid gap-4 sm:grid-cols-2", className ?? "lg:grid-cols-4")}>{children}</div>
+      {extra}
     </section>
   );
 }
@@ -154,41 +172,33 @@ export default function DashboardPage() {
   const medalPct = s
     ? Math.round(((s.medalsDelivered || 0) / Math.max(1, s.medalsDelivered + s.medalsWaiting)) * 100)
     : 0;
-  const callRoomPct = s ? Math.round(((s.callRoomMatchCount || 0) / Math.max(1, s.matchCount)) * 100) : 0;
-
   const steps = [
     {
       n: "1",
-      title: "Assign sports",
-      hint: "Offer sports, then categories, then teams.",
-      href: sportsHref,
-    },
-    {
-      n: "2",
       title: "Create draws",
       hint: "All sports until you filter, then a category, then the match workspace.",
       href: "/gameplay/fixtures",
     },
     {
-      n: "3",
+      n: "2",
       title: "Call room",
       hint: "Pick sport, gender, age, then category, then mark present and absent.",
       href: "/gameplay/call-room",
     },
     {
-      n: "4",
+      n: "3",
       title: "Score matches",
       hint: "Pick sport, gender, age, then category, then the scoreboard.",
       href: "/gameplay/scoring",
     },
     {
-      n: "5",
+      n: "4",
       title: "Publish results",
       hint: "Pick sport, gender, age, then category to open the board.",
       href: "/gameplay/results",
     },
     {
-      n: "6",
+      n: "5",
       title: "Podium",
       hint: "Lock 1st, 2nd and 3rd on scoring, then mark medal delivery.",
       href: "/gameplay/podium",
@@ -261,6 +271,13 @@ export default function DashboardPage() {
         />
       </Section>
 
+      <EventSetupWizard
+        eventId={selected.id}
+        eventName={selected.name}
+        onAdded={() => setAttempt((n) => n + 1)}
+      />
+
+      <FixtureSportHops eventId={selected.id} sports={s?.sports ?? []} ready={ready} />
 
       {ready && s ? (
         <TableCard

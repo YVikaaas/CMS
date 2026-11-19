@@ -170,6 +170,7 @@ export function EventFilters({
   useEffect(() => {
     let cancelled = false;
     setReady(false);
+    setOpenField(null);
     void (async () => {
       const [sportRes, categoryRes, offerRes, fixtureRes] = await Promise.all([
         listSports(),
@@ -220,6 +221,26 @@ export function EventFilters({
       cancelled = true;
     };
   }, [championshipId, emit, lockSportId, onlyWithExistingFixture, requireEvent]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const follow: StepId | null = !value.sportId
+      ? null
+      : !value.gender
+        ? "gender"
+        : !value.ageGroup
+          ? "age"
+          : !value.categoryId
+            ? "category"
+            : null;
+    if (!follow) return;
+    advancingTo.current = follow;
+    if (openTimer.current != null) window.clearTimeout(openTimer.current);
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      if (advancingTo.current === follow) setOpenField(follow);
+    }, 250);
+  }, [ready, value.sportId, value.gender, value.ageGroup, value.categoryId]);
 
   const sportCats = useMemo(
     () => liveCategories.filter((row) => !value.sportId || row.sportId === value.sportId),

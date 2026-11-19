@@ -41,6 +41,7 @@ export type TableFilterSpec = {
 export function TableCard({
   title,
   count,
+  tabs,
   search,
   filters,
   toolbar,
@@ -48,11 +49,14 @@ export function TableCard({
   action,
   onClearAll,
   footer,
+  plain,
   children,
 }: {
   title: string;
   /** Rows after search and filters (all pages). */
   count?: number;
+  /** Underline tabs under the title, e.g. one sport per tab. */
+  tabs?: ReactNode;
   search?: ReactNode;
   filters?: TableFilterSpec[];
   /** Extra controls next to the filters. */
@@ -62,6 +66,8 @@ export function TableCard({
   /** Clears search and every filter; shown with the active-filter chips. */
   onClearAll?: () => void;
   footer?: ReactNode;
+  /** Skip the bordered table shell; use for stacked cards. */
+  plain?: boolean;
   children: ReactNode;
 }) {
   const active = (filters ?? []).filter((filter) => filter.value);
@@ -85,6 +91,7 @@ export function TableCard({
           </div>
         ) : null}
       </div>
+      {tabs ? <div className="-mx-6 px-6">{tabs}</div> : null}
       {search || filters?.length || toolbar ? (
         <div className="flex flex-wrap items-center gap-3">
           {search}
@@ -108,7 +115,7 @@ export function TableCard({
           </button>
         </div>
       ) : null}
-      <div className="ops-table">{children}</div>
+      {plain ? children : <div className="ops-table">{children}</div>}
       {footer}
     </Card>
   );

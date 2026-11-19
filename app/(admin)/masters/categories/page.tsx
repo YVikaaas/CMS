@@ -18,11 +18,11 @@ import {
 } from "@/components/ops";
 import {
   archiveCategory,
-  createCategory,
   listCategories,
   listSports,
   updateCategory,
 } from "@/lib/services";
+import { ResultsPhaseTabs } from "@/components/results/ResultsPhaseTabs";
 import {
   ATHLETICS_EVENTS,
   defaultAthleticsRoster,
@@ -119,7 +119,7 @@ export default function CategoriesPage() {
   const [ageFilter, setAgeFilter] = useState("");
   const [fixtureFilter, setFixtureFilter] = useState<"" | FixtureFormatType>("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortState<"name" | "category" | "sport" | "fixture" | "roster">>({
+  const [sort, setSort] = useState<SortState<"name" | "category" | "fixture" | "roster">>({
     key: "name",
     dir: "asc",
   });
@@ -136,12 +136,14 @@ export default function CategoriesPage() {
     const [sportsRes, catsRes] = await Promise.all([listSports(), listCategories()]);
     if (sportsRes.error) toast.error(sportsRes.error.message);
     if (catsRes.error) toast.error(catsRes.error.message);
-    setSports(sportsRes.data ?? []);
+    const nextSports = sportsRes.data ?? [];
+    setSports(nextSports);
     setCategories(catsRes.data ?? []);
     setReady(true);
+    setFilterSport((current) => current || nextSports[0]?.id || "");
     setForm((current) => {
       if (current.sportId) return current;
-      const sport = sportsRes.data?.[0];
+      const sport = nextSports[0];
       return formFromSport(sport?.id ?? "", sport, current);
     });
   };
@@ -151,7 +153,6 @@ export default function CategoriesPage() {
   }, []);
 
   const sportOf = (id: string) => sports.find((row) => row.id === id);
-  const sportName = (id: string) => sportOf(id)?.name ?? "";
   const formSport = sportOf(form.sportId);
   const athleticsForm = isAthleticsSport(formSport);
   const fixtureOptions = formatsForSport(formSport);
@@ -174,6 +175,21 @@ export default function CategoriesPage() {
     const present = new Set(remaining.map((row) => row.fixtureConfig.format));
     return FIXTURE_FILTERS.filter((option) => !option.value || present.has(option.value));
   }, [scopedCategories, genderFilter, ageFilter]);
+  const countBySport = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of categories) {
+      counts.set(row.sportId, (counts.get(row.sportId) ?? 0) + 1);
+    }
+    return counts;
+  }, [categories]);
+
+  const selectSport = (sportId: string) => {
+    setFilterSport(sportId);
+    setGenderFilter("");
+    setAgeFilter("");
+    setFixtureFilter("");
+    setPage(0);
+  };
 
   const visible = useMemo(() => {
     const filtered = categories.filter((row) => {
@@ -186,14 +202,10 @@ export default function CategoriesPage() {
         row.name,
         categoryLabel(row),
         categoryGroupLabel(row),
-        sportName(row.sportId),
         fixtureConfigLabel(row.fixtureConfig),
       );
     });
     return [...filtered].sort((a, b) => {
-      if (sort.key === "sport") {
-        return compareText(sportName(a.sportId), sportName(b.sportId), sort.dir);
-      }
       if (sort.key === "category") {
         return compareText(categoryGroupLabel(a), categoryGroupLabel(b), sort.dir);
       }
@@ -205,7 +217,7 @@ export default function CategoriesPage() {
       }
       return compareText(a.name, b.name, sort.dir);
     });
-  }, [categories, filterSport, fixtureFilter, genderFilter, ageFilter, search, sort, sports]);
+  }, [categories, filterSport, fixtureFilter, genderFilter, ageFilter, search, sort]);
   const paged = pageRows(visible, page, perPage);
 
   const close = () => {
@@ -241,6 +253,7 @@ export default function CategoriesPage() {
 
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!editingId) return;
     const nextErrors: { sportId?: string; name?: string; ageGroup?: string } = {};
     if (!form.sportId) nextErrors.sportId = "Required";
     if (!form.ageGroup.trim()) nextErrors.ageGroup = "Required";
@@ -264,15 +277,13 @@ export default function CategoriesPage() {
       participantsPerMatch: form.participantsPerMatch,
       availableRounds: form.availableRounds,
     };
-    const result = editingId
-      ? await updateCategory(editingId, payload)
-      : await createCategory({ sportId: form.sportId, ...payload });
+    const result = await updateCategory(editingId, payload);
     setSaving(false);
     if (result.error) {
       toast.error(result.error.message);
       return;
     }
-    toast.success(editingId ? "Category updated." : "Category created.");
+    toast.success("Category updated.");
     close();
     await load();
   };
@@ -283,36 +294,31 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Category"
-        hint="All categories until you filter. Sport, then gender, then age, then fixture."
-      />
+      <PageHeader title="Category" />
 
       <TableCard
-        title="Categories"
+        title={sportOf(filterSport)?.name ?? "Categories"}
+        tabs={
+          <ResultsPhaseTabs
+            ariaLabel="Sport"
+            value={filterSport}
+            onChange={selectSport}
+            tabs={sports.map((sport) => ({
+              id: sport.id,
+              label: sport.name,
+              count: countBySport.get(sport.id) ?? 0,
+            }))}
+          />
+        }
         search={
           <TableSearch value={search} onChange={setSearch} placeholder="Search name, category, or fixture" />
         }
         count={visible.length}
         filters={[
           {
-            id: "sport",
-            label: "Sport",
-            value: filterSport,
-            options: sports.map((sport) => ({ value: sport.id, label: sport.name })),
-            onChange: (value) => {
-              setFilterSport(value);
-              setGenderFilter("");
-              setAgeFilter("");
-              setFixtureFilter("");
-            },
-          },
-          {
             id: "gender",
             label: "Gender",
             value: genderFilter,
-            disabled: !filterSport,
-            allLabel: filterSport ? "All" : "Pick sport",
             options: genderOptions.map((gender) => ({ value: gender, label: genderLabel(gender) })),
             onChange: (value) => {
               setGenderFilter(value as "" | Gender);
@@ -324,8 +330,6 @@ export default function CategoriesPage() {
             id: "age",
             label: "Age",
             value: ageFilter,
-            disabled: !genderFilter,
-            allLabel: genderFilter ? "All" : "Pick gender",
             options: ageOptions.map((age) => ({ value: age, label: age })),
             onChange: (value) => {
               setAgeFilter(value);
@@ -336,15 +340,12 @@ export default function CategoriesPage() {
             id: "fixture",
             label: "Fixture",
             value: fixtureFilter,
-            disabled: !ageFilter,
-            allLabel: ageFilter ? "All" : "Pick age",
             options: fixtureFilterOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label })),
             onChange: (value) => setFixtureFilter(value as "" | FixtureFormatType),
           },
         ]}
         onClearAll={() => {
           setSearch("");
-          setFilterSport("");
           setGenderFilter("");
           setAgeFilter("");
           setFixtureFilter("");
@@ -360,7 +361,6 @@ export default function CategoriesPage() {
                   { header: "Category", value: (row) => categoryGroupLabel(row) },
                   { header: "Gender", value: (row) => genderLabel(row.gender) },
                   { header: "Age group", value: (row) => row.ageGroup },
-                  { header: "Sport", value: (row) => sportName(row.sportId) },
                   { header: "Fixture", value: (row) => fixtureConfigLabel(row.fixtureConfig) },
                   {
                     header: "Roster",
@@ -378,20 +378,6 @@ export default function CategoriesPage() {
             }
           />
         }
-        action={
-          <SoftButton
-            variant="primary"
-            onClick={() => {
-              setEditingId(null);
-              const sport = sportOf(filterSport) ?? sports[0];
-              setForm(formFromSport(sport?.id ?? "", sport));
-              setFieldErrors({});
-              setOpen(true);
-            }}
-          >
-            Add category
-          </SoftButton>
-        }
         footer={
           <TablePager
             count={visible.length}
@@ -408,7 +394,6 @@ export default function CategoriesPage() {
             <tr>
               <SortTh label="Name" column="name" sort={sort} onSort={setSort} />
               <SortTh label="Category" column="category" sort={sort} onSort={setSort} />
-              <SortTh label="Sport" column="sport" sort={sort} onSort={setSort} />
               <SortTh label="Fixture" column="fixture" sort={sort} onSort={setSort} />
               <SortTh label="Roster" column="roster" sort={sort} onSort={setSort} />
               <th className="text-right">Actions</th>
@@ -419,7 +404,6 @@ export default function CategoriesPage() {
               <tr key={row.id}>
                 <td className="font-semibold">{row.name}</td>
                 <td>{categoryGroupLabel(row)}</td>
-                <td>{sportName(row.sportId)}</td>
                 <td>
                   <StatusBadge tone={fixtureTone(row.fixtureConfig.format)}>
                     {fixtureConfigLabel(row.fixtureConfig)}
@@ -477,8 +461,8 @@ export default function CategoriesPage() {
             ))}
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-[var(--ops-text-muted)]">
-                  {categories.length === 0
+                <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
+                  {scopedCategories.length === 0
                     ? "No categories yet."
                     : "No matching categories."}
                 </td>
@@ -490,7 +474,7 @@ export default function CategoriesPage() {
 
       <Modal
         open={open}
-        title={editingId ? "Edit category" : "Add category"}
+        title="Edit category"
         onClose={close}
         wide
       >
@@ -727,7 +711,7 @@ export default function CategoriesPage() {
           </div>
           <div className="flex gap-2 sm:col-span-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
-              {editingId ? "Save changes" : "Add category"}
+              Save changes
             </SoftButton>
             <SoftButton type="button" onClick={close}>
               Cancel

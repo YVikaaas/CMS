@@ -149,7 +149,7 @@ export function formatsForConfig(format: FixtureFormatType): FixtureFormatType[]
 }
 
 export function isAthleticsSport(sport?: Pick<Sport, "code" | "eventMode"> | null): boolean {
-  return sport?.eventMode === "solo" || sport?.code === "ATH";
+  return sport?.code === "ATH";
 }
 
 export function formatsForSport(sport?: Pick<Sport, "code" | "eventMode"> | null): FixtureFormatType[] {

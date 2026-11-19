@@ -171,6 +171,7 @@ async function loadCscRoster(
 
 export async function listTeams(filters?: {
   championshipId?: string;
+  sportId?: string;
   cscId?: string;
 }): Promise<ServiceResult<Team[]>> {
   const supabase = createClient();
@@ -178,8 +179,11 @@ export async function listTeams(filters?: {
 
   if (filters?.cscId) {
     query = query.eq("competition_sport_category_map_id", filters.cscId);
-  } else if (filters?.championshipId) {
-    const cscs = await listCscOptions({ championshipId: filters.championshipId });
+  } else if (filters?.championshipId || filters?.sportId) {
+    const cscs = await listCscOptions({
+      championshipId: filters.championshipId,
+      sportId: filters.sportId,
+    });
     if (cscs.error) return { data: null, error: cscs.error };
     const cscIds = (cscs.data ?? []).map((item) => item.id);
     if (cscIds.length === 0) return { data: [], error: null };

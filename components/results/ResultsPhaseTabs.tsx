@@ -8,7 +8,7 @@ export function ResultsPhaseTabs<T extends string>({
   onChange,
   ariaLabel,
 }: {
-  tabs: Array<{ id: T; label: string }>;
+  tabs: Array<{ id: T; label: string; count?: number }>;
   value: T;
   onChange: (id: T) => void;
   ariaLabel: string;
@@ -26,13 +26,18 @@ export function ResultsPhaseTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "-mb-px inline-flex min-h-10 shrink-0 items-center border-b-2 px-3 text-sm leading-5 font-medium tracking-[0.1px]",
+              "-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm leading-5 font-medium tracking-[0.1px]",
               active
                 ? "border-[var(--ops-primary)] text-[var(--ops-primary)]"
                 : "border-transparent text-[var(--ops-text-muted)] hover:text-[var(--ops-text)]",
             )}
           >
             {tab.label}
+            {typeof tab.count === "number" ? (
+              <span className={cn("tabular-nums", active ? "text-[var(--ops-primary)]" : "text-[var(--ops-text-muted)]")}>
+                {tab.count}
+              </span>
+            ) : null}
           </button>
         );
       })}

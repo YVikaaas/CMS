@@ -179,8 +179,9 @@ export async function listCategories(
   const supabase = createClient();
   let query = supabase
     .from("category")
-    .select(CATEGORY_SELECT)
+    .select(`${CATEGORY_SELECT}, sport!inner(id)`)
     .is("deleted_at", null)
+    .is("sport.deleted_at", null)
     .order("age_group")
     .order("gender")
     .order("name");

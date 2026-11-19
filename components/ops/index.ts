@@ -10,6 +10,8 @@ export { ActionDock } from "./ActionDock";
 export { QueueMarker, QueueStrip, type QueueStripItem } from "./QueueStrip";
 export { EventIdentity } from "./EventIdentity";
 export { EventFilters } from "./EventFilters";
+export { EventSetupWizard } from "./EventSetupWizard";
+export { FixtureSportHops } from "./FixtureSportHops";
 export { PageHeader } from "./PageHeader";
 export { EmptyState, ErrorBanner, NotificationBanner } from "./Banners";
 export { GreetingBanner, type BannerStat } from "./GreetingBanner";
