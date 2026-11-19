@@ -195,17 +195,17 @@ export default function ChampionshipCategoriesPage() {
   if (!championship) {
     return (
       <EmptyState
-        title="Championship not found"
+        title="Event not found"
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Back to championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Back to events</SoftButton>
           </Link>
         }
       />
     );
   }
 
-  const sportsHref = `/championships/${championshipId}/sports`;
+  const sportsHref = `/events/${championshipId}/sports`;
 
   const openCategory = (category: Category) => {
     let next = applySport(emptyEventFilter(championshipId), sportId);
@@ -245,7 +245,7 @@ export default function ChampionshipCategoriesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         crumbs={[
-          { href: "/championships", label: "Championships" },
+          { href: "/events", label: "Events" },
           { href: sportsHref, label: championship.name },
           { label: sport?.name ?? "Sport" },
         ]}
@@ -295,7 +295,7 @@ export default function ChampionshipCategoriesPage() {
           },
           {
             id: "event",
-            label: "Event",
+            label: "Name",
             value: nameFilter,
             disabled: !ageFilter,
             allLabel: ageFilter ? "All" : "Pick age",
@@ -377,7 +377,7 @@ export default function ChampionshipCategoriesPage() {
                     aria-label={`Remove ${categoryLabel(category)}`}
                     title="Remove"
                     onClick={async () => {
-                      if (!(await confirm({ title: `Remove ${categoryLabel(category)}?`, message: "It is taken off this sport for this championship.", confirmLabel: "Remove" }))) return;
+                      if (!(await confirm({ title: `Remove ${categoryLabel(category)}?`, message: "It is taken off this sport for this event.", confirmLabel: "Remove" }))) return;
                       const { error } = await removeChampionshipEvent(championshipId, category.id);
                       if (error) toast.error(error.message);
                       else {
@@ -457,7 +457,7 @@ export default function ChampionshipCategoriesPage() {
           />
           {pickNameOptions.length > 1 ? (
             <ChipFilter
-              ariaLabel="Event"
+              ariaLabel="Name"
               value={pickName}
               onChange={setPickName}
               options={pickNameOptions.map((name) => ({

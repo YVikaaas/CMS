@@ -214,7 +214,7 @@ export default function SportsPage() {
                     aria-label={`Archive ${row.name}`}
                     title="Archive"
                     onClick={async () => {
-                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new championships. Existing data stays.", confirmLabel: "Archive" }))) return;
+                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new events. Existing data stays.", confirmLabel: "Archive" }))) return;
                       const { error } = await archiveSport(row.id);
                       if (error) toast.error(error.message);
                       else await load();

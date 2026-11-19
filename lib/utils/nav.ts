@@ -69,8 +69,8 @@ export const ADMIN_NAV: NavItem[] = [
     icon: IconAward,
   },
   {
-    href: "/championships",
-    label: "Championships",
+    href: "/events",
+    label: "Events",
     pageRole: "championship.manage",
     section: "setup",
     icon: IconFlag,
@@ -112,7 +112,7 @@ export function pathTitle(pathname: string): string {
   if (pathname.startsWith("/gameplay/podium")) return "Podium";
   if (pathname.startsWith("/gameplay/results")) return "Results";
   if (pathname.startsWith("/gameplay/fixtures")) return "Fixtures";
-  if (pathname.startsWith("/championships")) return "Championships";
+  if (pathname.startsWith("/events")) return "Events";
   if (pathname.startsWith("/masters/sports")) return "Sport";
   if (pathname.startsWith("/masters/categories")) return "Category";
   if (pathname.startsWith("/masters")) return "Catalog";

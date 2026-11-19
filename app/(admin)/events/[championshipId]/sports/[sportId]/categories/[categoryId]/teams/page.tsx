@@ -19,7 +19,7 @@ import {
   StatusBadge,
   useConfirm,
 } from "@/components/ops";
-import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
+import { useScopedChampionship } from "@/app/(admin)/events/useScopedChampionship";
 import {
   archiveTeam,
   createTeam,
@@ -96,7 +96,7 @@ export default function ChampionshipCategoryTeamsPage() {
   const minMembers = solo ? 1 : (csc?.teamSize ?? category?.teamSize ?? 1);
   const maxMembers = solo ? 1 : (csc?.maxTeamSize ?? category?.maxTeamSize ?? minMembers);
   const memberGender = csc?.categoryGender ?? category?.gender ?? "male";
-  const sportsHref = `/championships/${championshipId}/sports`;
+  const sportsHref = `/events/${championshipId}/sports`;
   const categoriesHref = `${sportsHref}/${sportId}/categories`;
   const sheetOptions: EntrySheetOptions = {
     kind: solo ? "athlete" : "team",
@@ -180,7 +180,7 @@ export default function ChampionshipCategoryTeamsPage() {
   const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!csc) {
-      toast.error("Category is not assigned to this championship.");
+      toast.error("Category is not assigned to this event.");
       return;
     }
     const nextErrors: Record<string, string> = {};
@@ -213,7 +213,7 @@ export default function ChampionshipCategoryTeamsPage() {
       if (roster.length < minMembers || roster.length > maxMembers) {
         toast.error(
           solo
-            ? "This event is for individual athletes."
+            ? "This category is for individual athletes."
             : `This category needs ${minMembers} to ${maxMembers} members.`,
         );
         return;
@@ -284,10 +284,10 @@ export default function ChampionshipCategoryTeamsPage() {
   if (!championship) {
     return (
       <EmptyState
-        title="Championship not found"
+        title="Event not found"
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Back to championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Back to events</SoftButton>
           </Link>
         }
       />
@@ -300,7 +300,7 @@ export default function ChampionshipCategoryTeamsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         crumbs={[
-          { href: "/championships", label: "Championships" },
+          { href: "/events", label: "Events" },
           { href: sportsHref, label: championship.name },
           { href: categoriesHref, label: sport?.name ?? "Sport" },
           { label: categoryTitle },

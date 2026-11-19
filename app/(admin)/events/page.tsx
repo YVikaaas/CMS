@@ -85,7 +85,7 @@ export default function ChampionshipsPage() {
 
   const openChampionship = (row: Championship) => {
     setSelectedId(row.id);
-    router.push(`/championships/${row.id}/sports`);
+    router.push(`/events/${row.id}/sports`);
   };
 
   const onSave = async (event: React.FormEvent) => {
@@ -109,18 +109,18 @@ export default function ChampionshipsPage() {
       : await createChampionship(payload);
     setSaving(false);
     if (result.error || !result.data) {
-      toast.error(result.error?.message || "Could not save championship.");
+      toast.error(result.error?.message || "Could not save event.");
       return;
     }
-    toast.success(editingId ? "Championship updated." : "Championship created.");
+    toast.success(editingId ? "Event updated." : "Event created.");
     setSelectedId(result.data.id);
     closeForm();
     await refresh();
-    if (!editingId) router.push(`/championships/${result.data.id}/sports`);
+    if (!editingId) router.push(`/events/${result.data.id}/sports`);
   };
 
   const onArchive = async (id: string) => {
-    if (!(await confirm({ title: "Archive this championship?", message: "It leaves the header picker. Its data stays.", confirmLabel: "Archive" }))) return;
+    if (!(await confirm({ title: "Archive this event?", message: "It leaves the header picker. Its data stays.", confirmLabel: "Archive" }))) return;
     const { error } = await archiveChampionship(id);
     if (error) {
       toast.error(error.message);
@@ -150,10 +150,10 @@ export default function ChampionshipsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Championships" hint="Pick a championship, then assign sports." />
+      <PageHeader title="Events" hint="Pick an event, then assign sports." />
 
       <TableCard
-        title="Championships"
+        title="Events"
         search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or location" />}
         count={visible.length}
         filters={[
@@ -186,7 +186,7 @@ export default function ChampionshipsPage() {
                   { header: "End date", value: (row) => row.endDate },
                   { header: "Status", value: (row) => row.status },
                 ],
-                "championships",
+                "events",
                 format,
               )
             }
@@ -194,7 +194,7 @@ export default function ChampionshipsPage() {
         }
         action={
           <SoftButton variant="primary" onClick={openCreate}>
-            New championship
+            New event
           </SoftButton>
         }
         footer={
@@ -246,7 +246,7 @@ export default function ChampionshipsPage() {
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-8 text-center text-[var(--ops-text-muted)]">
-                  {championships.length === 0 ? "No championships yet." : "No matching championships."}
+                  {championships.length === 0 ? "No events yet." : "No matching events."}
                 </td>
               </tr>
             ) : null}
@@ -256,7 +256,7 @@ export default function ChampionshipsPage() {
 
       <Modal
         open={formOpen}
-        title={editingId ? "Edit championship" : "New championship"}
+        title={editingId ? "Edit event" : "New event"}
         onClose={closeForm}
       >
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">

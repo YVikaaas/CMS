@@ -71,7 +71,7 @@ export async function createChampionship(input: {
   endDate: string | null;
   location: string | null;
 }): Promise<ServiceResult<Championship>> {
-  const champNameErr = nameError(input.name, "Championship name");
+  const champNameErr = nameError(input.name, "Event name");
   if (champNameErr) return { data: null, error: { message: champNameErr } };
   const supabase = createClient();
   const {
@@ -103,7 +103,7 @@ export async function updateChampionship(
     location: string | null;
   },
 ): Promise<ServiceResult<Championship>> {
-  const champNameErr = nameError(input.name, "Championship name");
+  const champNameErr = nameError(input.name, "Event name");
   if (champNameErr) return { data: null, error: { message: champNameErr } };
   const supabase = createClient();
   const slug = await uniqueSlug(supabase, input.name, id);

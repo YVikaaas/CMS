@@ -19,7 +19,7 @@ import {
   StatusBadge,
   useConfirm,
 } from "@/components/ops";
-import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
+import { useScopedChampionship } from "@/app/(admin)/events/useScopedChampionship";
 import {
   archiveTeamMember,
   createTeamMember,
@@ -57,7 +57,7 @@ export default function ChampionshipTeamMembersPage() {
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string }>({});
 
-  const sportsHref = `/championships/${championshipId}/sports`;
+  const sportsHref = `/events/${championshipId}/sports`;
   const categoriesHref = `${sportsHref}/${sportId}/categories`;
   const teamsHref = `${categoriesHref}/${categoryId}/teams`;
 
@@ -179,7 +179,7 @@ export default function ChampionshipTeamMembersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         crumbs={[
-          { href: "/championships", label: "Championships" },
+          { href: "/events", label: "Events" },
           { href: sportsHref, label: championship.name },
           { href: categoriesHref, label: team.sportName },
           { href: teamsHref, label: team.categoryLabel },

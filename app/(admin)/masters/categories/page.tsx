@@ -244,7 +244,7 @@ export default function CategoriesPage() {
     const nextErrors: { sportId?: string; name?: string; ageGroup?: string } = {};
     if (!form.sportId) nextErrors.sportId = "Required";
     if (!form.ageGroup.trim()) nextErrors.ageGroup = "Required";
-    const categoryNameErr = categoryNameError(form.name, athleticsForm ? "Event" : "Name");
+    const categoryNameErr = categoryNameError(form.name, "Name");
     if (categoryNameErr) nextErrors.name = categoryNameErr;
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -464,7 +464,7 @@ export default function CategoriesPage() {
                     aria-label={`Archive ${row.name}`}
                     title="Archive"
                     onClick={async () => {
-                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new championships. Existing data stays.", confirmLabel: "Archive" }))) return;
+                      if (!(await confirm({ title: `Archive ${row.name}?`, message: "It is hidden from new events. Existing data stays.", confirmLabel: "Archive" }))) return;
                       const { error } = await archiveCategory(row.id);
                       if (error) toast.error(error.message);
                       else await load();
@@ -524,7 +524,7 @@ export default function CategoriesPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             <span>
-              {athleticsForm ? "Event" : "Name"}
+              Name
               <RequiredMark />
             </span>
             <CategoryNameInput

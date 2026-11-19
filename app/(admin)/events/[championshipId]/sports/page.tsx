@@ -141,10 +141,10 @@ export default function ChampionshipSportsPage() {
   if (!championship) {
     return (
       <EmptyState
-        title="Championship not found"
+        title="Event not found"
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Back to championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Back to events</SoftButton>
           </Link>
         }
       />
@@ -153,7 +153,7 @@ export default function ChampionshipSportsPage() {
 
   const openSport = (sport: Sport) => {
     writeEventFilter(applySport(emptyEventFilter(championshipId), sport.id));
-    router.push(`/championships/${championshipId}/sports/${sport.id}/categories`);
+    router.push(`/events/${championshipId}/sports/${sport.id}/categories`);
   };
 
   const openForm = () => {
@@ -170,7 +170,7 @@ export default function ChampionshipSportsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         crumbs={[
-          { href: "/championships", label: "Championships" },
+          { href: "/events", label: "Events" },
           { label: championship.name },
         ]}
         title="Sports" hint="Pick one or more sports, then assign categories." />
@@ -254,7 +254,7 @@ export default function ChampionshipSportsPage() {
                       aria-label={`Remove ${sport.name}`}
                       title="Remove"
                       onClick={async () => {
-                        if (!(await confirm({ title: `Remove ${sport.name}?`, message: "It is taken off this championship. The sport stays in the catalog.", confirmLabel: "Remove" }))) return;
+                        if (!(await confirm({ title: `Remove ${sport.name}?`, message: "It is taken off this event. The sport stays in the catalog.", confirmLabel: "Remove" }))) return;
                         const { error } = await removeChampionshipSport(championshipId, sport.id);
                         if (error) toast.error(error.message);
                         else {

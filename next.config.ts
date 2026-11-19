@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  async redirects() {
+    return [
+      { source: "/championships", destination: "/events", permanent: false },
+      { source: "/championships/:path*", destination: "/events/:path*", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

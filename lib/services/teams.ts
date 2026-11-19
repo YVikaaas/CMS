@@ -157,7 +157,7 @@ async function loadCscRoster(
     max_team_size: number;
   } | null;
   if (!data || data.deleted_at || !category) {
-    return { data: null, error: { message: "Championship category was not found." } };
+    return { data: null, error: { message: "Event category was not found." } };
   }
   return {
     data: {

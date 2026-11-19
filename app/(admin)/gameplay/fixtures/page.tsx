@@ -95,11 +95,11 @@ export default function FixturesPage() {
   if (!selected) {
     return (
       <EmptyState
-        title="Select a championship"
-        hint="Floor pages use the championship in the header."
+        title="Select an event"
+        hint="Floor pages use the event in the header."
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Events</SoftButton>
           </Link>
         }
       />
@@ -123,10 +123,10 @@ export default function FixturesPage() {
       {sports.length === 0 ? (
         <EmptyState
           title="No sports offered"
-          hint="Assign a sport to this championship first."
+          hint="Assign a sport to this event first."
           action={
-            <Link href={`/championships/${selected.id}/sports`}>
-              <SoftButton variant="primary">Championship sports</SoftButton>
+            <Link href={`/events/${selected.id}/sports`}>
+              <SoftButton variant="primary">Event sports</SoftButton>
             </Link>
           }
         />

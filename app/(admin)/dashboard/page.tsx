@@ -60,7 +60,7 @@ function detailRows(s: DashboardSummary, sportsHref: string) {
     { group: "Setup", label: "Sports", value: s.sportCount, href: sportsHref },
     { group: "Setup", label: "Categories", value: s.categoryCount, hint: `${s.boysCategoryCount} boys · ${s.girlsCategoryCount} girls`, href: sportsHref },
     { group: "Setup", label: "Age groups", value: s.ageGroupCount },
-    { group: "Setup", label: "Solo events", value: s.soloCategoryCount, hint: `${s.relayCategoryCount} relays · ${s.teamSportCategoryCount} team sports` },
+    { group: "Setup", label: "Solo categories", value: s.soloCategoryCount, hint: `${s.relayCategoryCount} relays · ${s.teamSportCategoryCount} team sports` },
     { group: "Setup", label: "Team entries", value: s.teamEntryCount, hint: `${s.basketballTeamCount} team sports · ${s.relayEntryCount} relays` },
     { group: "Setup", label: "Solo athletes", value: s.soloAthleteCount, hint: `${s.athleteCount} players in all` },
     { group: "Setup", label: "Organizations", value: s.orgCount },
@@ -136,11 +136,11 @@ export default function DashboardPage() {
   if (!selected) {
     return (
       <EmptyState
-        title="Create a championship to get started"
-        hint="Setup starts with a championship, then sports, then the floor."
+        title="Create an event to get started"
+        hint="Setup starts with an event, then sports, then the floor."
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Events</SoftButton>
           </Link>
         }
       />
@@ -148,7 +148,7 @@ export default function DashboardPage() {
   }
 
   const ready = Boolean(summary);
-  const sportsHref = `/championships/${selected.id}/sports`;
+  const sportsHref = `/events/${selected.id}/sports`;
   const s = summary;
   const matchCompletePct = s ? Math.round(((s.matchCompleted || 0) / Math.max(1, s.matchCount)) * 100) : 0;
   const medalPct = s

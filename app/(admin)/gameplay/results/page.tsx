@@ -97,10 +97,10 @@ export default function ResultsPage() {
   if (!selected) {
     return (
       <EmptyState
-        title="Select a championship"
+        title="Select an event"
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Events</SoftButton>
           </Link>
         }
       />

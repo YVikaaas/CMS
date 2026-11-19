@@ -1,6 +1,6 @@
 # CMS — interface
 
-Venue staff on tablets. One job per screen. Pick the championship, pick the work unit, do the work, save.
+Venue staff on tablets. One job per screen. Pick the event, pick the work unit, do the work, save.
 
 **Source of truth:** this file + tokens in `app/globals.css` (`--ops-*`), with MUI and the Material You theme in `app/providers/muiTheme.ts`.  
 Do not invent a second look. Every signed-in page uses this system.
@@ -11,7 +11,7 @@ Product domain, scoring math, and athletics: `docs/ATHLETICS.md`. Coding rules: 
 
 ## Domain
 
-Championship, sport, category (Boys U16 / Girls U14), CSC, fixture, round, match, team, score.
+Event (the competition), sport, category (Boys U16 100m / Girls U14), CSC, fixture, round, match, team, score. Do not say championship.
 
 There is **no** discipline chip, BIB, FOP, kit, medals, or event-code loader. Call Room on the floor is present/absent for a match (solo athletes, or team + members). Do not copy GMS call-room desks.
 
@@ -41,7 +41,7 @@ Material 3 (m3.material.io) as styled by the MaterialMe UI kit, built on **MUI 9
 | Part | Spec |
 |------|------|
 | Nav drawer | black (`--ops-nav`), 264px (88px rail on tablet), white 15px/500 labels, 24px icons, 56px items, 16px radius; active = 1.5px `--ops-accent` outline + accent label, no fill; groups split by dark dividers |
-| Top app bar | white, 64px, sticky, 1px bottom border. Left: sidebar toggle (menu on phones) + "Section / Page". Right: championship select (trophy icon), divider, account button (avatar, name + chevron from 1024px) → profile drawer |
+| Top app bar | white, 64px, sticky, 1px bottom border. Left: sidebar toggle (menu on phones) + "Section / Page". Right: event select (trophy icon), divider, account button (avatar, name + chevron from 1024px) → profile drawer |
 | Sidebar | logo, nav groups; nothing else |
 | Page header | none drawn: the top app bar shows "Section / Page". `PageHeader` keeps a screen-reader h1, a one-line breadcrumb on nested setup pages, and an optional action |
 | Primary button | tonal: primary-container fill, 1.5px on-surface outline, 14px radius, 15px/500; hover = 4px offset shadow + lift |
@@ -66,7 +66,7 @@ Material 3 (m3.material.io) as styled by the MaterialMe UI kit, built on **MUI 9
 - Fonts other than Lexend; icon packs other than `@tabler/icons-react`
 - Browser `window.confirm` / `alert` / `prompt` → `useConfirm()`
 - Copying GMS call-room / BIB / kit / verification / medals / weight-class UI
-- Flattening championship setup into one workspace
+- Flattening event setup into one workspace
 - A fourth filter chip (discipline). Age **is** the category.
 
 ---
@@ -102,15 +102,15 @@ Other rules:
 
 Staff do the same thing on Floor:
 
-1. Championship in the **header** picker.
-2. **EventFilters** — Sport → Gender → Age → Event dropdowns. Choosing one opens the next. Shared `sessionStorage` key `cms.eventFilter`.
+1. Event in the **header** picker.
+2. **EventFilters** — Sport → Gender → Age → Category dropdowns. Choosing one opens the next. Shared `sessionStorage` key `cms.eventFilter`.
 3. **EventIdentity** — white card (teal eyebrow, title) as chips are picked.
 4. **Round chips** (`ChipFilter`) — selected = solid primary. Scoring and Results: **no All**; one round stays selected.
 5. **Split workspace** — left queue, right board (fixtures match editor, scoring board).
 6. **StickyActionBar** — Save / Complete. Disabled rules unchanged.
 7. Status is **derived** from data (`draft` / `scheduled` / `in_progress` / `completed`). No fake KPIs.
 
-Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Event until Age. Choosing a value opens the next menu. Fixtures: empty = All. Scoring and Results wait until all four are set. Round chips have no All. Results also has a Ranking tab (manual places).
+Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Category until Age. Choosing a value opens the next menu. Fixtures: empty = All. Scoring and Results wait until all four are set. Round chips have no All. Results also has a Ranking tab (manual places).
 
 ---
 
@@ -118,18 +118,18 @@ Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Even
 
 ### Shell
 
-`app/(admin)/layout.tsx` — black sidebar (logo, nav); white top app bar with toggle, location, championship select and account. Floor + dashboard gated until a championship exists (`EmptyState` → Championships).
+`app/(admin)/layout.tsx` — black sidebar (logo, nav); white top app bar with toggle, location, event select and account. Floor + dashboard gated until an event exists (`EmptyState` → Events).
 
-Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Championships) · Catalog (Sport, Category) · Pages (Account Setting, UI Kit). `aria-current="page"` on the active link.
+Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Events) · Catalog (Sport, Category) · Pages (Account Setting, UI Kit). `aria-current="page"` on the active link.
 
 ### Dashboard (`/dashboard`)
 
-Greeting banner with championship name and status, four overview `StatCard`s, then one detail table (setup through podium), a by-sport table, and a short next-step list. Links land on the first hop of each flow.
+Greeting banner with event name and status, four overview `StatCard`s, then one detail table (setup through podium), a by-sport table, and a short next-step list. Links land on the first hop of each flow.
 
 ### Setup (nested hops — do not flatten)
 
 ```text
-/championships
+/events
   /[id]/sports
     /[sportId]/categories
       /[categoryId]/teams
@@ -283,7 +283,7 @@ CMS/.interface-design/system.md     ← this file
 CMS/app/globals.css                 tokens + .ops-control / .soft-card
 CMS/app/layout.tsx                  Onest, MUI cache + theme providers, toaster
 CMS/app/providers/muiTheme.ts       MUI theme: the palette source of truth
-CMS/app/(admin)/layout.tsx          shell, rail, championship picker
+CMS/app/(admin)/layout.tsx          shell, rail, event picker
 CMS/components/ops/*                kit
 CMS/components/Modal.tsx            modal + fieldClass
 CMS/components/table.tsx            catalog tables

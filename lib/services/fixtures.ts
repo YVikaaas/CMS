@@ -268,7 +268,7 @@ export async function createFixture(input: {
   const cscs = await listCscOptions();
   if (cscs.error) return { data: null, error: cscs.error };
   const csc = (cscs.data ?? []).find((item) => item.id === input.cscId);
-  if (!csc) return { data: null, error: { message: "Championship category was not found." } };
+  if (!csc) return { data: null, error: { message: "Event category was not found." } };
   const athletics = isAthleticsFormat(csc.defaultFormat);
   const formatType = athletics
     ? csc.defaultFormat
@@ -996,7 +996,7 @@ async function assertMatchSides(
   if (teams.error) return teams.error.message;
   const ids = new Set((teams.data ?? []).map((team) => team.id));
   if (!ids.has(team1Id) || !ids.has(team2Id)) {
-    return "Both teams must belong to this championship category.";
+    return "Both teams must belong to this event category.";
   }
   return null;
 }
@@ -1172,7 +1172,7 @@ async function assertHeatEntries(
     if (teams.error) return teams.error.message;
     const allowed = new Set((teams.data ?? []).map((item) => item.id));
     if (unique.some((id) => !allowed.has(id))) {
-      return "Every team must belong to this championship category.";
+      return "Every team must belong to this event category.";
     }
     return null;
   }
@@ -1180,7 +1180,7 @@ async function assertHeatEntries(
   if (athletes.error) return athletes.error.message;
   const allowed = new Set((athletes.data ?? []).map((item) => item.id));
   if (unique.some((id) => !allowed.has(id))) {
-    return "Every athlete must belong to this championship category.";
+    return "Every athlete must belong to this event category.";
   }
   return null;
 }

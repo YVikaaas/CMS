@@ -295,7 +295,7 @@ export function EventFilters({
   const eyebrow = title && selectedSport ? selectedSport.name : "";
   const all = requireEvent ? undefined : "All";
 
-  // One card: the event strip on top, then four outlined selects.
+  // One card: the category strip on top, then four outlined selects.
   const genderLocked = unlockInOrder && !value.sportId;
   const ageLocked = unlockInOrder && !value.gender;
   const eventLocked = unlockInOrder && !value.ageGroup;
@@ -304,16 +304,16 @@ export function EventFilters({
     <Card className="overflow-hidden">
       <div className="flex min-h-12 items-center gap-2 bg-[var(--ops-primary)] px-4 py-1 text-[var(--ops-on-primary)]">
         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpen(!open)}>
-          <p className="truncate text-[11px] leading-4 font-medium tracking-[0.5px] uppercase opacity-80">{eyebrow || "Event"}</p>
+          <p className="truncate text-[11px] leading-4 font-medium tracking-[0.5px] uppercase opacity-80">{eyebrow || "Category"}</p>
           <p className="truncate text-base leading-6 font-medium">
-            {title || (requireEvent ? "Pick an event" : "All sports")}
+            {title || (requireEvent ? "Pick a category" : "All sports")}
           </p>
         </div>
         {aside ? <div className="flex shrink-0 items-center gap-2">{aside}</div> : null}
         <button
           type="button"
           aria-expanded={open}
-          aria-label={open ? "Hide event picker" : "Change event"}
+          aria-label={open ? "Hide category picker" : "Change category"}
           onClick={() => setOpen(!open)}
           className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-sm leading-5 font-medium hover:bg-white/15"
         >
@@ -325,7 +325,7 @@ export function EventFilters({
         <div className="p-3">
           {liveSports.length === 0 ? (
             <p className="text-sm leading-5 text-[var(--ops-text-muted)]">
-              {onlyWithExistingFixture ? "No event has a draw yet." : "No sports offered in this championship."}
+              {onlyWithExistingFixture ? "No category has a draw yet." : "No sports offered in this event."}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -367,7 +367,7 @@ export function EventFilters({
               />
               <StepSelect
                 id="category"
-                label="Event"
+                label="Category"
                 value={value.categoryId}
                 allLabel={all}
                 disabled={eventLocked}

@@ -169,7 +169,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     </Avatar>
   );
 
-  // Championship everything depends on: always in the top bar, right side.
+  // Event everything depends on: always in the top bar, right side.
   const switcher = loading ? (
     <Shimmer className="h-10 w-44 sm:w-64" />
   ) : (
@@ -178,11 +178,11 @@ function Shell({ children }: { children: React.ReactNode }) {
       value={selectedId ?? ""}
       onChange={(event) => setSelectedId(event.target.value || null)}
       className="w-44 min-w-0 rounded-xl bg-[var(--ops-surface)] sm:w-72 [&_.MuiOutlinedInput-notchedOutline]:rounded-xl"
-      aria-label="Championship"
+      aria-label="Event"
       startIcon={<IconTrophy size={18} stroke={1.75} />}
     >
       {championships.length === 0 ? (
-        <option value="">No championships yet</option>
+        <option value="">No events yet</option>
       ) : (
         championships.map((row) => (
           <option key={row.id} value={row.id}>
@@ -221,7 +221,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Sidebar isMobile onClose={() => setMobileOpen(false)} collapsed={false} />
       </Drawer>
       <div className="flex min-w-0 flex-1 flex-col overflow-auto">
-        {/* Top app bar: menu / sidebar toggle and where you are on the left; championship and account on the right */}
+        {/* Top app bar: menu / sidebar toggle and where you are on the left; event and account on the right */}
         <AppBar position="sticky" className="border-b border-[var(--ops-line)] bg-[var(--ops-surface)]">
           <Toolbar className="gap-2 px-2 sm:gap-3 sm:px-6">
             <IconButton
@@ -310,11 +310,11 @@ function Shell({ children }: { children: React.ReactNode }) {
         <main key={pathname} className="flex flex-1 flex-col px-4 pt-4 pb-6 sm:px-6 sm:pt-5">
           {gated ? (
             <EmptyState
-              title="Create a championship to get started"
-              hint="Floor pages need a championship picked at the top right."
+              title="Create an event to get started"
+              hint="Floor pages need an event picked at the top right."
               action={
-                <Link href="/championships">
-                  <SoftButton variant="primary">Championships</SoftButton>
+                <Link href="/events">
+                  <SoftButton variant="primary">Events</SoftButton>
                 </Link>
               }
             />

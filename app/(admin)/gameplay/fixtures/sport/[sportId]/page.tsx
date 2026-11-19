@@ -305,10 +305,10 @@ export default function FixtureSportPage() {
   if (!selected) {
     return (
       <EmptyState
-        title="Select a championship"
+        title="Select an event"
         action={
-          <Link href="/championships">
-            <SoftButton variant="primary">Championships</SoftButton>
+          <Link href="/events">
+            <SoftButton variant="primary">Events</SoftButton>
           </Link>
         }
       />
@@ -329,7 +329,7 @@ export default function FixtureSportPage() {
         unlockInOrder
         onChange={(value) => setFilter({ ...value })}
         aside={
-          // one event picked and it has a draw: open it straight from the strip
+          // one category picked and it has a draw: open it straight from the strip
           openTarget ? (
             <button
               type="button"
@@ -346,8 +346,8 @@ export default function FixtureSportPage() {
           title="No categories offered"
           hint="Assign categories for this sport first."
           action={
-            <Link href={`/championships/${selected.id}/sports/${sportId}/categories`}>
-              <SoftButton variant="primary">Championship categories</SoftButton>
+            <Link href={`/events/${selected.id}/sports/${sportId}/categories`}>
+              <SoftButton variant="primary">Event categories</SoftButton>
             </Link>
           }
         />

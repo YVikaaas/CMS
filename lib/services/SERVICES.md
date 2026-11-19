@@ -76,12 +76,12 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `archiveChampionship(id)` | — | `ServiceResult<true>` | Soft delete + status `archived`. |
 | `listChampionshipOfferings(championshipId)` | — | `ServiceResult<ChampionshipOffering[]>` | CSM + CSC category ids per sport, one query (CSCs embedded, archived ones filtered). |
 | `saveChampionshipOfferings(championshipId, offerings)` | `{ sportId, categoryIds[] }[]` | `ServiceResult<true>` | Restores or inserts CSM/CSC. Refuses to drop a category/sport that still has teams or fixtures. |
-| `addChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Assigns a master sport to the championship. |
+| `addChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Assigns a master sport to the event. |
 | `addChampionshipSports(id, sportIds, extras?)` | optional `categoriesBySport` | `ServiceResult<true>` | Assigns many sports. Optional category ids per sport are merged in the same write. |
 | `removeChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Unassigns a sport (blocked if it still has teams). |
-| `addChampionshipEvent(id, sportId, categoryId)` | — | `ServiceResult<true>` | Assigns a master category as a sport event. |
-| `addChampionshipEvents(id, sportId, categoryIds)` | category id list | `ServiceResult<true>` | Assigns many categories to one championship sport. Skips ids already offered. |
-| `removeChampionshipEvent(id, categoryId)` | — | `ServiceResult<true>` | Unassigns a sport event (blocked if it still has teams or fixtures). |
+| `addChampionshipEvent(id, sportId, categoryId)` | — | `ServiceResult<true>` | Assigns a master category to the event sport. |
+| `addChampionshipEvents(id, sportId, categoryIds)` | category id list | `ServiceResult<true>` | Assigns many categories to one event sport. Skips ids already offered. |
+| `removeChampionshipEvent(id, categoryId)` | — | `ServiceResult<true>` | Unassigns a category (blocked if it still has teams or fixtures). |
 
 ---
 
@@ -89,14 +89,14 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `listTeams({ championshipId?, cscId? })` | scoped to a championship or CSC | `ServiceResult<Team[]>` | Teams belong to one championship sport category. |
+| `listTeams({ championshipId?, cscId? })` | scoped to an event or CSC | `ServiceResult<Team[]>` | Teams belong to one event sport category. |
 | `createTeam({ cscId, name, orgName, city, members })` | member count = category `team_size`–`max_team_size` | `ServiceResult<Team>` | Unique live name per CSC. Organization and city are separate optional names. Team and all members take the category gender. Solo athletics is one member (the athlete); relays and basketball are real teams. |
 | `importCscTeams(cscId, entries)` | same shape as `createTeam`, many rows | `ServiceResult<{ created, failed }>` | Creates valid rows one by one. Sheet parse/sample lives in `entrySheet.ts`. |
 | `updateTeam(id, { name, orgName, city, members })` | — | `ServiceResult<Team>` | Replaces live member set within roster limits. A 1/1 roster updates the existing member in place so heat `athlete_id` rows stay valid. |
 | `listTeamMembers(teamId)` | — | `ServiceResult<TeamMember[]>` | Live members. |
 | `archiveTeam(id)` | — | `ServiceResult<true>` | Soft-deletes team and members. |
 | `listCscOptions({ sportId?, championshipId? })` | — | `ServiceResult<CscOption[]>` | Live CSCs with category name/age, roster min/max, `availableRounds`, `defaultFormat`, `availableFormats`, scoring style, and heat size. One query: CSM rows with their CSCs + categories embedded (no per-sport loop). |
-| `listCscAthletes(cscId)` | CSC id | `ServiceResult<CscAthlete[]>` | Live team members on that championship category, used as heat athletes. |
+| `listCscAthletes(cscId)` | CSC id | `ServiceResult<CscAthlete[]>` | Live team members on that event category, used as heat athletes. |
 | `getTeam(id)` | — | `ServiceResult<Team>` | Live team by id. |
 | `createTeamMember(teamId, { name, phone })` | — | `ServiceResult<TeamMember>` | Gender from the team/category. Blocked at max roster. |
 | `updateTeamMember(id, { name, phone })` | — | `ServiceResult<TeamMember>` | Live unique name+phone. |
@@ -108,13 +108,13 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `listFixtures(championshipId)` | — | `ServiceResult<Fixture[]>` | One live draw per CSC in that championship. |
+| `listFixtures(championshipId)` | — | `ServiceResult<Fixture[]>` | One live draw per CSC in that event. |
 | `getFixture(id)` | — | `ServiceResult<Fixture>` | Includes rounds. |
 | `createFixture({ cscId, formatType?, rounds, participantsPerMatch?, roundAttempts?, startDate, endDate })` | basketball may pick league vs bracket; athletics format is always the category’s | `ServiceResult<Fixture>` | Unique live fixture per CSC. Inserts chosen rounds. Track `participantsPerMatch` is lanes per heat (2–24). Field `roundAttempts` is 3 in qualifying and 2 in the final unless overridden. |
 | `updateFixture(id, { status, startDate, endDate })` | — | `ServiceResult<Fixture>` | Does not change format or rounds. |
 | `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, sides, player score events, and call-room attendance. |
 | `listFixtureMatches(fixtureId)` | — | `ServiceResult<FixtureMatch[]>` | Live matches. Basketball: two team sides. Athletics: heat `participants`. |
-| `listChampionshipMatches(championshipId)` | — | `ServiceResult<FixtureMatch[]>` | All live matches across fixtures in that championship. |
+| `listChampionshipMatches(championshipId)` | — | `ServiceResult<FixtureMatch[]>` | All live matches across fixtures in that event. |
 | `championshipMatchesFromRows(fixtureRows, matchRows)` | raw rows shaped like the fixture / match selects | `FixtureMatch[]` | Pure mapper for RPC results (used by `getCallRoomBoard`). |
 | `getFixtureMatch(id)` | — | `ServiceResult<FixtureMatch>` | One live match with sides and scores. |
 | `createMatch({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, team1Id, team2Id })` | status `draft` / `scheduled` / `cancelled` | `ServiceResult<FixtureMatch>` | Two different live teams on that CSC. |
@@ -137,7 +137,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `getCallRoomBoard(championshipId)` | championship id | `ServiceResult<{ matches: FixtureMatch[]; attendance: CallRoomAttendanceRow[] }>` | One RPC (`call_room_board`) instead of 4 sequential queries. Same data as `listChampionshipMatches` + `listCallRoomAttendance`. Used by Call Room. |
+| `getCallRoomBoard(championshipId)` | event id | `ServiceResult<{ matches: FixtureMatch[]; attendance: CallRoomAttendanceRow[] }>` | One RPC (`call_room_board`) instead of 4 sequential queries. Same data as `listChampionshipMatches` + `listCallRoomAttendance`. Used by Call Room. |
 | `listCallRoomAttendance(matchIds)` | match ids | `ServiceResult<CallRoomAttendanceRow[]>` | Live present/absent rows for those matches. |
 | `getCallRoomSheet(match)` | `FixtureMatch` | `ServiceResult<CallRoomSheet>` | Solo heats are athletes. Basketball and relays are teams + members. Team absent makes every player effectively absent. Athletes and players carry their saved `team_member.phone` (null if none) for the call button; a failed phone lookup leaves them null. |
 | `saveCallRoomSheet(sheet)` | marked present/absent only; unset deletes | `ServiceResult<CallRoomSheet>` | Upserts live rows and restores previously cleared marks. Per-subject writes run in parallel (bulk marks are one round trip, not N). |
@@ -157,4 +157,4 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `getDashboardSummary(championshipId)` | championship id | `ServiceResult<DashboardSummary>` | Live championship desk: setup (sports, gender/age/solo/relay/team categories, orgs, cities), coverage (entries and draws), fixture statuses and formats, round types, match statuses, call room present/absent, locked rankings and gold/silver/bronze, plus a per-sport breakdown. |
+| `getDashboardSummary(championshipId)` | event id | `ServiceResult<DashboardSummary>` | Live event desk: setup (sports, gender/age/solo/relay/team categories, orgs, cities), coverage (entries and draws), fixture statuses and formats, round types, match statuses, call room present/absent, locked rankings and gold/silver/bronze, plus a per-sport breakdown. |

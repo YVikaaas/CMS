@@ -26,27 +26,27 @@ Basketball must keep working. Do not rewrite basketball scoring math, roster min
 
 ## 1. Product shape (today)
 
-CMS is an **ops desk** for one championship at a time (header picker).
+CMS is an **ops desk** for one event at a time (header picker). Do not say championship in the UI.
 
 ```text
-Catalog          sport  →  category (Boys U16, Girls U14, …)
-Setup            championship → offer sports → offer categories → athletes (solo) / teams (relay + basketball) → members (teams only)
+Catalog          sport  →  category (Boys U16 100m, Girls U14, …)
+Setup            event → offer sports → offer categories → athletes (solo) / teams (relay + basketball) → members (teams only)
 Floor            call room → fixtures → scoring → results → podium
 ```
 
-**Nav** (`CMS/lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Championships) · Catalog (Sport, Category).
+**Nav** (`CMS/lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Events) · Catalog (Sport, Category).
 
-**Championship hops** (keep nested URLs):
+**Event hops** (keep nested URLs):
 
 ```text
-/championships
-  /[championshipId]/sports
+/events
+  /[eventId]/sports
     /[sportId]/categories
-      /[categoryId]/teams   (Athletes for solo events; Teams for relays)
+      /[categoryId]/teams   (Athletes for solo categories; Teams for relays)
         /[teamId]/members   (relays and basketball only)
 ```
 
-**One live fixture per CSC** (`competition_sport_category_map` = championship + sport + category). Example: Basketball · Boys · U16 has at most one draw.
+**One live fixture per CSC** (`competition_sport_category_map` = event + sport + category). Example: Basketball · Boys · U16 has at most one draw.
 
 ---
 
@@ -55,7 +55,7 @@ Floor            call room → fixtures → scoring → results → podium
 File: `CMS/components/ops/EventFilters.tsx`  
 Helpers: `CMS/lib/utils/eventFilter.ts`
 
-Four controls: **Sport → Gender → Age → Category**. Age is U16. Category is the event name (100m, Long Jump) or Basketball.
+Four controls: **Sport → Gender → Age → Category**. Age is U16. Category is the name (100m, Long Jump) or Basketball.
 
 | Page | Filter behaviour |
 |------|------------------|
@@ -99,9 +99,9 @@ Display label is always `Boys {age}` or `Girls {age}` (`CMS/lib/utils/labels.ts`
 
 `listCscOptions` reads `available_rounds` from that JSON.
 
-Championship offering: `competition_sport_map` (CSM) + `competition_sport_category_map` (CSC). Services: `addChampionshipSport`, `addChampionshipEvent`, `listChampionshipOfferings`.
+Event offering: `competition_sport_map` (CSM) + `competition_sport_category_map` (CSC). Services: `addChampionshipSport`, `addChampionshipEvent`, `listChampionshipOfferings`.
 
-Entry: solo athletics events are individual athletes (`team_size`/`max_team_size` = 1, stored as a team-of-1). Relays are teams of 4. Basketball stays a team roster. Gender is copied from the category. Setup can add one by one or import Excel (athlete sample vs team sample). Team sheet: one row per member; the same Team name groups that roster. Services in `CMS/lib/services/teams.ts`.
+Entry: solo athletics categories are individual athletes (`team_size`/`max_team_size` = 1, stored as a team-of-1). Relays are teams of 4. Basketball stays a team roster. Gender is copied from the category. Setup can add one by one or import Excel (athlete sample vs team sample). Team sheet: one row per member; the same Team name groups that roster. Services in `CMS/lib/services/teams.ts`.
 
 ---
 
