@@ -394,6 +394,8 @@ export type CallRoomAttendanceRow = {
 export type CallRoomMember = {
   id: string;
   name: string;
+  /** Saved team_member phone, for the call button. */
+  phone: string | null;
   mark: CallRoomMark;
   effective: CallRoomMark;
 };
@@ -406,6 +408,8 @@ export type CallRoomUnit = {
   name: string;
   detail: string | null;
   lane: number | null;
+  /** Solo athletes only; team players carry their own. */
+  phone: string | null;
   mark: CallRoomMark;
   members: CallRoomMember[];
 };
@@ -419,7 +423,9 @@ export type CallRoomSheet = {
 export type CallRoomAction =
   | { type: "unit"; key: string; mark: CallRoomMark }
   | { type: "member"; key: string; memberId: string; mark: CallRoomMark }
-  | { type: "all"; mark: CallRoomMark };
+  | { type: "all"; mark: CallRoomMark }
+  /** Only athletes / teams that have no mark yet. */
+  | { type: "rest"; mark: CallRoomMark };
 
 export type ServiceError = {
   message: string;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Card from "@mui/material/Card";
 import { toast } from "sonner";
 import { EmptyState, EventFilters, PageHeader, PageSkeleton, SoftButton } from "@/components/ops";
 import { CategoryResultsBoard } from "@/components/results/CategoryResultsBoard";
@@ -107,8 +108,8 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Results" hint="Pick sport, gender, age, then category to open the board." />
+    <div className="flex flex-1 flex-col gap-4">
+      <PageHeader title="Results" />
       <EventFilters
         championshipId={selected.id}
         onlyWithExistingFixture
@@ -117,13 +118,13 @@ export default function ResultsPage() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick sport, gender, age, then category" hint="Results wait until the category name is selected." />
+        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
       ) : fixtures.length === 0 ? (
         <EmptyState title="No draws yet" hint="Create a fixture first." />
       ) : boards.length === 0 ? (
-        <EmptyState title="No results for this filter" hint="Try another sport / gender / age / category." />
+        <EmptyState title="No results for this event yet" hint="Scores appear here once matches are scored." />
       ) : (
-        <div className="flex flex-col gap-6">
+        <Card className="flex flex-col gap-3 p-3">
           {boards.map((fixture) => (
             <CategoryResultsBoard
               key={fixture.id}
@@ -132,7 +133,7 @@ export default function ResultsPage() {
               orgByTeamId={orgByTeamId}
             />
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );

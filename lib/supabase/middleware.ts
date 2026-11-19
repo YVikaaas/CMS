@@ -31,14 +31,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  let user = null as Awaited<
-    ReturnType<typeof supabase.auth.getUser>
-  >["data"]["user"];
+  // getClaims verifies the session JWT locally when the project uses asymmetric signing keys
+  // (one cached JWKS fetch), instead of a round trip to Supabase Auth on every request.
+  let user: { id: string; email: string } | null = null;
   try {
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    user = authUser;
+    const { data } = await supabase.auth.getClaims();
+    if (data?.claims?.sub) user = { id: data.claims.sub, email: String(data.claims.email ?? "") };
   } catch {
     user = null;
   }
@@ -57,22 +55,30 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const email = (user.email ?? "").toLowerCase();
-  await supabase.from("users").upsert(
-    { id: user.id, email },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
+  // Profile and roles in one query (named FK: user_roles also links users via granted_by).
+  type ProfileRow = {
+    full_name: string | null;
+    phone: string | null;
+    onboarded_at: string | null;
+    user_roles: Array<{ role: string }> | null;
+  };
+  const profileQuery = () =>
+    supabase
+      .from("users")
+      .select("full_name, phone, onboarded_at, user_roles!user_roles_user_id_fkey(role)")
+      .eq("id", user.id)
+      .maybeSingle<ProfileRow>();
 
-  const { data: row } = await supabase
-    .from("users")
-    .select("full_name, phone, onboarded_at")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: roleRows } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id);
+  let { data: row } = await profileQuery();
+  if (!row) {
+    // First visit after sign-up when the auth trigger missed: create the row once, then read it.
+    await supabase.from("users").upsert(
+      { id: user.id, email: user.email.toLowerCase() },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+    ({ data: row } = await profileQuery());
+  }
+  const roleRows = row?.user_roles ?? [];
 
   const isOnboarded = Boolean(
     row?.full_name?.trim() && row?.phone?.trim() && row?.onboarded_at,

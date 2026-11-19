@@ -40,7 +40,7 @@ export function Modal({
         },
       }}
     >
-      <DialogTitle className="flex items-center justify-between gap-3 border-b border-[var(--ops-line)]">
+      <DialogTitle className="flex items-center justify-between gap-3">
         {title}
         <IconButton color="inherit" onClick={onClose} aria-label="Close" className="-mr-2">
           <IconX size={20} />

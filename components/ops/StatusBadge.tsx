@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 
 export type StatusBadgeTone = "neutral" | "primary" | "success" | "warning" | "danger" | "info";
 
-// NiceAdmin table chip: small, pill, 15% tint with the dark shade as text.
+// MD3 small chip: 8px radius, tonal container fill, dark text.
 const toneClass: Record<StatusBadgeTone, string> = {
   neutral: "bg-[var(--ops-surface-hover)] text-[var(--ops-text-muted)]",
   primary: "bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]",
@@ -26,7 +26,7 @@ export function StatusBadge({
     <Chip
       size="small"
       label={children}
-      className={cn("max-w-full rounded-full text-xs font-semibold", toneClass[tone], className)}
+      className={cn("max-w-full rounded-lg text-xs font-medium", toneClass[tone], className)}
     />
   );
 }

@@ -15,9 +15,12 @@ import ListItemText from "@mui/material/ListItemText";
 import ListSubheader from "@mui/material/ListSubheader";
 import Toolbar from "@mui/material/Toolbar";
 import {
+  IconChevronDown,
   IconComponents,
   IconLayoutDashboard,
-  IconLayoutSidebar,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
+  IconMenu2,
   IconLock,
   IconLogout,
   IconMail,
@@ -34,6 +37,7 @@ import {
   NAV_SECTIONS,
   isNavItemActive,
   needsChampionship,
+  pathTitle,
 } from "@/lib/utils/nav";
 import { cn } from "@/lib/utils/cn";
 
@@ -74,11 +78,16 @@ function Sidebar({
         aria-current={active ? "page" : undefined}
         title={!showLabels ? item.label : undefined}
         onClick={onClose}
-        className={cn(!showLabels && "justify-center")}
+        // Kit nav: white on black; active = accent outline + accent label, no fill
+        className={cn(
+          "border-[1.5px] border-transparent text-[var(--ops-nav-ink)] hover:bg-white/10",
+          "[&.Mui-selected]:border-[var(--ops-accent)] [&.Mui-selected]:bg-transparent [&.Mui-selected]:text-[var(--ops-accent)] [&.Mui-selected:hover]:bg-white/10",
+          !showLabels && "justify-center px-0",
+        )}
       >
         {Icon ? (
           <ListItemIcon className={cn(!showLabels && "min-w-0")}>
-            <Icon size={20} stroke={1.5} />
+            <Icon size={24} stroke={1.75} />
           </ListItemIcon>
         ) : null}
         {showLabels ? <ListItemText primary={item.label} /> : null}
@@ -89,36 +98,32 @@ function Sidebar({
   return (
     <aside
       className={cn(
-        "z-40 flex h-dvh shrink-0 flex-col border-r border-[var(--ops-line)] bg-[var(--ops-surface)]",
-        collapsed && !isMobile ? "w-[88px]" : "w-[270px]",
-        isMobile && "w-full border-r-0",
+        "z-40 flex h-dvh shrink-0 flex-col bg-[var(--ops-nav)] text-[var(--ops-nav-ink)]",
+        collapsed && !isMobile ? "w-[88px]" : "w-[264px]",
+        isMobile && "w-full",
       )}
     >
-      <div className={cn("relative flex h-[70px] shrink-0 items-center", showLabels ? "px-6" : "justify-center")}>
-        <Link href="/dashboard" className="flex min-w-0 items-center gap-2" onClick={onClose}>
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#030e09] text-sm font-bold text-[var(--ops-accent)]">
-            C
+      <div className={cn("flex shrink-0 items-center gap-2 pt-7 pb-5", showLabels ? "justify-between px-7" : "flex-col px-3")}>
+        <Link href="/dashboard" className="flex min-w-0 items-center" onClick={onClose}>
+          <span className={cn("font-bold tracking-tight", showLabels ? "text-[30px] leading-none" : "text-xl")}>
+            {showLabels ? "CMS" : "C"}
           </span>
-          {showLabels ? <span className="truncate text-[22px] font-semibold text-[#030e09]">CMS</span> : null}
         </Link>
         {isMobile && onClose ? (
-          <IconButton onClick={onClose} aria-label="Close menu" className="absolute right-3">
+          <IconButton onClick={onClose} aria-label="Close menu" className="text-[var(--ops-nav-ink)] hover:bg-white/10">
             <IconX size={20} />
           </IconButton>
         ) : null}
       </div>
-      <nav className={cn("flex-1 overflow-y-auto pb-6", showLabels ? "px-6" : "px-4")}>
-        <List disablePadding>
-          {showLabels ? <ListSubheader className="mt-6">Dashboard</ListSubheader> : null}
-          {ADMIN_NAV.filter((item) => !item.section).map(itemButton)}
-        </List>
+      <nav className={cn("flex-1 overflow-y-auto pb-6", showLabels ? "px-4" : "px-3")}>
+        <List disablePadding>{ADMIN_NAV.filter((item) => !item.section).map(itemButton)}</List>
         {NAV_SECTIONS.map((section) => {
           const items = ADMIN_NAV.filter((item) => item.section === section.id);
           if (items.length === 0) return null;
           return (
             <List key={section.id} disablePadding>
-              <Divider className="my-4" />
-              {showLabels ? <ListSubheader className="mt-0">{section.label}</ListSubheader> : null}
+              <Divider className="my-3 border-[var(--ops-nav-line)]" />
+              {showLabels ? <ListSubheader className="pt-2 pb-2 text-xs text-white/55">{section.label}</ListSubheader> : null}
               {items.map(itemButton)}
             </List>
           );
@@ -152,7 +157,42 @@ function Shell({ children }: { children: React.ReactNode }) {
   }, [screen]);
 
   const gated = needsChampionship(pathname) && !loading && championships.length === 0;
+  const activeItem = ADMIN_NAV.find((item) => isNavItemActive(pathname, item.href));
+  const where = {
+    section: NAV_SECTIONS.find((section) => section.id === activeItem?.section)?.label,
+    page: activeItem?.label ?? pathTitle(pathname),
+  };
   const userName = appUser?.fullName || appUser?.email || "";
+  const avatar = (size: string) => (
+    <Avatar className={cn(size, "bg-[var(--ops-accent)] text-xs font-semibold text-[var(--ops-on-accent)]")}>
+      {initials(userName) || "?"}
+    </Avatar>
+  );
+
+  // Championship everything depends on: always in the top bar, right side.
+  const switcher = loading ? (
+    <Shimmer className="h-10 w-44 sm:w-64" />
+  ) : (
+    <SoftSelect
+      size="small"
+      value={selectedId ?? ""}
+      onChange={(event) => setSelectedId(event.target.value || null)}
+      className="w-44 min-w-0 rounded-xl bg-[var(--ops-surface)] sm:w-72 [&_.MuiOutlinedInput-notchedOutline]:rounded-xl"
+      aria-label="Championship"
+      startIcon={<IconTrophy size={18} stroke={1.75} />}
+    >
+      {championships.length === 0 ? (
+        <option value="">No championships yet</option>
+      ) : (
+        championships.map((row) => (
+          <option key={row.id} value={row.id}>
+            {row.name}
+          </option>
+        ))
+      )}
+    </SoftSelect>
+  );
+
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[var(--ops-bg)]">
@@ -176,57 +216,45 @@ function Shell({ children }: { children: React.ReactNode }) {
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         className="sm:hidden"
-        slotProps={{ paper: { className: "w-[270px]" } }}
+        slotProps={{ paper: { className: "w-[264px] bg-[var(--ops-nav)]" } }}
       >
         <Sidebar isMobile onClose={() => setMobileOpen(false)} collapsed={false} />
       </Drawer>
       <div className="flex min-w-0 flex-1 flex-col overflow-auto">
-        <AppBar position="sticky">
-          <Toolbar className="gap-2">
+        {/* Top app bar: menu / sidebar toggle and where you are on the left; championship and account on the right */}
+        <AppBar position="sticky" className="border-b border-[var(--ops-line)] bg-[var(--ops-surface)]">
+          <Toolbar className="gap-2 px-2 sm:gap-3 sm:px-6">
             <IconButton
               aria-label={screen === "mobile" ? "Open menu" : collapsed ? "Expand sidebar" : "Collapse sidebar"}
               color="inherit"
-              onClick={() => {
-                if (screen === "mobile") setMobileOpen(true);
-                else setCollapsed((value) => !value);
-              }}
+              onClick={() => (screen === "mobile" ? setMobileOpen(true) : setCollapsed((value) => !value))}
             >
-              <IconLayoutSidebar size={20} stroke={1.5} />
+              {screen === "mobile" ? (
+                <IconMenu2 size={22} />
+              ) : collapsed ? (
+                <IconLayoutSidebarLeftExpand size={22} stroke={1.75} />
+              ) : (
+                <IconLayoutSidebarLeftCollapse size={22} stroke={1.75} />
+              )}
             </IconButton>
-            {/* NiceAdmin puts search here; CMS puts the championship everything else depends on */}
-            {loading ? (
-              <Shimmer className="h-9 w-48 sm:w-64" />
-            ) : (
-              <SoftSelect
-                size="small"
-                value={selectedId ?? ""}
-                onChange={(event) => setSelectedId(event.target.value || null)}
-                className="w-full min-w-0 max-w-[18rem]"
-                aria-label="Championship"
-                startIcon={<IconTrophy size={18} stroke={1.5} />}
-              >
-                {championships.length === 0 ? (
-                  <option value="">No championships yet</option>
-                ) : (
-                  championships.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.name}
-                    </option>
-                  ))
-                )}
-              </SoftSelect>
-            )}
+            <p className="hidden min-w-0 truncate text-base sm:block">
+              {where.section ? <span className="text-[var(--ops-text-muted)]">{where.section} / </span> : null}
+              <span className="font-medium">{where.page}</span>
+            </p>
             <div className="flex-1" />
-            <IconButton
-              aria-label="Open profile"
-              aria-haspopup="dialog"
+            {switcher}
+            <span className="hidden h-8 w-px bg-[var(--ops-line)] sm:block" aria-hidden />
+            <button
+              type="button"
               onClick={() => setProfileOpen(true)}
-              className="p-1"
+              aria-haspopup="dialog"
+              aria-label="Open profile"
+              className="flex min-h-11 items-center gap-2 rounded-full p-1 hover:bg-[var(--ops-surface-hover)] sm:pr-3"
             >
-              <Avatar className="size-[34px] bg-[var(--ops-primary)] text-xs font-semibold text-[var(--ops-accent)]">
-                {initials(userName) || "?"}
-              </Avatar>
-            </IconButton>
+              {avatar("size-9")}
+              <span className="hidden max-w-[10rem] truncate text-sm font-medium lg:block">{appUser?.fullName || appUser?.email}</span>
+              <IconChevronDown size={16} className="hidden text-[var(--ops-text-muted)] lg:block" aria-hidden />
+            </button>
           </Toolbar>
         </AppBar>
         <Drawer
@@ -242,7 +270,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               </IconButton>
             </div>
             <div className="flex flex-col items-center gap-1 px-6 pb-6 text-center">
-              <Avatar className="mb-2 size-[72px] bg-[var(--ops-primary)] text-xl font-semibold text-[var(--ops-accent)]">
+              <Avatar className="mb-2 size-[72px] bg-[var(--ops-accent)] text-xl font-semibold text-[var(--ops-on-accent)]">
                 {initials(userName) || "?"}
               </Avatar>
               <p className="text-base font-semibold">{appUser?.fullName || "No name yet"}</p>
@@ -271,18 +299,19 @@ function Shell({ children }: { children: React.ReactNode }) {
               ))}
             </List>
             <div className="mt-auto p-6">
-              <SoftButton variant="primary" className="w-full [&]:bg-[var(--ops-accent)] [&]:text-[var(--ops-on-accent)]" onClick={() => void signOut("/login")}>
+              <SoftButton variant="primary" className="w-full" onClick={() => void signOut("/login")}>
                 <IconLogout size={18} className="mr-2" />
                 Log out
               </SoftButton>
             </div>
           </div>
         </Drawer>
-        <main key={pathname} className="min-h-0 flex-1 px-4 pb-6 pt-6 sm:px-6">
+        {/* full-height column: a page that ends in <ActionDock> keeps it on the screen bottom even when short */}
+        <main key={pathname} className="flex flex-1 flex-col px-4 pt-4 pb-6 sm:px-6 sm:pt-5">
           {gated ? (
             <EmptyState
               title="Create a championship to get started"
-              hint="Floor pages need a championship in the header."
+              hint="Floor pages need a championship picked at the top right."
               action={
                 <Link href="/championships">
                   <SoftButton variant="primary">Championships</SoftButton>

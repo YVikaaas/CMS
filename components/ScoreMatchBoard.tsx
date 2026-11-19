@@ -216,19 +216,8 @@ export function ScoreMatchBoard({
     match.status === "completed" ? "success" : match.status === "in_progress" ? "warning" : "neutral";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
-            {match.sportName} · {match.roundLabel}
-          </p>
-          <h2 className="text-xl font-semibold">{matchTitle}</h2>
-          {match.scheduledAt ? (
-            <p className="text-sm text-[var(--ops-text-muted)]">{formatMatchWhen(match.scheduledAt)}</p>
-          ) : null}
-        </div>
-        <StatusBadge tone={statusTone}>{match.status.replace("_", " ")}</StatusBadge>
-      </div>
+    <div className="flex flex-col gap-3">
+      {/* teams, time and status are already in the page header */}
       <div className="flex gap-2">
         <SoftButton variant={pane === "score" ? "primary" : "default"} onClick={() => setPane("score")}>
           Score
@@ -277,7 +266,7 @@ export function ScoreMatchBoard({
             onWinner={() => setWinner("2")}
           />
           {league ? (
-            <label className="flex min-h-11 items-center gap-2 text-sm">
+            <label className="flex min-h-10 items-center gap-2 text-sm leading-5">
               <input type="radio" name="winner" checked={winner === "draw"} onChange={() => setWinner("draw")} />
               Draw
             </label>
@@ -431,11 +420,11 @@ function TeamScoreRow({
     >
     <div
       className={cn(
-        "flex flex-col gap-3 px-3 py-3",
-        side === "2" ? "sm:flex-row-reverse sm:items-center" : "sm:flex-row sm:items-center",
+        "flex flex-col gap-2 px-3 py-2 sm:flex-wrap",
+        side === "2" ? "sm:flex-row sm:items-center xl:flex-row-reverse" /* mirror only when the board is wide enough */ : "sm:flex-row sm:items-center",
       )}
     >
-      <div className={cn("flex min-w-0 flex-1 items-center gap-3", side === "2" && "sm:flex-row-reverse sm:text-right")}>
+      <div className={cn("flex min-w-[12rem] flex-1 items-center gap-3", side === "2" && "xl:flex-row-reverse xl:text-right")}>
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--ops-primary-soft)] text-sm font-semibold text-[var(--ops-primary)]">
           {teamInitials(teamName)}
         </span>
@@ -449,7 +438,7 @@ function TeamScoreRow({
           </p>
         </div>
       </div>
-      <div className={cn("flex flex-wrap items-center gap-3", side === "2" && "sm:flex-row-reverse")}>
+      <div className={cn("flex flex-wrap items-center gap-3", side === "2" && "xl:flex-row-reverse")}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wide text-[var(--ops-text-muted)] uppercase">Fouls</span>
           <CountStepper label={`${teamName} fouls`} value={fouls} onChange={onFouls} />
@@ -462,7 +451,7 @@ function TeamScoreRow({
           emphasis
         />
         {winner ? null : (
-          <button type="button" onClick={onWinner} className="min-h-11 px-2 text-sm font-semibold text-[var(--ops-primary)]">
+          <button type="button" onClick={onWinner} className="min-h-10 px-2 text-sm leading-5 font-medium text-[var(--ops-primary)]">
             Mark winner
           </button>
         )}

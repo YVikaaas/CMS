@@ -35,10 +35,10 @@ export function RoundChips({
             onClick={() => onSelect(option.value)}
             variant="outlined"
             className={cn(
-              "text-[13px]",
+              "text-sm",
               active
-                ? "border-[var(--ops-primary)]/40 bg-[var(--ops-primary-soft)] text-[var(--ops-primary)] [&_.MuiChip-icon]:text-[var(--ops-primary)]"
-                : "border-[var(--ops-line-strong)] text-[var(--ops-text)]",
+                ? "border-transparent bg-[var(--ops-primary-soft)] text-[var(--ops-text)] [&_.MuiChip-icon]:text-[var(--ops-text)]"
+                : "border-[var(--ops-line-strong)] text-[var(--ops-text-muted)]",
             )}
           />
         );

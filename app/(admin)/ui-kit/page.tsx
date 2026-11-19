@@ -67,7 +67,7 @@ import {
 import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
 import type { SortState } from "@/lib/utils/table";
 
-// Living reference for the NiceAdmin-styled kit. Copy from here; do not import from this page.
+// Living reference for the Material You kit. Copy from here; do not import from this page.
 
 function Block({ title, children, wide = false }: { title: string; children: ReactNode; wide?: boolean }) {
   return (
@@ -158,7 +158,7 @@ export default function UiKitPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="UI Kit" hint="Every kit part in the NiceAdmin style. Copy from here." />
+      <PageHeader title="UI Kit" hint="Every kit part in the Material You style. Copy from here." />
 
       <Typography variant="h5" component="h2">
         Blocks

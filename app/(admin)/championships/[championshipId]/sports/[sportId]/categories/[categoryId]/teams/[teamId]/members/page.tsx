@@ -8,7 +8,8 @@ import IconButton from "@mui/material/IconButton";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   EmptyState,
   PageHeader,
@@ -16,7 +17,6 @@ import {
   PageSkeleton,
   SoftButton,
   StatusBadge,
-  StepCrumbs,
   useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
@@ -177,16 +177,15 @@ export default function ChampionshipTeamMembersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+      <PageHeader
+        crumbs={[
           { href: "/championships", label: "Championships" },
           { href: sportsHref, label: championship.name },
           { href: categoriesHref, label: team.sportName },
           { href: teamsHref, label: team.categoryLabel },
           { label: team.name },
         ]}
-      />
-      <PageHeader
+       
         title="Members"
         hint={`Roster must be ${team.teamSize}–${team.maxTeamSize} members, all ${team.gender}.`}
       />
@@ -194,6 +193,24 @@ export default function ChampionshipTeamMembersPage() {
       <TableCard
         title="Members"
         search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or phone" />}
+        count={visible.length}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Name", value: (row) => row.name },
+                  { header: "Phone", value: (row) => row.phone },
+                  { header: "Gender", value: (row) => row.gender },
+                ],
+                "team members",
+                format,
+              )
+            }
+          />
+        }
         action={
           <SoftButton variant="primary" onClick={openCreate} disabled={atMax}>
             Add member

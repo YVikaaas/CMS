@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
 import { IconTrash } from "@tabler/icons-react";
 import { Modal } from "@/components/Modal";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   ChipFilter,
   EmptyState,
@@ -19,7 +20,6 @@ import {
   SoftButton,
   SoftSearch,
   StatusBadge,
-  StepCrumbs,
   useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "../../useScopedChampionship";
@@ -168,27 +168,50 @@ export default function ChampionshipSportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+      <PageHeader
+        crumbs={[
           { href: "/championships", label: "Championships" },
           { label: championship.name },
         ]}
-      />
-      <PageHeader title="Sports" hint="Pick one or more sports, then assign categories." />
+        title="Sports" hint="Pick one or more sports, then assign categories." />
 
       <TableCard
         title="Sports"
         search={<TableSearch value={search} onChange={setSearch} placeholder="Search sport or code" />}
-        toolbar={
-          <ChipFilter
-            ariaLabel="Mode"
-            value={modeFilter}
-            onChange={setModeFilter}
-            options={[
+        count={visible.length}
+        filters={[
+          {
+            id: "mode",
+            label: "Mode",
+            value: modeFilter,
+            options: [
               { value: "team", label: "Team" },
               { value: "solo", label: "Solo" },
               { value: "both", label: "Both" },
-            ]}
+            ],
+            onChange: (value) => setModeFilter(value as typeof modeFilter),
+          },
+        ]}
+        onClearAll={() => {
+          setSearch("");
+          setModeFilter("");
+        }}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Sport", value: (row) => row.name },
+                  { header: "Code", value: (row) => row.code },
+                  { header: "Mode", value: (row) => row.eventMode },
+                  { header: "Categories", value: (row) => offerings.find((item) => item.sportId === row.id)?.categoryIds.length ?? 0 },
+                ],
+                `${championship.name} sports`,
+                format,
+              )
+            }
           />
         }
         action={

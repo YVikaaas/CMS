@@ -162,7 +162,7 @@ export function FixtureRankingBoard({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-2">
       <p className="text-sm text-[var(--ops-text-muted)]">
         {readOnly
           ? locked

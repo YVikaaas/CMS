@@ -78,14 +78,14 @@ export function ResultMatchCard({
   return (
     <article
       className={cn(
-        "soft-card flex min-h-[7.5rem] flex-col overflow-hidden",
+        "soft-card flex flex-col overflow-hidden",
         variant === "bracket" && "h-full",
       )}
     >
       <header
         className={cn(
           "flex items-center gap-2 border-b border-[var(--ops-line)] bg-[var(--ops-board-muted)] px-3 py-2",
-          variant === "bracket" && "min-h-11 border-b",
+          variant === "bracket" && "min-h-10 border-b",
         )}
       >
         <span className="text-sm font-semibold">

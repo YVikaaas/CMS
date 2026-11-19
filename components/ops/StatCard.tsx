@@ -7,7 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { Shimmer } from "./loading";
 
-// NiceAdmin "Record card": label, big value, hint, optional tinted icon tile and progress bar.
+// Kit stat card: label, 36px value, hint, optional icon and progress bar; clickable ones lift on hover.
 export function StatCard({
   label,
   value,
@@ -28,29 +28,25 @@ export function StatCard({
   const card = (
     <Card
       className={cn(
-        "h-full border border-transparent p-6",
-        href && "hover:border-[var(--ops-primary)]/30 hover:bg-[var(--ops-primary-soft)]/40",
+        "h-full p-6",
+        href && "ops-lift",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold">{label}</p>
-        {Icon ? (
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]">
-            <Icon size={20} stroke={1.5} />
-          </span>
-        ) : null}
+        <p className="text-[15px] font-medium tracking-[0.1px]">{label}</p>
+        {Icon ? <Icon size={24} stroke={1.75} className="shrink-0 text-[var(--ops-text)]" aria-hidden /> : null}
       </div>
       {ready ? (
-        <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+        <p className="mt-2 text-[36px] leading-[44px] font-medium tabular-nums">{value}</p>
       ) : (
-        <Shimmer className="mt-2 h-8 w-16" />
+        <Shimmer className="mt-3 h-10 w-20" />
       )}
-      {hint ? <p className="mt-1 text-xs text-[var(--ops-text-muted)]">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-sm text-[var(--ops-text-muted)]">{hint}</p> : null}
       {typeof bar === "number" ? (
         <LinearProgress
           variant="determinate"
           value={Math.min(100, Math.max(0, bar))}
-          className="mt-3 bg-[var(--ops-line)]"
+          className="mt-4"
           aria-label={`${label} progress`}
         />
       ) : null}

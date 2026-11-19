@@ -51,21 +51,19 @@ export function CategoryResultsBoard({
   if (matches.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--ops-primary)] px-4 py-3 text-[var(--ops-on-primary)]">
-        <p className="text-sm font-semibold">
-          {fixture.sportName} · {fixture.categoryLabel}
-        </p>
-        {teamKnockout ? (
-          <button
-            type="button"
-            onClick={() => setTeamRanking((current) => !current)}
-            className="shrink-0 text-sm font-semibold"
-          >
-            {teamRanking ? "Matches" : "Final rankings"}
-          </button>
-        ) : null}
-      </div>
+    // the event itself is named once, in the picker strip above; this board only switches views
+    <section className="flex flex-col gap-3">
+      {teamKnockout ? (
+        <ResultsPhaseTabs
+          ariaLabel="Results view"
+          tabs={[
+            { id: "bracket" as const, label: "Matches" },
+            { id: "ranking" as const, label: "Final rankings" },
+          ]}
+          value={teamRanking ? "ranking" : "bracket"}
+          onChange={(id) => setTeamRanking(id === "ranking")}
+        />
+      ) : null}
       {teamKnockout ? (
         teamRanking ? (
           <FixtureRankingBoard fixture={fixture} readOnly />

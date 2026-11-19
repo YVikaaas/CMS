@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { IconChevronDown } from "@tabler/icons-react";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import {
   listCategories,
   listChampionshipOfferings,
@@ -18,55 +21,101 @@ import {
   applySport,
   categoriesForSportGenderAge,
   emptyEventFilter,
-  eventIdentityEyebrow,
   eventIdentityTitle,
   genderLabel,
   gendersForSport,
   offeredCategories,
   offeredSports,
+  isEventFilterComplete,
   readEventFilter,
+  settleEventFilter,
   writeEventFilter,
   type EventFilterValue,
 } from "@/lib/utils/eventFilter";
-import { EventIdentity } from "./EventIdentity";
+import Card from "@mui/material/Card";
 
-function FilterChip({
+type StepId = "sport" | "gender" | "age" | "category";
+
+/** Filled menu: label above, rounded field, menu under it. Choosing a value opens the next one. */
+function StepSelect({
+  id,
   label,
   value,
-  placeholder,
-  disabled,
   options,
-  onChange,
+  allLabel,
+  disabled,
+  open,
+  onOpen,
+  onClose,
+  onPick,
 }: {
+  id: StepId;
   label: string;
   value: string;
-  placeholder: string;
-  disabled?: boolean;
   options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
+  allLabel?: string;
+  disabled?: boolean;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onPick: (value: string) => void;
 }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const selected = options.find((option) => option.value === value);
+  const shown = selected?.label ?? (value === "" ? allLabel ?? "Choose" : "Choose");
+  const choices = allLabel ? [{ value: "", label: allLabel }, ...options] : options;
+
   return (
-    <label className="flex min-w-[8.5rem] flex-1 flex-col gap-1.5 text-sm font-semibold">
-      {label}
-      <span className="relative">
-        <select
-          value={value}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          className={cn(
-            "ops-control w-full font-semibold text-[var(--ops-text)]",
-            !value && "text-[var(--ops-text-muted)]",
-          )}
-        >
-          <option value="">{placeholder}</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </span>
-    </label>
+    <div className="min-w-0">
+      <p id={`${id}-label`} className="mb-1 px-1 text-[11px] leading-4 font-medium tracking-[0.5px] text-[var(--ops-text-muted)] uppercase">
+        {label}
+      </p>
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open && !disabled}
+        aria-labelledby={`${id}-label`}
+        onClick={() => (open ? onClose() : onOpen())}
+        className={cn(
+          "flex h-10 w-full items-center gap-2 rounded-full bg-[var(--ops-board-muted)] pr-2 pl-4 text-left text-sm leading-5 font-medium",
+          "hover:bg-[var(--ops-surface-hover)] disabled:cursor-not-allowed disabled:opacity-40",
+          open && !disabled && "bg-[var(--ops-primary-soft)]",
+          !selected && "text-[var(--ops-text-muted)]",
+        )}
+      >
+        <span className="min-w-0 flex-1 truncate">{shown}</span>
+        <IconChevronDown size={18} aria-hidden className={cn("shrink-0 text-[var(--ops-text-muted)] transition-transform", open && "rotate-180")} />
+      </button>
+      <Menu
+        anchorEl={buttonRef.current}
+        open={open && !disabled}
+        onClose={onClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 0.5,
+              borderRadius: "16px",
+              maxHeight: 280,
+              minWidth: buttonRef.current?.offsetWidth ?? 160,
+            },
+          },
+        }}
+      >
+        {choices.map((option) => (
+          <MenuItem
+            key={option.value || "all"}
+            selected={option.value === value}
+            onClick={() => onPick(option.value)}
+          >
+            {option.label}
+          </MenuItem>
+        ))}
+      </Menu>
+    </div>
   );
 }
 
@@ -75,12 +124,18 @@ export function EventFilters({
   onlyWithExistingFixture = false,
   lockSportId,
   unlockInOrder = true,
+  requireEvent = onlyWithExistingFixture,
+  aside,
   onChange,
 }: {
   championshipId: string;
   onlyWithExistingFixture?: boolean;
   lockSportId?: string;
   unlockInOrder?: boolean;
+  /** The page needs a full event (sport → event). No "All" chips; folds away once picked. */
+  requireEvent?: boolean;
+  /** Right side of the event strip, e.g. a view switch. */
+  aside?: ReactNode;
   onChange?: (
     value: EventFilterValue,
     meta: { sport: Sport | null; category: Category | null; categories: Category[] },
@@ -90,11 +145,19 @@ export function EventFilters({
   const [categories, setCategories] = useState<Category[]>([]);
   const [value, setValue] = useState<EventFilterValue>(() => emptyEventFilter(championshipId));
   const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState(true);
+  const [openField, setOpenField] = useState<StepId | null>(null);
+  const advancingTo = useRef<StepId | null>(null);
+  const openTimer = useRef<number | null>(null);
 
   const liveSports = sports;
   const liveCategories = categories;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  useEffect(() => () => {
+    if (openTimer.current != null) window.clearTimeout(openTimer.current);
+  }, []);
 
   const emit = useCallback((next: EventFilterValue, allSports: Sport[], allCategories: Category[]) => {
     writeEventFilter(next);
@@ -147,13 +210,16 @@ export function EventFilters({
       } else {
         next = { ...next, categoryName: "" };
       }
+      if (requireEvent) next = settleEventFilter(next, cats);
       emit(next, offered, cats);
+      // a remembered event opens folded: on the ground you pick once, then work
+      setOpen(!isEventFilterComplete(next));
       setReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [championshipId, emit, lockSportId, onlyWithExistingFixture]);
+  }, [championshipId, emit, lockSportId, onlyWithExistingFixture, requireEvent]);
 
   const sportCats = useMemo(
     () => liveCategories.filter((row) => !value.sportId || row.sportId === value.sportId),
@@ -174,75 +240,148 @@ export function EventFilters({
 
   const selectedSport = liveSports.find((row) => row.id === value.sportId) ?? null;
   const selectedCategory = liveCategories.find((row) => row.id === value.categoryId) ?? null;
-  const genderLocked = unlockInOrder && !value.sportId;
-  const ageLocked = unlockInOrder && !value.gender;
-  const categoryLocked = unlockInOrder && !value.ageGroup;
-  const hasFilter = Boolean(value.sportId || value.gender || value.ageGroup || value.categoryId);
+
+  function pick(step: StepId, raw: string) {
+    let next =
+      step === "sport"
+        ? applySport(value, raw)
+        : step === "gender"
+          ? applyGender(value, raw as "" | Gender)
+          : step === "age"
+            ? applyAge(value, raw, liveCategories)
+            : applyCategory(value, raw, liveCategories);
+    if (raw) next = settleEventFilter(next, liveCategories);
+    emit(next, liveSports, liveCategories);
+    const nextStep: StepId | null = !next.sportId
+      ? null
+      : !next.gender
+        ? "gender"
+        : !next.ageGroup
+          ? "age"
+          : !next.categoryId
+            ? "category"
+            : null;
+    if (requireEvent && isEventFilterComplete(next)) {
+      advancingTo.current = null;
+      setOpen(false);
+      setOpenField(null);
+      return;
+    }
+    const follow = raw ? nextStep : null;
+    advancingTo.current = follow;
+    setOpenField(null);
+    if (openTimer.current != null) window.clearTimeout(openTimer.current);
+    if (!follow) return;
+    // wait until the click that closed this menu has finished, then open the next one
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      if (advancingTo.current === follow) setOpenField(follow);
+    }, 30);
+  }
+
+  const closeField = (step: StepId) => {
+    if (advancingTo.current && advancingTo.current !== step) return;
+    advancingTo.current = null;
+    setOpenField((current) => (current === step ? null : current));
+  };
 
   if (!ready) {
     return <PageSkeleton kind="filters" />;
   }
 
+  const eventName = selectedCategory?.name || value.categoryName;
+  const title = eventIdentityTitle(value.gender, value.ageGroup, eventName, selectedSport?.name);
+  // the title already says "Boys U16 100m"; the eyebrow only adds the sport
+  const eyebrow = title && selectedSport ? selectedSport.name : "";
+  const all = requireEvent ? undefined : "All";
+
+  // One card: the event strip on top, then four outlined selects.
+  const genderLocked = unlockInOrder && !value.sportId;
+  const ageLocked = unlockInOrder && !value.gender;
+  const eventLocked = unlockInOrder && !value.ageGroup;
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-3">
-        <FilterChip
-          label="Sport"
-          value={value.sportId}
-          placeholder="All"
-          disabled={Boolean(lockSportId)}
-          options={liveSports.map((row) => ({ value: row.id, label: row.name }))}
-          onChange={(sportId) => emit(applySport(value, sportId), liveSports, liveCategories)}
-        />
-        <FilterChip
-          label="Gender"
-          value={value.gender}
-          placeholder={genderLocked ? "Pick sport first" : "All"}
-          disabled={genderLocked}
-          options={genderOptions.map((gender) => ({
-            value: gender,
-            label: genderLabel(gender),
-          }))}
-          onChange={(gender) =>
-            emit(applyGender(value, gender as "" | Gender), liveSports, liveCategories)
-          }
-        />
-        <FilterChip
-          label="Age"
-          value={value.ageGroup}
-          placeholder={ageLocked ? "Pick gender first" : "All"}
-          disabled={ageLocked}
-          options={ageOptions.map((age) => ({ value: age, label: age }))}
-          onChange={(ageGroup) => emit(applyAge(value, ageGroup, liveCategories), liveSports, liveCategories)}
-        />
-        <FilterChip
-          label="Category"
-          value={value.categoryId}
-          placeholder={categoryLocked ? "Pick age first" : "All"}
-          disabled={categoryLocked}
-          options={categoryOptions}
-          onChange={(categoryId) =>
-            emit(applyCategory(value, categoryId, liveCategories), liveSports, liveCategories)
-          }
-        />
+    <Card className="overflow-hidden">
+      <div className="flex min-h-12 items-center gap-2 bg-[var(--ops-primary)] px-4 py-1 text-[var(--ops-on-primary)]">
+        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpen(!open)}>
+          <p className="truncate text-[11px] leading-4 font-medium tracking-[0.5px] uppercase opacity-80">{eyebrow || "Event"}</p>
+          <p className="truncate text-base leading-6 font-medium">
+            {title || (requireEvent ? "Pick an event" : "All sports")}
+          </p>
+        </div>
+        {aside ? <div className="flex shrink-0 items-center gap-2">{aside}</div> : null}
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={open ? "Hide event picker" : "Change event"}
+          onClick={() => setOpen(!open)}
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-sm leading-5 font-medium hover:bg-white/15"
+        >
+          <span className="hidden sm:inline">{open ? "Done" : "Change"}</span>
+          <IconChevronDown size={18} aria-hidden className={cn("transition-transform", open && "rotate-180")} />
+        </button>
       </div>
-      {hasFilter ? (
-        <EventIdentity
-          eyebrow={eventIdentityEyebrow(
-            selectedSport?.name,
-            value.gender,
-            value.ageGroup,
-            selectedCategory?.name || value.categoryName,
+      {open ? (
+        <div className="p-3">
+          {liveSports.length === 0 ? (
+            <p className="text-sm leading-5 text-[var(--ops-text-muted)]">
+              {onlyWithExistingFixture ? "No event has a draw yet." : "No sports offered in this championship."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StepSelect
+                id="sport"
+                label="Sport"
+                value={value.sportId}
+                allLabel={all}
+                disabled={Boolean(lockSportId)}
+                open={openField === "sport"}
+                options={liveSports.map((row) => ({ value: row.id, label: row.name }))}
+                onOpen={() => setOpenField("sport")}
+                onClose={() => closeField("sport")}
+                onPick={(raw) => pick("sport", raw)}
+              />
+              <StepSelect
+                id="gender"
+                label="Gender"
+                value={value.gender}
+                allLabel={all}
+                disabled={genderLocked}
+                open={openField === "gender"}
+                options={genderOptions.map((gender) => ({ value: gender, label: genderLabel(gender) }))}
+                onOpen={() => setOpenField("gender")}
+                onClose={() => closeField("gender")}
+                onPick={(raw) => pick("gender", raw)}
+              />
+              <StepSelect
+                id="age"
+                label="Age"
+                value={value.ageGroup}
+                allLabel={all}
+                disabled={ageLocked}
+                open={openField === "age"}
+                options={ageOptions.map((age) => ({ value: age, label: age }))}
+                onOpen={() => setOpenField("age")}
+                onClose={() => closeField("age")}
+                onPick={(raw) => pick("age", raw)}
+              />
+              <StepSelect
+                id="category"
+                label="Event"
+                value={value.categoryId}
+                allLabel={all}
+                disabled={eventLocked}
+                open={openField === "category"}
+                options={categoryOptions}
+                onOpen={() => setOpenField("category")}
+                onClose={() => closeField("category")}
+                onPick={(raw) => pick("category", raw)}
+              />
+            </div>
           )}
-          title={eventIdentityTitle(
-            value.gender,
-            value.ageGroup,
-            selectedCategory?.name || value.categoryName,
-            selectedSport?.name,
-          )}
-        />
+        </div>
       ) : null}
-    </div>
+    </Card>
   );
 }
 

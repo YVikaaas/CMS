@@ -24,13 +24,16 @@ export function SplitWorkspace({ queue, board, className, splitAt = "lg" }: Prop
     >
       <aside
         className={cn(
-          "flex min-h-[240px] min-w-0 flex-col gap-2 overflow-y-auto border-b border-[var(--ops-line)] p-3 sm:p-4",
-          splitAt === "md" ? "md:border-r md:border-b-0" : "lg:border-r lg:border-b-0",
+          "flex min-h-[120px] min-w-0 flex-col gap-1.5 overflow-y-auto border-b border-[var(--ops-line)] p-3",
+          // stacked: cap the queue so the board stays near the top; side by side: full height
+          splitAt === "md"
+            ? "max-h-[40dvh] md:max-h-none md:border-r md:border-b-0"
+            : "max-h-[40dvh] lg:max-h-none lg:border-r lg:border-b-0",
         )}
       >
         {queue}
       </aside>
-      <div className="flex min-h-[280px] min-w-0 flex-col overflow-auto bg-[var(--ops-board-muted)] p-3 sm:p-4">
+      <div className="flex min-h-[240px] min-w-0 flex-col overflow-auto bg-[var(--ops-board-muted)] p-3">
         {board}
       </div>
     </div>

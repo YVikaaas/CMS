@@ -31,7 +31,7 @@ function HeatTable({
 
   return (
     <div className="ops-table">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--ops-line)] px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--ops-line)] px-3 py-2">
         <div>
           <p className="font-semibold">{heatQueueTitle(match)}</p>
           {match.venue ? (
@@ -117,7 +117,7 @@ export function AthleticsResultsBoard({ matches }: { matches: FixtureMatch[] }) 
     return <p className="text-sm text-[var(--ops-text-muted)]">No heats in this round.</p>;
   }
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {heats.map((match) => (
         <HeatTable key={match.id} match={match} />
       ))}

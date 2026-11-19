@@ -1,5 +1,6 @@
 "use client";
 
+import { IconCheck } from "@tabler/icons-react";
 import { cn } from "@/lib/utils/cn";
 
 export function ChipFilter<T extends string>({
@@ -21,7 +22,7 @@ export function ChipFilter<T extends string>({
   showAll?: boolean;
   gapBefore?: T;
 }) {
-  // NiceAdmin segmented filter: tinted track, selected segment filled primary.
+  // MD3 filter chips: outlined 8px chips; selected = secondary-container fill with a check.
   const chip = (key: string, label: string, active: boolean, onClick: () => void, className?: string) => (
     <button
       key={key}
@@ -31,20 +32,21 @@ export function ChipFilter<T extends string>({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "min-h-10 rounded-[12px] px-4 text-[13px]",
+        "inline-flex h-8 items-center gap-1 rounded-lg border px-3 text-sm leading-5 font-medium tracking-[0.1px]",
         active
-          ? "bg-[var(--ops-primary)] font-semibold text-[var(--ops-on-primary)]"
-          : "font-medium text-[#030e09] hover:bg-[var(--ops-surface)]",
+          ? "border-transparent bg-[var(--ops-primary-soft)] pl-2.5 text-[var(--ops-text)]"
+          : "border-[var(--ops-line-strong)] text-[var(--ops-text-muted)] hover:bg-[var(--ops-surface-hover)]",
         className,
       )}
     >
+      {active ? <IconCheck size={16} aria-hidden /> : null}
       {label}
     </button>
   );
 
   return (
     <div
-      className={cn("inline-flex flex-wrap items-center gap-0.5 rounded-[12px] bg-[rgba(3,14,9,0.05)] px-2 py-0.5", disabled && "opacity-45")}
+      className={cn("flex w-fit max-w-full flex-wrap items-center gap-2", disabled && "opacity-45")}
       role="tablist"
       aria-label={ariaLabel}
     >

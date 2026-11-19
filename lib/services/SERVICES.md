@@ -44,8 +44,8 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
-| `ensureCurrentUser()` | — | `ServiceResult<AppUser>` | Upserts `public.users` keyed to Auth `id`, then returns `getCurrentAppUser()`. |
-| `getCurrentAppUser()` | — | `ServiceResult<AppUser>` | `users` row + `user_roles`. `isOnboarded` requires name, phone, `onboarded_at`. |
+| `ensureCurrentUser()` | — | `ServiceResult<AppUser>` | Identity from `auth.getClaims()` (local JWT check). Reads `users` + `user_roles` in one query; upserts `public.users` only when the row is missing, then reads again. |
+| `getCurrentAppUser()` | — | `ServiceResult<AppUser>` | `users` row + `user_roles` in one query (`user_roles!user_roles_user_id_fkey`). `isOnboarded` requires name, phone, `onboarded_at`. |
 | `completeOnboarding({ fullName, phone })` | strings | `ServiceResult<AppUser>` | Writes name/phone/`onboarded_at` on the current user. |
 | `updateProfile({ fullName, phone })` | strings | `ServiceResult<AppUser>` | Account settings. Same validation as onboarding (`nameError`, `phoneError`); does not touch `onboarded_at` or email. |
 
@@ -74,7 +74,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `createChampionship({ name, startDate, endDate, location })` | dates nullable | `ServiceResult<Championship>` | Unique live slug. |
 | `updateChampionship(id, ...)` | — | `ServiceResult<Championship>` | Re-slugs from name. |
 | `archiveChampionship(id)` | — | `ServiceResult<true>` | Soft delete + status `archived`. |
-| `listChampionshipOfferings(championshipId)` | — | `ServiceResult<ChampionshipOffering[]>` | CSM + CSC category ids per sport. |
+| `listChampionshipOfferings(championshipId)` | — | `ServiceResult<ChampionshipOffering[]>` | CSM + CSC category ids per sport, one query (CSCs embedded, archived ones filtered). |
 | `saveChampionshipOfferings(championshipId, offerings)` | `{ sportId, categoryIds[] }[]` | `ServiceResult<true>` | Restores or inserts CSM/CSC. Refuses to drop a category/sport that still has teams or fixtures. |
 | `addChampionshipSport(id, sportId)` | — | `ServiceResult<true>` | Assigns a master sport to the championship. |
 | `addChampionshipSports(id, sportIds, extras?)` | optional `categoriesBySport` | `ServiceResult<true>` | Assigns many sports. Optional category ids per sport are merged in the same write. |
@@ -95,7 +95,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `updateTeam(id, { name, orgName, city, members })` | — | `ServiceResult<Team>` | Replaces live member set within roster limits. A 1/1 roster updates the existing member in place so heat `athlete_id` rows stay valid. |
 | `listTeamMembers(teamId)` | — | `ServiceResult<TeamMember[]>` | Live members. |
 | `archiveTeam(id)` | — | `ServiceResult<true>` | Soft-deletes team and members. |
-| `listCscOptions({ sportId?, championshipId? })` | — | `ServiceResult<CscOption[]>` | Live CSCs with category name/age, roster min/max, `availableRounds`, `defaultFormat`, `availableFormats`, scoring style, and heat size. |
+| `listCscOptions({ sportId?, championshipId? })` | — | `ServiceResult<CscOption[]>` | Live CSCs with category name/age, roster min/max, `availableRounds`, `defaultFormat`, `availableFormats`, scoring style, and heat size. One query: CSM rows with their CSCs + categories embedded (no per-sport loop). |
 | `listCscAthletes(cscId)` | CSC id | `ServiceResult<CscAthlete[]>` | Live team members on that championship category, used as heat athletes. |
 | `getTeam(id)` | — | `ServiceResult<Team>` | Live team by id. |
 | `createTeamMember(teamId, { name, phone })` | — | `ServiceResult<TeamMember>` | Gender from the team/category. Blocked at max roster. |
@@ -115,6 +115,7 @@ Add new operations here and update this file with **inputs** and **outputs**.
 | `archiveFixture(id)` | — | `ServiceResult<true>` | Soft-deletes fixture, rounds, matches, sides, player score events, and call-room attendance. |
 | `listFixtureMatches(fixtureId)` | — | `ServiceResult<FixtureMatch[]>` | Live matches. Basketball: two team sides. Athletics: heat `participants`. |
 | `listChampionshipMatches(championshipId)` | — | `ServiceResult<FixtureMatch[]>` | All live matches across fixtures in that championship. |
+| `championshipMatchesFromRows(fixtureRows, matchRows)` | raw rows shaped like the fixture / match selects | `FixtureMatch[]` | Pure mapper for RPC results (used by `getCallRoomBoard`). |
 | `getFixtureMatch(id)` | — | `ServiceResult<FixtureMatch>` | One live match with sides and scores. |
 | `createMatch({ fixtureId, roundId, matchLabel, venue, scheduledAt, status, team1Id, team2Id })` | status `draft` / `scheduled` / `cancelled` | `ServiceResult<FixtureMatch>` | Two different live teams on that CSC. |
 | `updateMatch(id, …)` | same as create | `ServiceResult<FixtureMatch>` | Replaces sides. |
@@ -136,9 +137,10 @@ Add new operations here and update this file with **inputs** and **outputs**.
 
 | Function | Input | Output | Notes |
 |----------|--------|--------|--------|
+| `getCallRoomBoard(championshipId)` | championship id | `ServiceResult<{ matches: FixtureMatch[]; attendance: CallRoomAttendanceRow[] }>` | One RPC (`call_room_board`) instead of 4 sequential queries. Same data as `listChampionshipMatches` + `listCallRoomAttendance`. Used by Call Room. |
 | `listCallRoomAttendance(matchIds)` | match ids | `ServiceResult<CallRoomAttendanceRow[]>` | Live present/absent rows for those matches. |
-| `getCallRoomSheet(match)` | `FixtureMatch` | `ServiceResult<CallRoomSheet>` | Solo heats are athletes. Basketball and relays are teams + members. Team absent makes every player effectively absent. |
-| `saveCallRoomSheet(sheet)` | marked present/absent only; unset deletes | `ServiceResult<CallRoomSheet>` | Upserts live rows and restores previously cleared marks. |
+| `getCallRoomSheet(match)` | `FixtureMatch` | `ServiceResult<CallRoomSheet>` | Solo heats are athletes. Basketball and relays are teams + members. Team absent makes every player effectively absent. Athletes and players carry their saved `team_member.phone` (null if none) for the call button; a failed phone lookup leaves them null. |
+| `saveCallRoomSheet(sheet)` | marked present/absent only; unset deletes | `ServiceResult<CallRoomSheet>` | Upserts live rows and restores previously cleared marks. Per-subject writes run in parallel (bulk marks are one round trip, not N). |
 
 ---
 

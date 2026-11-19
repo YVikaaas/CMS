@@ -7,9 +7,9 @@ import { IconArchive, IconPencil } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput } from "@/components/fields";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
-  ChipFilter,
   PageHeader,
   PageSkeleton,
   SoftButton,
@@ -155,16 +155,41 @@ export default function ChampionshipsPage() {
       <TableCard
         title="Championships"
         search={<TableSearch value={search} onChange={setSearch} placeholder="Search name or location" />}
-        toolbar={
-          <ChipFilter
-            ariaLabel="Status"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
+        count={visible.length}
+        filters={[
+          {
+            id: "status",
+            label: "Status",
+            value: statusFilter,
+            options: [
               { value: "draft", label: "Draft" },
               { value: "active", label: "Active" },
               { value: "archived", label: "Archived" },
-            ]}
+            ],
+            onChange: (value) => setStatusFilter(value as "" | CompetitionStatus),
+          },
+        ]}
+        onClearAll={() => {
+          setSearch("");
+          setStatusFilter("");
+        }}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Name", value: (row) => row.name },
+                  { header: "Location", value: (row) => row.location },
+                  { header: "Start date", value: (row) => row.startDate },
+                  { header: "End date", value: (row) => row.endDate },
+                  { header: "Status", value: (row) => row.status },
+                ],
+                "championships",
+                format,
+              )
+            }
           />
         }
         action={

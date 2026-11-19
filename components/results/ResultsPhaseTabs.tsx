@@ -15,7 +15,7 @@ export function ResultsPhaseTabs<T extends string>({
 }) {
   if (tabs.length === 0) return null;
   return (
-    <div className="flex gap-6 overflow-x-auto border-b border-[var(--ops-line)]" role="tablist" aria-label={ariaLabel}>
+    <div className="flex gap-1 overflow-x-auto border-b border-[var(--ops-line)]" role="tablist" aria-label={ariaLabel}>
       {tabs.map((tab) => {
         const active = tab.id === value;
         return (
@@ -26,7 +26,7 @@ export function ResultsPhaseTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "-mb-px shrink-0 border-b-2 pb-2 text-sm font-semibold",
+              "-mb-px inline-flex min-h-10 shrink-0 items-center border-b-2 px-3 text-sm leading-5 font-medium tracking-[0.1px]",
               active
                 ? "border-[var(--ops-primary)] text-[var(--ops-primary)]"
                 : "border-transparent text-[var(--ops-text-muted)] hover:text-[var(--ops-text)]",

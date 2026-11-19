@@ -140,26 +140,19 @@ export async function listChampionshipOfferings(
   championshipId: string,
 ): Promise<ServiceResult<ChampionshipOffering[]>> {
   const supabase = createClient();
+  // One round trip: each sport row carries its live category ids.
   const { data: csmRows, error: csmError } = await supabase
     .from("competition_sport_map")
-    .select("id, sport_id")
+    .select("id, sport_id, cscs:competition_sport_category_map (category_id, deleted_at)")
     .eq("competition_id", championshipId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .is("cscs.deleted_at", null);
   if (csmError) return { data: null, error: toServiceError(csmError) };
 
-  const offerings: ChampionshipOffering[] = [];
-  for (const csm of csmRows ?? []) {
-    const { data: cscRows, error: cscError } = await supabase
-      .from("competition_sport_category_map")
-      .select("category_id")
-      .eq("competition_sport_id", csm.id)
-      .is("deleted_at", null);
-    if (cscError) return { data: null, error: toServiceError(cscError) };
-    offerings.push({
-      sportId: csm.sport_id,
-      categoryIds: (cscRows ?? []).map((row) => row.category_id),
-    });
-  }
+  const offerings: ChampionshipOffering[] = (csmRows ?? []).map((csm) => ({
+    sportId: csm.sport_id,
+    categoryIds: ((csm.cscs ?? []) as Array<{ category_id: string }>).map((row) => row.category_id),
+  }));
   return { data: offerings, error: null };
 }
 

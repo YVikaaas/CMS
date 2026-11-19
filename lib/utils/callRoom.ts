@@ -67,6 +67,16 @@ export function applyCallRoomChange(sheet: CallRoomSheet, action: CallRoomAction
       mark: action.mark,
       members: unit.members.map((member) => ({ ...member, mark: action.mark })),
     }));
+  } else if (action.type === "rest") {
+    units = sheet.units.map((unit) =>
+      unit.mark
+        ? unit
+        : {
+            ...unit,
+            mark: action.mark,
+            members: unit.members.map((member) => (member.mark ? member : { ...member, mark: action.mark })),
+          },
+    );
   } else if (action.type === "unit") {
     units = sheet.units.map((unit) => (unit.key === action.key ? setUnitMark(unit, action.mark) : unit));
   } else {
@@ -147,41 +157,36 @@ export function callRoomStatusLabel(progress: ReturnType<typeof callRoomProgress
   return `${progress.present} in · ${progress.absent} out · ${progress.unset} open`;
 }
 
+/** Marked counts for a queue row from saved attendance; null when a team match has no sides. */
+export function callRoomQueueProgress(
+  match: FixtureMatch,
+  rows: CallRoomAttendanceRow[],
+): ReturnType<typeof callRoomProgress> | null {
+  const mine = rows.filter((row) => row.matchId === match.id);
+  const count = (ids: string[], key: "teamMemberId" | "teamId") => {
+    const present = ids.filter((id) => mine.some((mark) => mark[key] === id && mark.status === "present")).length;
+    const absent = ids.filter((id) => mine.some((mark) => mark[key] === id && mark.status === "absent")).length;
+    return { total: ids.length, present, absent, unset: ids.length - present - absent };
+  };
+  if (isCallRoomSoloMatch(match)) {
+    return count(match.participants.filter((row) => row.athleteId).map((row) => row.athleteId), "teamMemberId");
+  }
+  const teamIds = callRoomTeamIds(match);
+  return teamIds.length === 0 ? null : count(teamIds, "teamId");
+}
+
 export function callRoomQueueHint(
   match: FixtureMatch,
   rows: CallRoomAttendanceRow[],
 ): string {
-  const mine = rows.filter((row) => row.matchId === match.id);
-  if (isCallRoomSoloMatch(match)) {
-    const people = match.participants.filter((row) => row.athleteId);
-    const present = people.filter((row) =>
-      mine.some((mark) => mark.teamMemberId === row.athleteId && mark.status === "present"),
-    ).length;
-    const absent = people.filter((row) =>
-      mine.some((mark) => mark.teamMemberId === row.athleteId && mark.status === "absent"),
-    ).length;
-    return callRoomStatusLabel({
-      total: people.length,
-      present,
-      absent,
-      unset: people.length - present - absent,
-    });
-  }
+  const progress = callRoomQueueProgress(match, rows);
+  return progress ? callRoomStatusLabel(progress) : "No sides";
+}
 
-  const teamIds = callRoomTeamIds(match);
-  const present = teamIds.filter((id) =>
-    mine.some((mark) => mark.teamId === id && mark.status === "present"),
-  ).length;
-  const absent = teamIds.filter((id) =>
-    mine.some((mark) => mark.teamId === id && mark.status === "absent"),
-  ).length;
-  if (teamIds.length === 0) return "No sides";
-  return callRoomStatusLabel({
-    total: teamIds.length,
-    present,
-    absent,
-    unset: teamIds.length - present - absent,
-  });
+/** Every athlete / team on the row has a mark. */
+export function callRoomQueueDone(match: FixtureMatch, rows: CallRoomAttendanceRow[]): boolean {
+  const progress = callRoomQueueProgress(match, rows);
+  return Boolean(progress && progress.total > 0 && progress.unset === 0);
 }
 
 export function callRoomQueueTone(
@@ -198,6 +203,7 @@ export function callRoomQueueTone(
 export function athleteUnitFromMatch(
   match: FixtureMatch,
   marks: Map<string, CallRoomMark>,
+  phones: Map<string, string> = new Map(),
 ): CallRoomUnit[] {
   return match.participants
     .filter((row) => row.athleteId)
@@ -207,10 +213,9 @@ export function athleteUnitFromMatch(
       teamId: row.teamId,
       memberId: row.athleteId,
       name: row.name,
-      detail: [row.lane ? `Lane ${row.lane}` : null, orgCityLine(row.orgName, row.city)]
-        .filter(Boolean)
-        .join(" · ") || null,
+      detail: orgCityLine(row.orgName, row.city) || null,
       lane: row.lane || null,
+      phone: phones.get(row.athleteId) || null,
       mark: marks.get(row.athleteId) ?? "",
       members: [] as CallRoomMember[],
     }));
@@ -220,6 +225,7 @@ export function emptyTeamUnit(input: {
   teamId: string;
   name: string;
   detail: string | null;
+  lane?: number | null;
   mark: CallRoomMark;
   members: CallRoomMember[];
 }): CallRoomUnit {
@@ -230,7 +236,8 @@ export function emptyTeamUnit(input: {
     memberId: "",
     name: input.name,
     detail: input.detail,
-    lane: null,
+    lane: input.lane ?? null,
+    phone: null,
     mark: input.mark,
     members: input.members,
   };

@@ -35,54 +35,57 @@ async function loadRoles(
   return (data ?? []).map((row) => row.role as AppRole);
 }
 
-/** Insert a public.users row for the signed-in Auth user if the trigger missed. */
+type UserWithRoles = UserRow & { user_roles: Array<{ role: string }> | null };
+const USER_SELECT = "id, email, full_name, phone, onboarded_at, user_roles!user_roles_user_id_fkey(role)";
+
+/** Signed-in user's id + email from the session JWT (verified locally; no Auth round trip). */
+async function sessionIdentity(
+  supabase: ReturnType<typeof createClient>,
+): Promise<{ id: string; email: string } | null> {
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  return claims?.sub ? { id: claims.sub, email: String(claims.email ?? "").toLowerCase() } : null;
+}
+
+async function readAppUser(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<ServiceResult<AppUser | null>> {
+  const { data, error } = await supabase.from("users").select(USER_SELECT).eq("id", userId).maybeSingle<UserWithRoles>();
+  if (error) return { data: null, error: toServiceError(error) };
+  if (!data) return { data: null, error: null };
+  return { data: toAppUser(data, (data.user_roles ?? []).map((row) => row.role as AppRole)), error: null };
+}
+
+/** Load the signed-in user; insert the public.users row first only if the auth trigger missed it. */
 export async function ensureCurrentUser(): Promise<ServiceResult<AppUser>> {
   const supabase = createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { data: null, error: toServiceError(authError ?? { message: "Not signed in." }) };
-  }
+  const identity = await sessionIdentity(supabase);
+  if (!identity) return { data: null, error: { message: "Not signed in." } };
 
-  const email = (user.email ?? "").toLowerCase();
-  const { error: upsertError } = await supabase.from("users").upsert(
-    { id: user.id, email },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
-  if (upsertError) {
-    return { data: null, error: toServiceError(upsertError) };
-  }
+  const first = await readAppUser(supabase, identity.id);
+  if (first.error) return { data: null, error: first.error };
+  if (first.data) return { data: first.data, error: null };
 
-  return getCurrentAppUser();
+  const { error: upsertError } = await supabase
+    .from("users")
+    .upsert({ id: identity.id, email: identity.email }, { onConflict: "id", ignoreDuplicates: true });
+  if (upsertError) return { data: null, error: toServiceError(upsertError) };
+
+  const created = await readAppUser(supabase, identity.id);
+  if (created.error) return { data: null, error: created.error };
+  if (!created.data) return { data: null, error: { message: "User record not found." } };
+  return { data: created.data, error: null };
 }
 
 export async function getCurrentAppUser(): Promise<ServiceResult<AppUser>> {
   const supabase = createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { data: null, error: toServiceError(authError ?? { message: "Not signed in." }) };
-  }
-
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, email, full_name, phone, onboarded_at")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    return { data: null, error: toServiceError(error) };
-  }
-  if (!data) {
-    return { data: null, error: { message: "User record not found." } };
-  }
-
-  const roles = await loadRoles(supabase, user.id);
-  return { data: toAppUser(data, roles), error: null };
+  const identity = await sessionIdentity(supabase);
+  if (!identity) return { data: null, error: { message: "Not signed in." } };
+  const result = await readAppUser(supabase, identity.id);
+  if (result.error) return { data: null, error: result.error };
+  if (!result.data) return { data: null, error: { message: "User record not found." } };
+  return { data: result.data, error: null };
 }
 
 /** Shared write for onboarding and account settings: validates, then updates the signed-in user's row. */

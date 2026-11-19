@@ -222,134 +222,139 @@ export function ScoreAthleticsBoard({
   };
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-[var(--ops-primary)] uppercase">
-            {match.sportName} · {match.roundLabel}
-          </p>
-          <h2 className="text-xl font-semibold">
-            {categoryNameFromLabel(match.categoryLabel)} · {match.matchLabel || (track ? "Heat" : "Flight")}
-          </h2>
-          <p className="text-sm text-[var(--ops-text-muted)]">
-            {track
-              ? "Minutes, seconds, and milliseconds. Time is saved in seconds."
-              : `Best mark from ${match.attemptCount} attempts. Foul is X. NM if every attempt is a foul.`}
-          </p>
-        </div>
-        <StatusBadge
-          tone={
-            match.status === "completed" ? "success" : match.status === "in_progress" ? "warning" : "neutral"
-          }
-        >
-          {match.status.replace("_", " ")}
-        </StatusBadge>
-      </div>
-      <div className="ops-table">
-        <table className="min-w-[48rem]">
-          <thead>
-            <tr>
-              <th className="p-4 font-medium">Ln</th>
-              <th className="p-4 font-medium">{relay ? "Team" : "Athlete"}</th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium">{track ? "Time" : "Mark"}</th>
-              {track ? null : <th className="p-4 font-medium">Attempts</th>}
-              {finalRound ? null : <th className="p-4 font-medium">Q</th>}
-              <th className="p-4 font-medium">Place</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => {
-              const athlete = match.participants.find((item) => item.id === row.participantId);
-              const invalid = Boolean(fieldErrors[row.participantId]);
-              return (
-                <tr key={row.participantId} className="border-t border-[var(--ops-line)] hover:bg-[var(--ops-row-hover)]">
-                  <td className="p-4 font-mono text-xs">{athlete?.lane ?? index + 1}</td>
-                  <td className="p-4">
-                    <p className="font-medium">{athlete?.name ?? (relay ? "Team" : "Athlete")}</p>
-                    {orgCityLine(athlete?.orgName, athlete?.city) ? (
-                      <p className="text-[11px] text-[var(--ops-text-muted)]">
-                        {orgCityLine(athlete?.orgName, athlete?.city)}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="p-4">
-                    <SoftSelect
-                      value={row.resultCode}
-                      onChange={(event) =>
-                        patch(row.participantId, {
-                          resultCode: event.target.value as AthleticsResultCode,
-                        })
-                      }
-                      className={fieldClass}
-                    >
-                      {ATHLETICS_RESULT_CODES.map((code) => (
-                        <option key={code} value={code}>
-                          {code.toUpperCase()}
-                        </option>
-                      ))}
-                    </SoftSelect>
-                  </td>
-                  <td className="p-4">
-                    {track ? (
-                      <TimePartsInput
-                        value={row.time}
+    <div className="grid gap-3">
+      {/* event, heat and status are already in the page header; keep only how to enter results */}
+      <p className="text-sm text-[var(--ops-text-muted)]">
+        {track
+          ? "Enter minutes, seconds and milliseconds. Time is saved in seconds."
+          : `Best mark from ${match.attemptCount} attempts. Foul is X. NM if every attempt is a foul.`}
+      </p>
+      {/* one card per athlete: fields stack on a phone, line up in columns from md */}
+      <ol className="flex flex-col gap-2">
+        {rows.map((row, index) => {
+          const athlete = match.participants.find((item) => item.id === row.participantId);
+          const invalid = Boolean(fieldErrors[row.participantId]);
+          const place = ranked[index];
+          return (
+            <li
+              key={row.participantId}
+              className={cn(
+                "grid gap-2 rounded-xl border bg-[var(--ops-surface)] p-2.5 md:items-center",
+                track
+                  ? finalRound
+                    ? "md:grid-cols-[2.5rem_minmax(8rem,1fr)_6.5rem_auto_2.5rem]"
+                    : "md:grid-cols-[2.5rem_minmax(8rem,1fr)_6.5rem_auto_auto_2.5rem]"
+                  : finalRound
+                    ? "md:grid-cols-[2.5rem_minmax(8rem,1fr)_6.5rem_5.5rem_auto_2.5rem]"
+                    : "md:grid-cols-[2.5rem_minmax(8rem,1fr)_6.5rem_5.5rem_auto_auto_2.5rem]",
+                invalid ? "border-[var(--ops-danger)]" : "border-[var(--ops-line)]",
+              )}
+            >
+              <div className="flex items-center gap-3 md:contents">
+                <span
+                  aria-label={`Lane ${athlete?.lane ?? index + 1}`}
+                  className="grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--ops-board-muted)] text-base leading-5 font-medium tabular-nums"
+                >
+                  {athlete?.lane ?? index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm leading-5 font-medium">{athlete?.name ?? (relay ? "Team" : "Athlete")}</p>
+                  {orgCityLine(athlete?.orgName, athlete?.city) ? (
+                    <p className="truncate text-sm text-[var(--ops-text-muted)]">{orgCityLine(athlete?.orgName, athlete?.city)}</p>
+                  ) : null}
+                </div>
+                <span
+                  className={cn(
+                    "grid size-8 shrink-0 place-items-center rounded-full text-sm leading-5 font-medium tabular-nums md:hidden",
+                    place != null ? "bg-[var(--ops-primary-soft)] text-[var(--ops-primary)]" : "text-[var(--ops-text-muted)]",
+                  )}
+                  aria-label={`Place ${place ?? "none"}`}
+                >
+                  {place ?? "—"}
+                </span>
+              </div>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-[var(--ops-text-muted)]">
+                <span className="md:sr-only">Status</span>
+                <SoftSelect
+                  value={row.resultCode}
+                  onChange={(event) =>
+                    patch(row.participantId, {
+                      resultCode: event.target.value as AthleticsResultCode,
+                    })
+                  }
+                  aria-label={`Status for ${athlete?.name ?? "athlete"}`}
+                  className={fieldClass}
+                >
+                  {ATHLETICS_RESULT_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {code.toUpperCase()}
+                    </option>
+                  ))}
+                </SoftSelect>
+              </label>
+              <div className="flex flex-col gap-1 text-xs font-semibold text-[var(--ops-text-muted)]">
+                <span className="md:sr-only">{track ? "Time" : "Best mark"}</span>
+                {track ? (
+                  <TimePartsInput
+                    value={row.time}
+                    disabled={row.resultCode !== "ok"}
+                    invalid={invalid}
+                    onChange={(time) => patch(row.participantId, { time })}
+                  />
+                ) : (
+                  <input
+                    aria-label={`Best mark for ${athlete?.name ?? "athlete"}`}
+                    value={
+                      bestFieldMark(row.attempts) != null
+                        ? formatMark(bestFieldMark(row.attempts), "").trim()
+                        : row.mark
+                    }
+                    readOnly
+                    className={invalid ? fieldErrorClass : fieldClass}
+                  />
+                )}
+              </div>
+              {track ? null : (
+                <div className="flex flex-col gap-1 text-xs font-semibold text-[var(--ops-text-muted)]">
+                  <span className="md:sr-only">Attempts</span>
+                  <div className="flex flex-wrap gap-2">
+                    {row.attempts.map((attempt, attemptIndex) => (
+                      <AttemptSlot
+                        key={attemptIndex}
+                        attempt={attempt}
+                        text={row.attemptInputs[attemptIndex] ?? ""}
+                        index={attemptIndex}
                         disabled={row.resultCode !== "ok"}
-                        invalid={invalid}
-                        onChange={(time) => patch(row.participantId, { time })}
+                        onChange={(nextAttempt, nextText) => {
+                          const next = [...row.attempts];
+                          const texts = [...row.attemptInputs];
+                          next[attemptIndex] = nextAttempt;
+                          texts[attemptIndex] = nextText;
+                          patch(row.participantId, { attempts: next, attemptInputs: texts });
+                        }}
                       />
-                    ) : (
-                      <input
-                        value={
-                          bestFieldMark(row.attempts) != null
-                            ? formatMark(bestFieldMark(row.attempts), "").trim()
-                            : row.mark
-                        }
-                        readOnly
-                        className={invalid ? fieldErrorClass : fieldClass}
-                      />
-                    )}
-                  </td>
-                  {track ? null : (
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-2">
-                        {row.attempts.map((attempt, attemptIndex) => (
-                          <AttemptSlot
-                            key={attemptIndex}
-                            attempt={attempt}
-                            text={row.attemptInputs[attemptIndex] ?? ""}
-                            index={attemptIndex}
-                            disabled={row.resultCode !== "ok"}
-                            onChange={(nextAttempt, nextText) => {
-                              const next = [...row.attempts];
-                              const texts = [...row.attemptInputs];
-                              next[attemptIndex] = nextAttempt;
-                              texts[attemptIndex] = nextText;
-                              patch(row.participantId, { attempts: next, attemptInputs: texts });
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </td>
-                  )}
-                  {finalRound ? null : (
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
-                        checked={row.qualified}
-                        onChange={(event) =>
-                          patch(row.participantId, { qualified: event.target.checked })
-                        }
-                      />
-                    </td>
-                  )}
-                  <td className="p-4 font-mono">{ranked[index] ?? "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {finalRound ? null : (
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-[var(--ops-line-strong)] px-3 text-sm leading-5 font-medium has-[:checked]:border-[var(--ops-primary)] has-[:checked]:bg-[var(--ops-primary-soft)]">
+                  <input
+                    type="checkbox"
+                    checked={row.qualified}
+                    onChange={(event) => patch(row.participantId, { qualified: event.target.checked })}
+                    className="size-5 accent-[var(--ops-primary)]"
+                  />
+                  Qualified
+                </label>
+              )}
+              <span className="hidden text-center font-mono text-sm leading-5 font-medium md:block" aria-label={`Place ${place ?? "none"}`}>
+                {place ?? "—"}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
       <StickyActionBar>
         <SoftButton disabled={Boolean(saving)} onClick={() => void submit(false)}>
           {saving === "progress" ? "Saving…" : "Save progress"}

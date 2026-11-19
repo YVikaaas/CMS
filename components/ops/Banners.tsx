@@ -1,6 +1,6 @@
 import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
-import { IconAlertTriangle, IconBell, IconMoodEmpty, type TablerIcon } from "@tabler/icons-react";
+import { IconAlertTriangle, IconBell, IconInbox, type TablerIcon } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
@@ -12,7 +12,7 @@ const toneClass: Record<Tone, string> = {
   info: "bg-[var(--ops-info-soft)] text-[var(--ops-info)]",
 };
 
-// NiceAdmin Empty / Error / Notification banners: centred card, tinted icon circle, title, text, action.
+// Empty / Error / Notification banners: centred card, tinted icon circle, title, text, action.
 function Banner({
   icon: Icon,
   tone,
@@ -45,7 +45,7 @@ function Banner({
 }
 
 export function EmptyState(props: { title: string; hint?: string; action?: ReactNode; className?: string; icon?: TablerIcon }) {
-  return <Banner icon={props.icon ?? IconMoodEmpty} tone="primary" {...props} />;
+  return <Banner icon={props.icon ?? IconInbox} tone="primary" {...props} />;
 }
 
 export function ErrorBanner(props: { title: string; hint?: string; action?: ReactNode; className?: string }) {

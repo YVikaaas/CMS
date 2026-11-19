@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PodiumBoard } from "@/components/podium/PodiumBoard";
-import { EmptyState, EventFilters, PageHeader, PageSkeleton, SoftButton, SoftCard, StatusBadge } from "@/components/ops";
+import { EmptyState, EventFilters, PageHeader, PageSkeleton, SoftButton, SoftCard } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { getPodiumSheet, listFixtures, setPodiumDelivery } from "@/lib/services";
 import type { Fixture, PodiumSheet } from "@/lib/types/cms";
@@ -14,7 +14,6 @@ import {
   isEventFilterComplete,
   type EventFilterValue,
 } from "@/lib/utils/eventFilter";
-import { podiumDeliveryLabel } from "@/lib/utils/podium";
 
 export default function PodiumPage() {
   const { selected, loading } = useChampionship();
@@ -106,11 +105,8 @@ export default function PodiumPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Podium"
-        hint="Lock 1st, 2nd and 3rd on scoring, then mark medal delivery here."
-      />
+    <div className="flex flex-1 flex-col gap-4">
+      <PageHeader title="Podium" />
       <EventFilters
         championshipId={selected.id}
         onlyWithExistingFixture
@@ -119,10 +115,7 @@ export default function PodiumPage() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState
-          title="Pick sport, gender, age, then category"
-          hint="Podium waits until the category name is selected."
-        />
+        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
       ) : !fixture ? (
         <EmptyState title="No draw for this filter" hint="Create a fixture first." />
       ) : !fixture.rankingLockedAt ? (
@@ -136,16 +129,8 @@ export default function PodiumPage() {
           }
         />
       ) : sheet ? (
-        <SoftCard className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm text-[var(--ops-text-muted)]">{sheet.sportName}</p>
-              <p className="font-semibold">{sheet.categoryLabel}</p>
-            </div>
-            <StatusBadge tone={podiumDeliveryLabel(sheet.holders) === "All delivered" ? "success" : "warning"}>
-              {podiumDeliveryLabel(sheet.holders)}
-            </StatusBadge>
-          </div>
+        // the event is named once, in the picker strip; this card is just the hand-out sheet
+        <SoftCard className="flex flex-col gap-3">
           <PodiumBoard holders={sheet.holders} savingId={savingId} onDeliver={(id, delivered) => void onDeliver(id, delivered)} />
         </SoftCard>
       ) : (

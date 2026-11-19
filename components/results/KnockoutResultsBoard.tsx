@@ -26,15 +26,15 @@ export function KnockoutResultsBoard({
   }, [matches, rounds]);
 
   if (matches.length === 0) {
-    return <p className="py-8 text-center text-sm text-[var(--ops-text-muted)]">No matches yet.</p>;
+    return <p className="py-6 text-center text-sm leading-5 text-[var(--ops-text-muted)]">No matches yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-semibold tracking-wide uppercase">Matches and scores</h3>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-1">
         {rounds.map((type) => (
-          <section key={type} className="flex w-[min(100%,20rem)] shrink-0 flex-col gap-3">
+          <section key={type} className="flex w-[min(100%,18rem)] shrink-0 flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold tracking-wide uppercase">{roundLabel(type)}</h4>
               <span className="text-xs text-[var(--ops-text-muted)]">Round {roundNumber(type)}</span>

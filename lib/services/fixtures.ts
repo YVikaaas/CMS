@@ -648,24 +648,33 @@ export async function listChampionshipMatches(
 ): Promise<ServiceResult<FixtureMatch[]>> {
   const fixtures = await listFixtures(championshipId);
   if (fixtures.error || !fixtures.data) return { data: null, error: fixtures.error };
-  const byId = new Map(fixtures.data.map((item) => [item.id, item]));
   const roundIds = fixtures.data.flatMap((item) => item.rounds.map((round) => round.id));
   const queried = await queryMatches(roundIds);
   if (queried.error || !queried.data) return { data: null, error: queried.error };
-  return {
-    data: queried.data
-      .map((row) => {
-        const round = unwrap(row.round);
-        const fixture = round ? byId.get(round.fixture_id) : undefined;
-        if (!fixture) return null;
-        return toMatch(row, fixture);
-      })
-      .filter((row): row is FixtureMatch => Boolean(row))
-      .sort(
-        (a, b) => roundNumber(a.roundType) - roundNumber(b.roundType) || a.matchNumber - b.matchNumber,
-      ),
-    error: null,
-  };
+  return { data: joinMatches(fixtures.data, queried.data), error: null };
+}
+
+/** Raw `call_room_board` rows (FIXTURE_SELECT / MATCH_SELECT shapes) to sorted matches. */
+export function championshipMatchesFromRows(fixtureRows: unknown[], matchRows: unknown[]): FixtureMatch[] {
+  const fixtures = fixtureRows
+    .map((row) => toFixture(row as FixtureRow))
+    .filter((row): row is Fixture => Boolean(row));
+  return joinMatches(fixtures, matchRows as MatchRow[]);
+}
+
+function joinMatches(fixtures: Fixture[], rows: MatchRow[]): FixtureMatch[] {
+  const byId = new Map(fixtures.map((item) => [item.id, item]));
+  return rows
+    .map((row) => {
+      const round = unwrap(row.round);
+      const fixture = round ? byId.get(round.fixture_id) : undefined;
+      if (!fixture) return null;
+      return toMatch(row, fixture);
+    })
+    .filter((row): row is FixtureMatch => Boolean(row))
+    .sort(
+      (a, b) => roundNumber(a.roundType) - roundNumber(b.roundType) || a.matchNumber - b.matchNumber,
+    );
 }
 
 export async function getFixtureMatch(id: string): Promise<ServiceResult<FixtureMatch>> {

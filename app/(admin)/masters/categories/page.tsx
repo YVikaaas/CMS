@@ -7,13 +7,12 @@ import { CategoryNameInput } from "@/components/fields";
 import { RoundChips } from "@/components/RoundChips";
 import IconButton from "@mui/material/IconButton";
 import { IconArchive, IconPencil } from "@tabler/icons-react";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
-  ChipFilter,
   PageHeader,
   PageSkeleton,
   SoftButton,
-  SoftSelect,
   StatusBadge,
   useConfirm,
 } from "@/components/ops";
@@ -294,55 +293,90 @@ export default function CategoriesPage() {
         search={
           <TableSearch value={search} onChange={setSearch} placeholder="Search name, category, or fixture" />
         }
-        toolbar={
-          <>
-            <ChipFilter
-              ariaLabel="Sport"
-              value={filterSport}
-              onChange={(value) => {
-                setFilterSport(value);
-                setGenderFilter("");
-                setAgeFilter("");
-                setFixtureFilter("");
-              }}
-              options={sports.map((sport) => ({ value: sport.id, label: sport.name }))}
-            />
-            <ChipFilter
-              ariaLabel="Gender"
-              value={genderFilter}
-              disabled={!filterSport}
-              onChange={(value) => {
-                setGenderFilter(value);
-                setAgeFilter("");
-                setFixtureFilter("");
-              }}
-              options={genderOptions.map((gender) => ({
-                value: gender,
-                label: genderLabel(gender),
-              }))}
-            />
-            <ChipFilter
-              ariaLabel="Age"
-              value={ageFilter}
-              disabled={!genderFilter}
-              onChange={(value) => {
-                setAgeFilter(value);
-                setFixtureFilter("");
-              }}
-              options={ageOptions.map((age) => ({ value: age, label: age }))}
-            />
-            <SoftSelect
-              value={fixtureFilter}
-              disabled={!ageFilter}
-              onChange={(event) => setFixtureFilter(event.target.value as "" | FixtureFormatType)}
-            >
-              {fixtureFilterOptions.map((option) => (
-                <option key={option.value || "all"} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </SoftSelect>
-          </>
+        count={visible.length}
+        filters={[
+          {
+            id: "sport",
+            label: "Sport",
+            value: filterSport,
+            options: sports.map((sport) => ({ value: sport.id, label: sport.name })),
+            onChange: (value) => {
+              setFilterSport(value);
+              setGenderFilter("");
+              setAgeFilter("");
+              setFixtureFilter("");
+            },
+          },
+          {
+            id: "gender",
+            label: "Gender",
+            value: genderFilter,
+            disabled: !filterSport,
+            allLabel: filterSport ? "All" : "Pick sport",
+            options: genderOptions.map((gender) => ({ value: gender, label: genderLabel(gender) })),
+            onChange: (value) => {
+              setGenderFilter(value as "" | Gender);
+              setAgeFilter("");
+              setFixtureFilter("");
+            },
+          },
+          {
+            id: "age",
+            label: "Age",
+            value: ageFilter,
+            disabled: !genderFilter,
+            allLabel: genderFilter ? "All" : "Pick gender",
+            options: ageOptions.map((age) => ({ value: age, label: age })),
+            onChange: (value) => {
+              setAgeFilter(value);
+              setFixtureFilter("");
+            },
+          },
+          {
+            id: "fixture",
+            label: "Fixture",
+            value: fixtureFilter,
+            disabled: !ageFilter,
+            allLabel: ageFilter ? "All" : "Pick age",
+            options: fixtureFilterOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label })),
+            onChange: (value) => setFixtureFilter(value as "" | FixtureFormatType),
+          },
+        ]}
+        onClearAll={() => {
+          setSearch("");
+          setFilterSport("");
+          setGenderFilter("");
+          setAgeFilter("");
+          setFixtureFilter("");
+        }}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Name", value: (row) => row.name },
+                  { header: "Category", value: (row) => categoryGroupLabel(row) },
+                  { header: "Gender", value: (row) => genderLabel(row.gender) },
+                  { header: "Age group", value: (row) => row.ageGroup },
+                  { header: "Sport", value: (row) => sportName(row.sportId) },
+                  { header: "Fixture", value: (row) => fixtureConfigLabel(row.fixtureConfig) },
+                  {
+                    header: "Roster",
+                    value: (row) =>
+                      isAthleticsSport(sportOf(row.sportId))
+                        ? isRelayEvent(row.name)
+                          ? "Relay 4"
+                          : "Solo"
+                        : `${row.teamSize}/${row.maxTeamSize}`,
+                  },
+                ],
+                "categories",
+                format,
+              )
+            }
+          />
         }
         action={
           <SoftButton
@@ -691,7 +725,7 @@ export default function CategoriesPage() {
               }}
             />
           </div>
-          <div className="flex gap-2 border-t border-[var(--ops-line)] pt-4 sm:col-span-2">
+          <div className="flex gap-2 sm:col-span-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
               {editingId ? "Save changes" : "Add category"}
             </SoftButton>

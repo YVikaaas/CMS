@@ -19,6 +19,7 @@ import {
 import { isHeatMatch } from "@/lib/utils/athletics";
 import { orgCityLine } from "@/lib/utils/labels";
 import { toServiceError } from "./errors";
+import { championshipMatchesFromRows } from "./fixtures";
 
 type AttendanceRow = {
   fixture_match_id: string;
@@ -32,6 +33,7 @@ type MemberRow = {
   team_id: string;
   name: string;
   gender: Gender;
+  phone: string | null;
 };
 
 function toAttendance(row: AttendanceRow): CallRoomAttendanceRow {
@@ -73,6 +75,26 @@ export async function listCallRoomAttendance(
   return { data: (data ?? []).map((row) => toAttendance(row as AttendanceRow)), error: null };
 }
 
+/**
+ * Call Room in one round trip via RPC `call_room_board`: same result as
+ * listChampionshipMatches + listCallRoomAttendance.
+ */
+export async function getCallRoomBoard(
+  championshipId: string,
+): Promise<ServiceResult<{ matches: FixtureMatch[]; attendance: CallRoomAttendanceRow[] }>> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("call_room_board", { p_championship_id: championshipId });
+  if (error) return { data: null, error: toServiceError(error) };
+  const board = (data ?? {}) as { fixtures?: unknown[]; matches?: unknown[]; attendance?: AttendanceRow[] };
+  return {
+    data: {
+      matches: championshipMatchesFromRows(board.fixtures ?? [], board.matches ?? []),
+      attendance: (board.attendance ?? []).map(toAttendance),
+    },
+    error: null,
+  };
+}
+
 async function listMembersByTeam(
   teamIds: string[],
 ): Promise<ServiceResult<MemberRow[]>> {
@@ -80,12 +102,23 @@ async function listMembersByTeam(
   const supabase = createClient();
   const { data, error } = await supabase
     .from("team_member")
-    .select("id, team_id, name, gender")
+    .select("id, team_id, name, gender, phone")
     .in("team_id", teamIds)
     .is("deleted_at", null)
     .order("name");
   if (error) return { data: null, error: toServiceError(error) };
   return { data: (data ?? []) as MemberRow[], error: null };
+}
+
+async function listMemberPhones(ids: string[]): Promise<ServiceResult<Map<string, string>>> {
+  if (ids.length === 0) return { data: new Map(), error: null };
+  const supabase = createClient();
+  const { data, error } = await supabase.from("team_member").select("id, phone").in("id", ids);
+  if (error) return { data: null, error: toServiceError(error) };
+  return {
+    data: new Map((data ?? []).filter((row) => row.phone).map((row) => [row.id as string, row.phone as string])),
+    error: null,
+  };
 }
 
 function teamUnits(
@@ -102,7 +135,7 @@ function teamUnits(
     membersByTeam.set(member.team_id, list);
   }
 
-  const sides: Array<{ teamId: string; name: string; detail: string | null }> = [];
+  const sides: Array<{ teamId: string; name: string; detail: string | null; lane?: number | null }> = [];
   if (!isHeatMatch(match)) {
     if (match.team1Id) {
       sides.push({ teamId: match.team1Id, name: match.team1Name, detail: null });
@@ -116,9 +149,8 @@ function teamUnits(
       sides.push({
         teamId: row.teamId,
         name: row.name,
-        detail: [row.lane ? `Lane ${row.lane}` : null, orgCityLine(row.orgName, row.city)]
-          .filter(Boolean)
-          .join(" · ") || null,
+        detail: orgCityLine(row.orgName, row.city) || null,
+        lane: row.lane || null,
       });
     }
   }
@@ -128,6 +160,7 @@ function teamUnits(
     const unitMembers: CallRoomMember[] = roster.map((member) => ({
       id: member.id,
       name: member.name,
+      phone: member.phone || null,
       mark: memberMarks.get(member.id) ?? "",
       effective: memberMarks.get(member.id) ?? "",
     }));
@@ -135,6 +168,7 @@ function teamUnits(
       teamId: side.teamId,
       name: side.name,
       detail: side.detail,
+      lane: side.lane,
       mark: teamMarks.get(side.teamId) ?? "",
       members: unitMembers,
     });
@@ -144,17 +178,22 @@ function teamUnits(
 export async function getCallRoomSheet(
   match: FixtureMatch,
 ): Promise<ServiceResult<CallRoomSheet>> {
-  const attendance = await listCallRoomAttendance([match.id]);
+  const solo = isCallRoomSoloMatch(match);
+  const [attendance, phones] = await Promise.all([
+    listCallRoomAttendance([match.id]),
+    solo ? listMemberPhones(match.participants.map((row) => row.athleteId).filter(Boolean)) : null,
+  ]);
   if (attendance.error || !attendance.data) {
     return { data: null, error: attendance.error };
   }
 
-  if (isCallRoomSoloMatch(match)) {
+  if (solo) {
+    // a failed phone lookup only hides the call buttons; marking still works
     return {
       data: withCallRoomEffective({
         matchId: match.id,
         solo: true,
-        units: athleteUnitFromMatch(match, memberMarkMap(attendance.data)),
+        units: athleteUnitFromMatch(match, memberMarkMap(attendance.data), phones?.data ?? new Map()),
       }),
       error: null,
     };
@@ -209,27 +248,28 @@ export async function saveCallRoomSheet(
     if (error) return { data: null, error: toServiceError(error) };
   }
 
-  for (const row of desired) {
+  // one request per subject, all at once: a bulk "rest present" was N round trips in a row
+  const writes = desired.map((row) => {
     const sameSubject = (item: (typeof rows)[number]) =>
       row.teamId ? item.team_id === row.teamId : item.team_member_id === row.teamMemberId;
     const current = rows.find((item) => sameSubject(item) && !item.deleted_at) ?? rows.find(sameSubject);
     if (current) {
-      if (!current.deleted_at && current.status === row.status) continue;
-      const { error } = await supabase
+      if (!current.deleted_at && current.status === row.status) return null;
+      return supabase
         .from("fixture_match_attendance")
         .update({ status: row.status, deleted_at: null })
         .eq("id", current.id);
-      if (error) return { data: null, error: toServiceError(error) };
-      continue;
     }
-    const { error } = await supabase.from("fixture_match_attendance").insert({
+    return supabase.from("fixture_match_attendance").insert({
       fixture_match_id: sheet.matchId,
       team_id: row.teamId,
       team_member_id: row.teamMemberId,
       status: row.status,
     });
-    if (error) return { data: null, error: toServiceError(error) };
-  }
+  });
+  const results = await Promise.all(writes.filter((write) => write !== null));
+  const failed = results.find((result) => result.error);
+  if (failed?.error) return { data: null, error: toServiceError(failed.error) };
 
   return { data: withCallRoomEffective(sheet), error: null };
 }

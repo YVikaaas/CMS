@@ -66,6 +66,6 @@ export {
   saveFixtureRanking,
   setFixtureRankingLocked,
 } from "./fixtures";
-export { getCallRoomSheet, listCallRoomAttendance, saveCallRoomSheet } from "./attendance";
+export { getCallRoomBoard, getCallRoomSheet, listCallRoomAttendance, saveCallRoomSheet } from "./attendance";
 export { getPodiumSheet, setPodiumDelivery } from "./podium";
 export { getDashboardSummary } from "./dashboard";

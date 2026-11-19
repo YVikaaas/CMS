@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
-import { onTeal } from "./PageHeader";
 
 export type BannerStat = { label: string; value: ReactNode };
 
-// NiceAdmin "Greeting banner": teal card. Left: title (+ badge) and one line.
-// Right: a few headline numbers and the action, so the card carries information instead of empty space.
+// Dashboard header in the kit's title-row style: greeting, badge, one line, headline numbers, action.
 export function GreetingBanner({
   title,
   badge,
@@ -22,28 +20,22 @@ export function GreetingBanner({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center justify-between gap-x-8 gap-y-5 rounded-xl bg-[var(--ops-primary)] px-6 py-5 text-white",
-        onTeal,
-        className,
-      )}
-    >
+    <header className={cn("flex flex-wrap items-end justify-between gap-x-8 gap-y-5 pt-2", className)}>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[21px] leading-tight font-semibold">{title}</h1>
+          <h1 className="text-[28px] leading-9 font-medium sm:text-[36px] sm:leading-[44px]">{title}</h1>
           {badge}
         </div>
-        {text ? <p className="mt-1.5 text-sm text-white/70">{text}</p> : null}
+        {text ? <p className="mt-1 text-base text-[var(--ops-text-muted)]">{text}</p> : null}
       </div>
       {stats?.length || action ? (
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
           {stats?.length ? (
             <dl className="flex flex-wrap gap-x-8 gap-y-3">
               {stats.map((stat) => (
                 <div key={stat.label} className="min-w-[5.5rem]">
-                  <dt className="text-xs text-white/70">{stat.label}</dt>
-                  <dd className="text-xl font-semibold tabular-nums text-[var(--ops-accent)]">{stat.value}</dd>
+                  <dt className="text-sm text-[var(--ops-text-muted)]">{stat.label}</dt>
+                  <dd className="text-[22px] leading-7 font-medium tabular-nums">{stat.value}</dd>
                 </div>
               ))}
             </dl>
@@ -51,6 +43,6 @@ export function GreetingBanner({
           {action}
         </div>
       ) : null}
-    </div>
+    </header>
   );
 }

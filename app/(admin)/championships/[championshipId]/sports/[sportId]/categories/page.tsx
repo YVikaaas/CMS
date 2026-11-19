@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
 import { IconTrash } from "@tabler/icons-react";
 import { Modal } from "@/components/Modal";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   ChipFilter,
   EmptyState,
@@ -19,7 +20,6 @@ import {
   PickToolbar,
   SoftButton,
   SoftSearch,
-  StepCrumbs,
   useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "../../../../useScopedChampionship";
@@ -243,14 +243,13 @@ export default function ChampionshipCategoriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+      <PageHeader
+        crumbs={[
           { href: "/championships", label: "Championships" },
           { href: sportsHref, label: championship.name },
           { label: sport?.name ?? "Sport" },
         ]}
-      />
-      <PageHeader
+       
         title="Categories"
         hint="All assigned categories until you filter. Add many at once with gender and age."
       />
@@ -269,39 +268,72 @@ export default function ChampionshipCategoriesPage() {
       <TableCard
         title="Categories"
         search={<TableSearch value={search} onChange={setSearch} placeholder="Search category" />}
-        toolbar={
-          <>
-            <ChipFilter
-              ariaLabel="Gender"
-              value={genderFilter}
-              onChange={(value) => {
-                setGenderFilter(value);
-                setAgeFilter("");
-                setNameFilter("");
-              }}
-              options={genderOptions.map((gender) => ({
-                value: gender,
-                label: genderLabel(gender),
-              }))}
-            />
-            <ChipFilter
-              ariaLabel="Age"
-              value={ageFilter}
-              disabled={!genderFilter}
-              onChange={(value) => {
-                setAgeFilter(value);
-                setNameFilter("");
-              }}
-              options={ageOptions.map((age) => ({ value: age, label: age }))}
-            />
-            <ChipFilter
-              ariaLabel="Category"
-              value={nameFilter}
-              disabled={!ageFilter}
-              onChange={setNameFilter}
-              options={nameOptions.map((name) => ({ value: name, label: name }))}
-            />
-          </>
+        count={visible.length}
+        filters={[
+          {
+            id: "gender",
+            label: "Gender",
+            value: genderFilter,
+            options: genderOptions.map((gender) => ({ value: gender, label: genderLabel(gender) })),
+            onChange: (value) => {
+              setGenderFilter(value as typeof genderFilter);
+              setAgeFilter("");
+              setNameFilter("");
+            },
+          },
+          {
+            id: "age",
+            label: "Age",
+            value: ageFilter,
+            disabled: !genderFilter,
+            allLabel: genderFilter ? "All" : "Pick gender",
+            options: ageOptions.map((age) => ({ value: age, label: age })),
+            onChange: (value) => {
+              setAgeFilter(value);
+              setNameFilter("");
+            },
+          },
+          {
+            id: "event",
+            label: "Event",
+            value: nameFilter,
+            disabled: !ageFilter,
+            allLabel: ageFilter ? "All" : "Pick age",
+            options: nameOptions.map((name) => ({ value: name, label: name })),
+            onChange: setNameFilter,
+          },
+        ]}
+        onClearAll={() => {
+          setSearch("");
+          setGenderFilter("");
+          setAgeFilter("");
+          setNameFilter("");
+        }}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Category", value: (row) => categoryLabel(row) },
+                  { header: "Gender", value: (row) => genderLabel(row.gender) },
+                  { header: "Age group", value: (row) => row.ageGroup },
+                  {
+                    header: "Roster",
+                    value: (row) =>
+                      isAthleticsSport(sport)
+                        ? isRelayEvent(row.name)
+                          ? "Relay teams of 4"
+                          : "Individual athletes"
+                        : `${row.teamSize}–${row.maxTeamSize}`,
+                  },
+                ],
+                `${sport?.name ?? "sport"} categories`,
+                format,
+              )
+            }
+          />
         }
         action={
           <SoftButton variant="primary" onClick={openForm} disabled={!offering || available.length === 0}>

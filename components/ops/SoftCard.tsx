@@ -14,8 +14,8 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 const paddingMap = {
   none: "",
   sm: "p-3",
-  md: "p-6",
-  lg: "p-8",
+  md: "p-4",
+  lg: "p-5",
 };
 
 export function SoftCard({
@@ -29,10 +29,9 @@ export function SoftCard({
   return (
     <Card
       className={cn(
-        "border border-transparent",
         paddingMap[padding],
-        interactive && "cursor-pointer hover:border-[var(--ops-primary)]/30 hover:bg-[var(--ops-primary-soft)]/40",
-        selected && "border-[var(--ops-primary)] bg-[var(--ops-primary-soft)]",
+        interactive && "ops-lift cursor-pointer",
+        selected && "border-[var(--ops-text)] bg-[var(--ops-primary-soft)]",
         className,
       )}
       {...rest}

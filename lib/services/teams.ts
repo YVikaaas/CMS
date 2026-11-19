@@ -735,9 +735,11 @@ export async function listCscOptions(filters?: {
   let query = supabase
     .from("competition_sport_map")
     .select(
-      "id, sport_id, competition_id, sport:sport_id (name), competition:competition_id (id, name, deleted_at)",
+      "id, sport_id, competition_id, sport:sport_id (name), competition:competition_id (id, name, deleted_at), cscs:competition_sport_category_map (id, category_id, deleted_at, category:category_id (gender, age_group, name, team_size, max_team_size, fixture_config))",
     )
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    // categories come embedded (one round trip); drop archived ones in the same query
+    .is("cscs.deleted_at", null);
   if (filters?.sportId) query = query.eq("sport_id", filters.sportId);
   if (filters?.championshipId) query = query.eq("competition_id", filters.championshipId);
   const { data: csmRows, error: csmError } = await query;
@@ -759,14 +761,7 @@ export async function listCscOptions(filters?: {
       name: string;
     };
     const sport = unwrap(csm.sport) as { name: string };
-    const { data: cscRows, error: cscError } = await supabase
-      .from("competition_sport_category_map")
-      .select(
-        "id, category_id, category:category_id (gender, age_group, name, team_size, max_team_size, fixture_config)",
-      )
-      .eq("competition_sport_id", csm.id)
-      .is("deleted_at", null);
-    if (cscError) return { data: null, error: toServiceError(cscError) };
+    const cscRows = (csm as unknown as { cscs: Array<{ id: string; category_id: string; category: unknown }> | null }).cscs;
     for (const csc of cscRows ?? []) {
       const category = unwrap(csc.category) as {
         gender: Gender;

@@ -16,7 +16,6 @@ import {
   SoftSelect,
   SplitWorkspace,
   StatusBadge,
-  StepCrumbs,
   StickyActionBar,
   useConfirm,
 } from "@/components/ops";
@@ -351,15 +350,14 @@ export default function FixtureWorkspacePage() {
   const categoryName = fixture.categoryName;
 
   return (
-    <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        crumbs={[
           { href: "/gameplay/fixtures", label: "Sports" },
           { href: `/gameplay/fixtures/sport/${fixture.sportId}`, label: fixture.sportName },
           { label: fixture.categoryLabel },
         ]}
-      />
-      <PageHeader
+       
         title="Matches"
         hint={`${formatLabel(fixture.formatType)}. Scoring is on the Scoring page.`}
       />
@@ -389,7 +387,7 @@ export default function FixtureWorkspacePage() {
         </p>
       ) : null}
       <SplitWorkspace
-        splitAt="md"
+        splitAt="lg"
         queue={
           <>
             <div className="flex items-center justify-between gap-2">

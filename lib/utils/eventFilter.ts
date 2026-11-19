@@ -368,3 +368,29 @@ export function isEventFilterSelected(value: EventFilterValue): boolean {
 export function isEventFilterComplete(value: EventFilterValue): boolean {
   return isEventFilterSelected(value) && Boolean(value.categoryId);
 }
+
+/**
+ * Fill in every next step that has exactly one choice (e.g. Basketball → Boys → U16 → Basketball),
+ * so a tap on the sport can land straight on a complete event. Stops at the first real choice.
+ */
+export function settleEventFilter(value: EventFilterValue, categories: Category[]): EventFilterValue {
+  let next = value;
+  if (!next.sportId) return next;
+  const sportCats = categories.filter((row) => row.sportId === next.sportId);
+  if (!next.gender) {
+    const genders = gendersForSport(sportCats);
+    if (genders.length !== 1) return next;
+    next = applyGender(next, genders[0]!);
+  }
+  if (!next.ageGroup) {
+    const ages = agesForSportGender(sportCats, next.gender);
+    if (ages.length !== 1) return next;
+    next = applyAge(next, ages[0]!, categories);
+  }
+  if (!next.categoryId) {
+    const options = categoriesForSportGenderAge(sportCats, next.sportId, next.gender, next.ageGroup);
+    if (options.length !== 1) return next;
+    next = applyCategory(next, options[0]!.id, categories);
+  }
+  return next;
+}

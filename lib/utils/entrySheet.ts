@@ -189,7 +189,8 @@ export function entrySheetFileName(options: EntrySheetOptions): string {
   return options.kind === "athlete" ? `${base}-athletes.xlsx` : `${base}-teams.xlsx`;
 }
 
-async function workbook(): Promise<typeof import("xlsx")> {
+/** Lazy-load SheetJS (keeps it out of the main bundle). Shared with exportTable.ts. */
+export async function workbook(): Promise<typeof import("xlsx")> {
   const mod = await import("xlsx");
   return ((mod as { default?: typeof import("xlsx") }).default ?? mod) as typeof import("xlsx");
 }

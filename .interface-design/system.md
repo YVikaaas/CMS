@@ -2,7 +2,7 @@
 
 Venue staff on tablets. One job per screen. Pick the championship, pick the work unit, do the work, save.
 
-**Source of truth:** this file + tokens in `app/globals.css` (`--ops-*`), with MUI and the NiceAdmin theme in `app/providers/muiTheme.ts`.  
+**Source of truth:** this file + tokens in `app/globals.css` (`--ops-*`), with MUI and the Material You theme in `app/providers/muiTheme.ts`.  
 Do not invent a second look. Every signed-in page uses this system.
 
 Product domain, scoring math, and athletics: `docs/ATHLETICS.md`. Coding rules: `AGENT_CODING_GUIDE.md`.
@@ -17,49 +17,54 @@ There is **no** discipline chip, BIB, FOP, kit, medals, or event-code loader. Ca
 
 ---
 
-## Look: NiceAdmin on Material UI (exact)
+## Look: Material You (MD3), "MaterialMe" kit
 
-Built on **MUI** (`@mui/material` 9, Emotion). Every value below was measured from the NiceAdmin demo (niceadmin-mui-nextjs-main.vercel.app); override structure follows minimal-ui-kit/material-kit-react (MIT). NiceAdmin itself is a paid MUI Store template; no NiceAdmin source code or artwork is copied.
+Material 3 (m3.material.io) as styled by the MaterialMe UI kit, built on **MUI 9** with Emotion. Colours are the MD3 light scheme generated from the CMS teal seed `#165a50` (`@material/material-color-utilities`). Font: **Lexend** (closest Google font to the kit).
 
-**One palette source:** `app/providers/muiTheme.ts` (`cssVariables: true`). `globals.css` aliases the `--mui-palette-*` vars as `--ops-*`. MUI renders into `@layer mui` (`AppRouterCacheProvider enableCssLayer`), so Tailwind classes override it. No `CssBaseline`.
+**One palette source:** `app/providers/muiTheme.ts` (`md` object, `cssVariables: true`). `globals.css` aliases the MUI vars as `--ops-*`. MUI renders into `@layer mui`, so Tailwind classes override it. No `CssBaseline`.
 
----
-
-## Measured spec
+| MD3 role | Value | Token / use |
+|------|------|------|
+| primary / on-primary | `#006b5e` / `#fff` | `--ops-primary`: links, focus, icons that act |
+| primary-container / on | `#76f8e2` / `#00201b` | `--ops-accent`: primary buttons, active nav outline |
+| secondary-container | `#cde8e1` | `--ops-primary-soft`: selected chips, selected rows |
+| surface | `#f7faf8` | `--ops-bg`: page |
+| surface-container-lowest | `#fff` | `--ops-surface`: cards, tables |
+| surface-container-low | `#f2f4f2` | `--ops-board-muted`: insets, queue rows |
+| surface-container-high | `#e6e9e7` | dialogs |
+| surface-container-highest | `#e0e3e1` | `--ops-line`: card and table borders |
+| on-surface / on-surface-variant | `#191c1b` / `#3f4946` | text / muted text |
+| outline | `#6f7976` | `--ops-line-strong`: field and chip borders |
+| error / container | `#ba1a1a` / `#ffdad6` | `--ops-danger` |
+| success, warning, info | `#386a20`, `#7c5800`, `#446179` on `#c3efad`, `#ffdea6`, `#cae6ff` | status chips |
 
 | Part | Spec |
 |------|------|
-| Page | `#f5f5f5`, content padding 24px, font Onest 14px, ink `rgba(3,14,9,.8)` |
-| Sidebar | 270px white, right border `rgba(3,14,9,.1)`; logo row 70px, padding 0 24px; list padding 0 24px; 88px mini rail on tablet |
-| Nav subheader | 12px/600 uppercase, `rgba(3,14,9,.7)`, line-height 26px, padding 3px 12px, margin-left −10px; groups split by a `Divider` (16px margin) |
-| Nav item | 45px, padding 6px 10px, gap 2px, radius 8px, 14px/400, icon box 36px; **active** `#165a50` fill + `#c2fd75` text and icon |
-| Header | sticky white `AppBar`, 70px, no shadow, toolbar padding 0 24px; left: sidebar toggle; right: championship select (44px), avatar (34px), sign out |
-| Page banner (`PageHeader`) | `#165a50`, padding 20px, radius 12px; title h4 21px/600 white; right: breadcrumb (white / white 60%) or the page action (lime button) |
-| Card | white, radius 12px, shadow `0 0 2px rgba(145,158,171,.3), 0 12px 24px -4px rgba(145,158,171,.12)`; content padding 24px; header 16px 24px + divider; title h5 18px/600 |
-| Table (NiceAdmin User Table) | `TableCard`: card padding 24px → title h6 16px/600 + search (260px) right → toolbar (segmented filters left, primary action right) → `.ops-table` box (1px divider border, radius 12px) → `TablePager` (rows per page 10/25/50). Head row tint `rgba(3,14,9,.05)`, 14px/600 ink, 50px; body rows 50px, cells 6px 16px, 14px; sort icon 12px at 40% when idle; row hover `rgba(5,59,37,.08)`; row actions are colour `IconButton`s (edit green, archive/delete red) with `aria-label` |
-| Input | outlined, radius 8px, border `rgba(3,14,9,.45)` (\*), padding 12px 14px (44px); focus border primary; label above 14px/600, 5px gap |
-| Button | radius 12px, padding 6px 16px, min 44px (\*), `lg` 48px, 14px/400, no elevation, sentence case |
-| Status chip | small 24px, pill, 12px/600, palette `dark` text on the 15% tint of `main` (\*): success `#3d7a22`, warning `#8a5a00`, error `#b91c1c`, info `#5b2bbf` |
-| Filter (`ChipFilter`) | NiceAdmin segmented track: `rgba(3,14,9,.05)` bg, radius 12px, padding 2px 8px; segments 40px (\*), radius 12px, 13px; selected filled primary 600, idle 500 |
-| Dialog | radius 12px, title 18px/600 with divider, content padding 24px |
-| Alert | radius 12px, padding 6px 16px, 14px (\*); filled = palette fill (light fills take dark text \*), outlined = MUI default dark text |
-| Tabs | 48px, tab padding 12px 16px, 14px/400 capitalize, idle `rgba(3,14,9,.7)`, selected primary, 2px indicator |
-| Accordion | elevation 1 (`0 2px 3px rgba(0,0,0,.1)`), outer corners 12px, summary 16px/600, disabled `rgba(73,82,88,.12)` |
-| Tooltip / Menu / Popover | tooltip `rgba(3,14,9,.9)`, 12px/500, radius 8px, arrow; menu & popover radius 12px with the card shadow; menu items 44px |
-| Info colour | `#539bff` (tint `#ebf3fe`, readable text `#1d5fc4`) |
-
-(\*) **Deliberate departures from NiceAdmin, for floor staff on tablets:** control borders `.45` instead of `.1` (3:1), status text uses the palette `dark` shade instead of `main` (4.5:1), error is `#dc2626` instead of `#ef4444` (white button text 4.5:1), buttons / clickable chips / header icon buttons and the header select are 44px or 40px instead of 36px. Everything else is NiceAdmin as measured.
+| Nav drawer | black (`--ops-nav`), 264px (88px rail on tablet), white 15px/500 labels, 24px icons, 56px items, 16px radius; active = 1.5px `--ops-accent` outline + accent label, no fill; groups split by dark dividers |
+| Top app bar | white, 64px, sticky, 1px bottom border. Left: sidebar toggle (menu on phones) + "Section / Page". Right: championship select (trophy icon), divider, account button (avatar, name + chevron from 1024px) → profile drawer |
+| Sidebar | logo, nav groups; nothing else |
+| Page header | none drawn: the top app bar shows "Section / Page". `PageHeader` keeps a screen-reader h1, a one-line breadcrumb on nested setup pages, and an optional action |
+| Primary button | tonal: primary-container fill, 1.5px on-surface outline, 14px radius, 15px/500; hover = 4px offset shadow + lift |
+| Other buttons | outlined (outline border, primary text), text; 40px min height, label 14/20 |
+| Cards | white, 1px `--ops-line`, 16px radius, no shadow. Clickable cards: `ops-lift` (dark outline + offset shadow on hover) |
+| Stat card | 15px/500 label, outlined icon top-right, value 36/44, 14px hint, MD3 4px linear progress |
+| Filter chips (`ChipFilter`, `RoundChips`) | 8px radius, outline border; selected = secondary-container + check icon; 40px tall |
+| Tabs | MD3 primary tabs: 48px, 15px/500, 3px rounded on-surface indicator, divider under the row |
+| Text fields | MD3 outlined: 4px radius, outline border, 40px small |
+| Tables | `TableCard`: title + result count; Export (CSV / Excel of the filtered, sorted rows) and primary action on the right; search + compact labelled filter dropdowns (`filters`, locked ones read "Pick sport" etc.); removable active-filter chips + Clear all; sortable headers; pager. White card, plain 14/20 header row, 40px rows, hover state layer 8% |
+| Dialog | 28px radius, surface-container-high, 24/400 title, no dividers |
+| Menu / tooltip | menu 4px radius surface-container; plain tooltip inverse-surface 8px |
+| Status chip | 8px radius tonal container + dark text, always a word |
 
 ---
 
 ## Rejecting
 
 - Hand-rolled buttons, chips, dialogs, selects when the kit (MUI inside) has one
-- Browser `window.confirm` / `alert` / `prompt` → `useConfirm()` for every delete, archive, remove or other irreversible change; `toast` for messages
-- A second palette in CSS hex: palette changes go in `muiTheme.ts`
-- `CssBaseline`; one-off `sx` styling (use the theme, then Tailwind classes)
-- Fonts other than Onest; icon packs other than `@tabler/icons-react`
-- Copying NiceAdmin's code, illustrations or logo (paid template)
+- A second palette in CSS hex: palette changes go in `muiTheme.ts` (`md`)
+- Coloured page banners; gradients; drop shadows on resting cards (only the hover offset shadow)
+- Fonts other than Lexend; icon packs other than `@tabler/icons-react`
+- Browser `window.confirm` / `alert` / `prompt` → `useConfirm()`
 - Copying GMS call-room / BIB / kit / verification / medals / weight-class UI
 - Flattening championship setup into one workspace
 - A fourth filter chip (discipline). Age **is** the category.
@@ -68,7 +73,7 @@ Built on **MUI** (`@mui/material` 9, Emotion). Every value below was measured fr
 
 ## Motion
 
-MUI defaults (ripple, dialog fade) plus 150ms CSS colour transitions. No Framer Motion. Loaders stop under `prefers-reduced-motion`.
+MUI ripple and dialog fade, 150ms colour transitions, the 150ms lift on hover. Off under `prefers-reduced-motion`.
 
 ---
 
@@ -86,7 +91,7 @@ Other rules:
 
 - Wrap filter rows. Growing groups need a real basis (`flex-[1_1_18rem]`), not `flex-1` alone.
 - Tables: `overflow-x-auto`; keep pager outside the scroll.
-- Split views: `SplitWorkspace` `splitAt="md"` for list+form; default `lg` for wide boards.
+- Split views: `SplitWorkspace` `splitAt="lg"` for the Floor desks (Call Room, Scoring, match workspace): side by side from 1024px, stacked below with the queue capped at 40dvh. `md` only for a short list + small form.
 - Modals: `fixed inset-0` overlay, `max-h-[min(92dvh,…)]`, inner scroll. `Modal` already does this.
 - Empty-state copy must not say “on the left” / “above”.
 - Primary actions stay reachable on narrow widths (stack, wrap, or sticky bar).
@@ -98,14 +103,14 @@ Other rules:
 Staff do the same thing on Floor:
 
 1. Championship in the **header** picker.
-2. **EventFilters** — Sport → Gender → Age → Category. Shared `sessionStorage` key `cms.eventFilter`.
+2. **EventFilters** — Sport → Gender → Age → Event dropdowns. Choosing one opens the next. Shared `sessionStorage` key `cms.eventFilter`.
 3. **EventIdentity** — white card (teal eyebrow, title) as chips are picked.
 4. **Round chips** (`ChipFilter`) — selected = solid primary. Scoring and Results: **no All**; one round stays selected.
 5. **Split workspace** — left queue, right board (fixtures match editor, scoring board).
 6. **StickyActionBar** — Save / Complete. Disabled rules unchanged.
 7. Status is **derived** from data (`draft` / `scheduled` / `in_progress` / `completed`). No fake KPIs.
 
-Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Category until Age. Fixtures: empty chip = All (full list), each added chip narrows. Scoring and Results wait until all four chips are set. Round chips have no All. Results also has a Ranking tab (manual places).
+Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Event until Age. Choosing a value opens the next menu. Fixtures: empty = All. Scoring and Results wait until all four are set. Round chips have no All. Results also has a Ranking tab (manual places).
 
 ---
 
@@ -113,7 +118,7 @@ Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Cate
 
 ### Shell
 
-`app/(admin)/layout.tsx` — white sidebar, header with sidebar toggle / championship `SoftSelect` / avatar (→ `/account`) / sign out. Floor + dashboard gated until a championship exists (`EmptyState` → Championships).
+`app/(admin)/layout.tsx` — black sidebar (logo, nav); white top app bar with toggle, location, championship select and account. Floor + dashboard gated until a championship exists (`EmptyState` → Championships).
 
 Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Championships) · Catalog (Sport, Category) · Pages (Account Setting, UI Kit). `aria-current="page"` on the active link.
 
@@ -131,7 +136,7 @@ Greeting banner with championship name and status, four overview `StatCard`s, th
         /[teamId]/members
 ```
 
-Each page is the **next board**. `StepCrumbs` at the top. Create/edit in `Modal`. The record list is a `TableCard` (search, filters, sort, pager, icon actions). Sports and categories multi-add from a checklist modal; category add filters by gender and age.
+Each page is the **next board**. The path is the banner breadcrumb (`PageHeader crumbs`). Create/edit in `Modal`. The record list is a `TableCard` (search, filters, sort, pager, icon actions). Sports and categories multi-add from a checklist modal; category add filters by gender and age.
 
 ### Floor — Call Room (`/gameplay/call-room`)
 
@@ -163,7 +168,7 @@ Wait for filters. Category appears only after scoring locks 1st–3rd. Holders s
 
 ### Account Setting (`/account`)
 
-NiceAdmin account page. `PageHeader` banner, then a card with MUI `Tabs` (Account · Security, hash `#security` opens the second). Account: profile card (initials avatar, email, role chips) + personal details form (name, phone; email read-only) → `updateProfile`. Security: change password (current, new, confirm) → `authChangePassword`, which re-checks the current password. No avatar upload (no storage bucket).
+Account page. `PageHeader` title row, then a card with MUI `Tabs` (Account · Security, hash `#security` opens the second). Account: profile card (initials avatar, email, role chips) + personal details form (name, phone; email read-only) → `updateProfile`. Security: change password (current, new, confirm) → `authChangePassword`, which re-checks the current password. No avatar upload (no storage bucket).
 
 ### UI Kit (`/ui-kit`)
 
@@ -190,22 +195,22 @@ All in `components/ops/`. Import from `@/components/ops`. The kit wraps MUI; pag
 | `SoftSearch` | MUI `OutlinedInput` with search icon. |
 | `SoftSelect` | MUI `NativeSelect` + `OutlinedInput`; pass `<option>` children. |
 | `StatusBadge` | MUI `Chip`, soft fill + dark text. Never color alone. |
-| `ChipFilter` | Segmented filter (NiceAdmin User Table tabs). `showAll={false}` `allowEmpty={false}` on scoring/results rounds. |
-| `EventFilters` | Sport → Gender → Age → Category. `unlockInOrder` default. Empty = All. |
+| `ChipFilter` | MD3 filter chips (check when selected), sized to their options. `showAll={false}` `allowEmpty={false}` on scoring/results rounds. |
+| `EventFilters` | One card: Sport → Gender → Age → Event as filled pill menus (label above, 40px, 16px menu). Choosing a value opens the next menu. `unlockInOrder` default. Empty = All. |
 | `EventIdentity` | White “where am I” card with teal eyebrow. |
 | `SplitWorkspace` | Queue \| board. |
 | `StickyActionBar` | Footer actions on a board. |
-| `PageHeader` | NiceAdmin teal banner: title + hint, breadcrumb or action on the right. |
-| `EmptyState` / `ErrorBanner` / `NotificationBanner` | NiceAdmin banners: centred card, tinted icon circle (primary / danger / info), title, hint, action. `ErrorBanner` has `role="alert"`; use it when a load fails, with a Try again action. |
-| `GreetingBanner` | NiceAdmin greeting card (teal, white title, lime actions). Dashboard top. |
-| `StatCard` | NiceAdmin record card: label, value, hint, optional tinted icon tile and `LinearProgress` bar, optional `href`. |
-| `StepCrumbs` | Nested setup path. |
+| `PageHeader` | Hidden h1 + (nested pages) one breadcrumb line + optional action. `hint` is accepted but not shown. |
+| `EmptyState` / `ErrorBanner` / `NotificationBanner` | Centred card, tinted icon circle (primary / danger / info), title, hint, action. `ErrorBanner` has `role="alert"`; use it when a load fails, with a Try again action. |
+| `GreetingBanner` | Dashboard title row: greeting + badge, line, headline numbers, action. |
+| `StatCard` | Kit stat card: label, 36px value, hint, optional outlined icon and `LinearProgress` bar, optional `href`. |
+| `PageHeader crumbs` | Nested setup path, shown as the banner breadcrumb (no separate crumb row). |
 | `PageLoader` / `PageSkeleton` / `Shimmer` / `Spinner` | CSS loaders. Use skeletons for page waits, spinner for compact/inline, shimmer bars for unknown values. |
 | `RouteProgress` | Thin teal bar on route enter/exit. |
 | `Modal` | `components/Modal.tsx` — MUI `Dialog`. Escape, scrim click, focus trap. |
 | `useConfirm` / `ConfirmProvider` | Themed confirm (`components/ops/ConfirmDialog.tsx`, mounted in `app/layout.tsx`). `if (!(await confirm({ title, message, confirmLabel: "Archive", tone: "danger" }))) return;` Title names the thing, message says what happens, button is the verb. Cancel has focus; Escape and scrim cancel. `tone: "primary"` for non-destructive changes. |
 | `fieldClass` / `fieldErrorClass` | Inputs. Error = red outline (`ops-control-error`). |
-| `TableCard` / `TableSearch` / `TablePager` / `SortTh` | Catalog tables (`components/table.tsx`). Wrap any other table in `<div className="ops-table">`. Page with `pageRows` from `lib/utils/table.ts`. |
+| `TableCard` (`count`, `filters`, `exportMenu`, `onClearAll`) / `TableExport` / `TableSearch` / `TablePager` (wraps on phones) / `SortTh` | Catalog tables (`components/table.tsx`). Wrap any other table in `<div className="ops-table">`. Page with `pageRows` from `lib/utils/table.ts`. |
 | `cn()` | `lib/utils/cn.ts`. |
 
 Global classes in `globals.css`: `.ops-control`, `.ops-control-error`, `.soft-card`, `.ops-shimmer`, `.ops-spinner`.
@@ -244,7 +249,7 @@ Match statuses come from data. Do not invent extra colors.
 
 ## Accessibility (every screen)
 
-- Touch ≥ `--ops-touch-min` (44px) for buttons, inputs and icon buttons; chips 40px
+- Touch ≥ `--ops-touch-min` (40px) for buttons and inputs; icon buttons stay 44px; chips 40px
 - `focus-visible`: 2px solid `--ops-focus` (primary) outline on every interactive element (global in `globals.css`); MUI adds its own focus ripple
 - Status never by color alone (`StatusBadge` or visible text)
 - `aria-current="page"` on nav
@@ -256,7 +261,7 @@ Match statuses come from data. Do not invent extra colors.
 
 ## Icons
 
-`@tabler/icons-react` only (NiceAdmin's icon set; type `TablerIcon`). `stroke={1.5}` in nav and tiles, default elsewhere, `currentColor`. Size 20 in nav, 18 in row actions, 16 in fields. Do not mix icon packs. Browse names at tabler.io/icons.
+`@tabler/icons-react` only (type `TablerIcon`). Size 24 / `stroke={1.75}` in nav and stat cards, default elsewhere, `currentColor`. Size 20 in nav, 18 in row actions, 16 in fields. Do not mix icon packs. Browse names at tabler.io/icons.
 
 ---
 
@@ -264,7 +269,7 @@ Match statuses come from data. Do not invent extra colors.
 
 1. Use `--ops-*` tokens and `components/ops`.
 2. Floor pages: `EventFilters` + shared session filter. Do not invent a second filter store.
-3. Nested setup: new hop as its own route + `StepCrumbs`.
+3. Nested setup: new hop as its own route + `PageHeader crumbs`.
 4. Catalog: table with search, filter, sort, modal form.
 5. One primary sticky action. Colour transitions only.
 6. If the sport is not basketball 1v1, branch on `fixture.formatType` — see `docs/ATHLETICS.md`. Do not overload `ScoreMatchBoard` / `ResultMatchCard`.

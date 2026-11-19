@@ -8,7 +8,8 @@ import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { Modal, fieldClass, RequiredMark } from "@/components/Modal";
 import { RoundChips } from "@/components/RoundChips";
-import { SortTh, TableCard } from "@/components/table";
+import { SortTh, TableCard, TableExport } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   EmptyState,
   EventFilters,
@@ -16,7 +17,6 @@ import {
   PageSkeleton,
   SoftButton,
   StatusBadge,
-  StepCrumbs,
   useConfirm,
 } from "@/components/ops";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
@@ -141,6 +141,23 @@ export default function FixtureSportPage() {
       return compareText(a.categoryLabel, b.categoryLabel, sort.dir);
     });
   }, [cscs, activeFilter, fixtures, sort]);
+
+  function openDraw(csc: (typeof cscs)[number], fixtureId: string) {
+    if (!selected) return;
+    writeEventFilter({
+      championshipId: selected.id,
+      sportId,
+      gender: csc.categoryGender,
+      ageGroup: csc.categoryAgeGroup,
+      categoryId: csc.categoryId,
+      categoryName: csc.categoryName,
+    });
+    router.push(`/gameplay/fixtures/${fixtureId}`);
+  }
+
+  const onlyCsc = activeFilter.categoryId && visibleCscs.length === 1 ? visibleCscs[0]! : null;
+  const onlyFixture = onlyCsc ? (fixtures.find((row) => row.cscId === onlyCsc.id) ?? null) : null;
+  const openTarget = onlyCsc && onlyFixture ? { csc: onlyCsc, fixture: onlyFixture } : null;
   const usedCscIds = useMemo(() => new Set(fixtures.map((item) => item.cscId)), [fixtures]);
   const selectedCsc = cscs.find((item) => item.id === form.cscId) ?? null;
   const athleticsDraw = selectedCsc
@@ -299,19 +316,30 @@ export default function FixtureSportPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+    <div className="flex flex-1 flex-col gap-4">
+      <PageHeader
+        crumbs={[
           { href: "/gameplay/fixtures", label: "Sports" },
           { label: sportName },
         ]}
-      />
-      <PageHeader title="Categories" hint="All categories for this sport until you filter." />
+        title="Categories" hint="All categories for this sport until you filter." />
       <EventFilters
         championshipId={selected.id}
         lockSportId={sportId}
         unlockInOrder
         onChange={(value) => setFilter({ ...value })}
+        aside={
+          // one event picked and it has a draw: open it straight from the strip
+          openTarget ? (
+            <button
+              type="button"
+              onClick={() => openDraw(openTarget.csc, openTarget.fixture.id)}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[var(--ops-on-primary)] px-4 text-sm font-semibold text-[var(--ops-primary)]"
+            >
+              Open draw
+            </button>
+          ) : null
+        }
       />
       {cscs.length === 0 ? (
         <EmptyState
@@ -326,7 +354,33 @@ export default function FixtureSportPage() {
       ) : visibleCscs.length === 0 ? (
         <EmptyState title="No categories for this filter" hint="Clear a chip to see more." />
       ) : (
-        <TableCard title="Categories">
+        <TableCard
+          title="Categories"
+          count={visibleCscs.length}
+          exportMenu={
+            <TableExport
+              count={visibleCscs.length}
+              onExport={(format) =>
+                exportTable(
+                  visibleCscs,
+                  [
+                    { header: "Category", value: (row) => row.categoryLabel },
+                    { header: "Status", value: (row) => fixtures.find((item) => item.cscId === row.id)?.status.replace("_", " ") ?? "No draw" },
+                    {
+                      header: "Draw",
+                      value: (row) => {
+                        const fixture = fixtures.find((item) => item.cscId === row.id);
+                        return fixture ? `${formatLabel(fixture.formatType)} · ${fixture.matchCount} matches` : "";
+                      },
+                    },
+                  ],
+                  "fixture categories",
+                  format,
+                )
+              }
+            />
+          }
+        >
           <table>
             <thead>
               <tr>
@@ -346,17 +400,7 @@ export default function FixtureSportPage() {
                         <button
                           type="button"
                           className="font-semibold"
-                          onClick={() => {
-                            writeEventFilter({
-                              championshipId: selected.id,
-                              sportId,
-                              gender: csc.categoryGender,
-                              ageGroup: csc.categoryAgeGroup,
-                              categoryId: csc.categoryId,
-                              categoryName: csc.categoryName,
-                            });
-                            router.push(`/gameplay/fixtures/${fixture.id}`);
-                          }}
+                          onClick={() => openDraw(csc, fixture.id)}
                         >
                           {csc.categoryLabel}
                         </button>

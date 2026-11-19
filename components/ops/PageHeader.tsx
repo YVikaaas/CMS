@@ -1,52 +1,55 @@
 import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
-// Buttons and chips on a teal surface use the lime accent, as in NiceAdmin's welcome card.
-export const onTeal = [
-  "[&_.MuiButton-contained.MuiButton-colorPrimary]:bg-[var(--ops-accent)] [&_.MuiButton-contained.MuiButton-colorPrimary]:text-[var(--ops-on-accent)]",
-  "[&_.MuiButton-outlined.MuiButton-colorPrimary]:border-white/60 [&_.MuiButton-outlined.MuiButton-colorPrimary]:text-white",
-  "[&_.MuiChip-root]:bg-[var(--ops-accent)] [&_.MuiChip-root]:text-[var(--ops-on-accent)]",
-].join(" ");
-
-// NiceAdmin page banner: teal box, white title, breadcrumb (or the page action) on the right.
+/**
+ * Page heading. The top app bar already shows "Section / Page", so nothing big is drawn here:
+ * the title stays as a screen-reader h1, nested pages get one small breadcrumb line (their only
+ * way back up), and an action, if any, sits on the right. `hint` is kept for callers but not shown.
+ */
 export function PageHeader({
   title,
-  hint,
   action,
+  crumbs,
   className,
 }: {
   title: string;
   hint?: string;
   action?: ReactNode;
+  /** Parent steps for nested pages; the title is added as the last crumb. */
+  crumbs?: Array<{ href?: string; label: string }>;
   className?: string;
 }) {
+  const heading = <h1 className="sr-only">{title}</h1>;
+  if (!crumbs && !action) return heading;
+
+  const trail = crumbs ? [...crumbs, { label: title }] : [];
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--ops-primary)] p-5 text-white",
-        onTeal,
-        className,
-      )}
-    >
-      <div className="min-w-0">
-        <Typography variant="h4" component="h1">
-          {title}
-        </Typography>
-        {hint ? <p className="mt-1 text-sm text-white/70">{hint}</p> : null}
-      </div>
-      {action ? (
-        <div className="shrink-0">{action}</div>
-      ) : (
-        <Breadcrumbs aria-label="Breadcrumb" className="text-sm [&_.MuiBreadcrumbs-separator]:text-white/60">
-          <Link href="/dashboard" className="text-white hover:underline">
-            Dashboard
-          </Link>
-          <span className="text-white/60">{title}</span>
+    <div className={cn("flex min-h-11 flex-wrap items-center justify-between gap-3", className)}>
+      {heading}
+      {crumbs ? (
+        <Breadcrumbs aria-label="Breadcrumb" className="text-sm text-[var(--ops-text-muted)]">
+          {trail.map((crumb, index) =>
+            crumb.href && index < trail.length - 1 ? (
+              <Link key={`${crumb.label}-${index}`} href={crumb.href} className="hover:text-[var(--ops-text)] hover:underline">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span
+                key={`${crumb.label}-${index}`}
+                aria-current={index === trail.length - 1 ? "page" : undefined}
+                className={index === trail.length - 1 ? "font-medium text-[var(--ops-text)]" : undefined}
+              >
+                {crumb.label}
+              </span>
+            ),
+          )}
         </Breadcrumbs>
+      ) : (
+        <span />
       )}
+      {action ? <div className="flex shrink-0 flex-wrap items-center gap-3">{action}</div> : null}
     </div>
   );
 }

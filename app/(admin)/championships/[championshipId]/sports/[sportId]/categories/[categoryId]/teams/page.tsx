@@ -9,15 +9,14 @@ import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { EntrySheetModal } from "@/components/EntrySheetModal";
 import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
 import { NameInput, PhoneInput } from "@/components/fields";
-import { SortTh, TableCard, TablePager, TableSearch } from "@/components/table";
+import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
-  ChipFilter,
   EmptyState,
   PageHeader,
   PageSkeleton,
   SoftButton,
   StatusBadge,
-  StepCrumbs,
   useConfirm,
 } from "@/components/ops";
 import { useScopedChampionship } from "@/app/(admin)/championships/useScopedChampionship";
@@ -299,15 +298,14 @@ export default function ChampionshipCategoryTeamsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <StepCrumbs
-        items={[
+      <PageHeader
+        crumbs={[
           { href: "/championships", label: "Championships" },
           { href: sportsHref, label: championship.name },
           { href: categoriesHref, label: sport?.name ?? "Sport" },
           { label: categoryTitle },
         ]}
-      />
-      <PageHeader
+       
         title={solo ? "Athletes" : "Teams"}
         hint={
           solo
@@ -338,18 +336,46 @@ export default function ChampionshipCategoryTeamsPage() {
             placeholder={solo ? "Search athlete, organization, or city" : "Search team, organization, or city"}
           />
         }
-        toolbar={
-          solo ? null : (
-            <ChipFilter
-              ariaLabel="Roster"
-              value={rosterFilter}
-              onChange={setRosterFilter}
-              options={[
-                { value: "complete", label: "Complete" },
-                { value: "short", label: "Short" },
-              ]}
-            />
-          )
+        count={visible.length}
+        filters={
+          solo
+            ? undefined
+            : [
+                {
+                  id: "roster",
+                  label: "Roster",
+                  value: rosterFilter,
+                  options: [
+                    { value: "complete", label: "Complete" },
+                    { value: "short", label: "Short" },
+                  ],
+                  onChange: (value) => setRosterFilter(value as typeof rosterFilter),
+                },
+              ]
+        }
+        onClearAll={() => {
+          setSearch("");
+          setRosterFilter("");
+        }}
+        exportMenu={
+          <TableExport
+            count={visible.length}
+            onExport={(format) =>
+              exportTable(
+                visible,
+                [
+                  { header: "Name", value: (row) => row.name },
+                  { header: "Organization", value: (row) => row.orgName },
+                  { header: "City", value: (row) => row.city },
+                  ...(solo
+                    ? []
+                    : [{ header: "Members", value: (row: (typeof visible)[number]) => `${row.memberCount}/${row.teamSize}` }]),
+                ],
+                `${categoryTitle} ${solo ? "athletes" : "teams"}`,
+                format,
+              )
+            }
+          />
         }
         action={
           <div className="flex flex-wrap justify-end gap-2">

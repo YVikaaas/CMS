@@ -2,7 +2,7 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
-/* NiceAdmin MUI look. Palette lives in app/providers/muiTheme.ts; these alias its CSS vars. See .interface-design/system.md */
+/* Material You (MD3) look, "MaterialMe" kit. Palette lives in app/providers/muiTheme.ts; these alias its CSS vars. See .interface-design/system.md */
 :root {
   --background: var(--mui-palette-background-default);
   --foreground: var(--mui-palette-text-primary);
@@ -13,43 +13,47 @@
   --cms-line: var(--ops-line);
   --cms-muted: var(--ops-text-muted);
 
-  --ops-bg: var(--mui-palette-background-default);       /* #f5f5f5 page */
-  --ops-surface: var(--mui-palette-background-paper);    /* white cards */
+  --ops-bg: var(--mui-palette-background-default);       /* MD3 surface #f7faf8 */
+  --ops-surface: var(--mui-palette-background-paper);    /* surface-container-lowest #fff: cards */
   --ops-surface-raised: #ffffff;
-  --ops-surface-hover: #eceff1;
+  --ops-surface-hover: rgba(25, 28, 27, 0.08);            /* MD3 hover state layer */
   --ops-board: #ffffff;
-  --ops-board-muted: #f5f5f5;                             /* insets: queue rows, boards */
-  --ops-primary: var(--mui-palette-primary-main);        /* #165a50 teal */
+  --ops-board-muted: #f2f4f2;                             /* surface-container-low: insets, queue rows */
+  --ops-primary: var(--mui-palette-primary-main);        /* #006b5e */
   --ops-primary-hover: var(--mui-palette-primary-dark);
-  --ops-primary-soft: rgba(22, 90, 80, 0.1);
+  --ops-primary-soft: #cde8e1;                            /* secondary-container: selected fills */
   --ops-on-primary: var(--mui-palette-primary-contrastText);
-  --ops-accent: var(--mui-palette-secondary-main);       /* #c2fd75 lime */
+  --ops-accent: var(--mui-palette-secondary-main);       /* primary-container #76f8e2: tonal accent */
   --ops-on-accent: var(--mui-palette-secondary-contrastText);
-  --ops-success: var(--mui-palette-success-dark);        /* dark shades: 4.5:1 text on the 15% tints */
-  --ops-success-soft: rgba(147, 217, 115, 0.15);
-  --ops-warning: var(--mui-palette-warning-dark);
-  --ops-warning-soft: rgba(246, 181, 30, 0.15);
-  --ops-danger: var(--mui-palette-error-dark);
-  --ops-danger-soft: rgba(239, 68, 68, 0.15);
-  --ops-info: var(--mui-palette-info-dark);
-  --ops-info-soft: #ebf3fe;
-  --ops-text: var(--mui-palette-text-primary);
-  --ops-text-muted: var(--mui-palette-text-secondary);
-  --ops-text-subtle: var(--mui-palette-text-disabled);   /* table heads, placeholders */
+  --ops-success: var(--mui-palette-success-main);
+  --ops-success-soft: var(--mui-palette-success-light);
+  --ops-warning: var(--mui-palette-warning-main);
+  --ops-warning-soft: var(--mui-palette-warning-light);
+  --ops-danger: var(--mui-palette-error-main);
+  --ops-danger-soft: var(--mui-palette-error-light);
+  --ops-info: var(--mui-palette-info-main);
+  --ops-info-soft: var(--mui-palette-info-light);
+  --ops-text: var(--mui-palette-text-primary);           /* on-surface */
+  --ops-text-muted: var(--mui-palette-text-secondary);   /* on-surface-variant */
+  --ops-text-subtle: #6f7976;                             /* outline: placeholders, idle icons */
   --ops-row-hover: var(--mui-palette-action-hover);
-  --ops-line: var(--mui-palette-divider);
+  --ops-line: var(--mui-palette-divider);                /* surface-container-highest: card and table lines */
   --ops-border: var(--mui-palette-divider);
-  --ops-line-strong: rgba(3, 14, 9, 0.45);                /* control borders, 3:1 (NiceAdmin uses the 0.1 divider) */
+  --ops-line-strong: #6f7976;                             /* MD3 outline: field borders (3:1) */
   --ops-focus: var(--mui-palette-primary-main);
-  --ops-overlay: rgba(3, 14, 9, 0.5);
-  --ops-shadow-card: 0 0 2px 0 rgba(145, 158, 171, 0.3), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
-  --ops-shadow-pop: 0 0 2px 0 rgba(145, 158, 171, 0.24), 0 -4px 40px -8px rgba(145, 158, 171, 0.24);
-  --ops-shadow-modal: 0 0 2px 0 rgba(145, 158, 171, 0.24), 0 -24px 48px -8px rgba(145, 158, 171, 0.24);
-  --ops-touch-min: 2.75rem;
-  --ops-touch-pref: 3rem;
-  --ops-radius-card: 12px;
-  --ops-radius-panel: 10px;
-  --ops-radius-control: 8px;
+  --ops-overlay: rgba(0, 0, 0, 0.32);                     /* MD3 scrim */
+  --ops-nav: #000000;                                     /* kit: black navigation drawer */
+  --ops-nav-ink: #ffffff;
+  --ops-nav-line: #2d3130;
+  --ops-shadow-card: none;
+  --ops-shadow-offset: 4px 4px 0 var(--ops-text);         /* kit hover on cards and primary buttons */
+  --ops-shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);   /* MD3 level 2 */
+  --ops-shadow-modal: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15); /* MD3 level 3 */
+  --ops-touch-min: 2.5rem; /* MD3 button / compact field: 40px */
+  --ops-touch-pref: 2.75rem;
+  --ops-radius-card: 16px;
+  --ops-radius-panel: 12px;
+  --ops-radius-control: 4px;                              /* MD3 text fields */
   --ops-duration: 150ms;
   --ops-ease: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -57,12 +61,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-onest);
-  --font-display: var(--font-onest);
-  /* Map Tailwind radii onto the system: lg = control, xl = panel, 2xl = card */
+  --font-sans: var(--font-lexend);
+  --font-display: var(--font-lexend);
+  /* Map Tailwind radii onto MD3 shape: lg = small (8), xl = medium (12), 2xl = large (16) */
   --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
 }
 
 body {
@@ -75,7 +79,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .tabular-nums,
@@ -87,6 +91,11 @@ th {
 :where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"]):focus-visible {
   outline: 2px solid var(--ops-focus);
   outline-offset: 2px;
+}
+
+/* MUI inputs show focus with their own border: no second outline inside them */
+.MuiOutlinedInput-root :focus-visible {
+  outline: none;
 }
 
 a,
@@ -126,7 +135,8 @@ input:disabled {
 
 /* raw inputs styled to match MUI OutlinedInput */
 .ops-control {
-  min-height: 44px;
+  min-height: 40px;
+  line-height: 20px;
   border-radius: var(--ops-radius-control);
   border: 1px solid var(--ops-line-strong);
   background: transparent;
@@ -175,7 +185,7 @@ select.ops-control {
   border-color: var(--ops-danger);
 }
 
-/* NiceAdmin "User Table": bordered box, tinted header row, 50px rows.
+/* Table box: bordered, plain header row, 48px rows (MD3 body-medium 14/20).
    Unlayered on purpose so it wins over old per-cell padding utilities. */
 .ops-table {
   overflow-x: auto;
@@ -192,19 +202,23 @@ select.ops-control {
 }
 
 .ops-table thead th {
-  height: 50px;
-  padding: 6px 16px;
-  background: rgba(3, 14, 9, 0.05);
+  height: 40px;
+  padding: 4px 12px;
+  background: transparent;
   color: var(--ops-text);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
   white-space: nowrap;
   border-bottom: 1px solid var(--ops-line);
 }
 
 .ops-table tbody td {
-  height: 50px;
-  padding: 6px 16px;
+  height: 40px;
+  padding: 4px 12px;
+  font-size: 14px;
+  line-height: 20px;
   border-bottom: 1px solid var(--ops-line);
 }
 
@@ -224,11 +238,27 @@ select.ops-control {
   background: var(--ops-primary-soft);
 }
 
+/* Kit hover for clickable cards: dark outline + solid offset shadow */
+.ops-lift {
+  transition: box-shadow var(--ops-duration) var(--ops-ease), transform var(--ops-duration) var(--ops-ease), border-color var(--ops-duration) var(--ops-ease);
+}
+
+.ops-lift:hover {
+  border-color: var(--ops-text);
+  box-shadow: var(--ops-shadow-offset);
+  transform: translate(-2px, -2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-lift:hover {
+    transform: none;
+  }
+}
+
 .soft-card {
   border-radius: var(--ops-radius-card);
   border: 1px solid transparent; /* kept so a selected border does not shift layout */
   background: var(--ops-surface);
-  box-shadow: var(--ops-shadow-card);
 }
 
 .ops-shimmer {

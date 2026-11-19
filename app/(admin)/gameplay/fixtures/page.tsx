@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { SortTh, TableCard } from "@/components/table";
+import { SortTh, TableCard, TableExport } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   EmptyState,
   EventFilters,
@@ -106,8 +107,8 @@ export default function FixturesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Fixtures" hint="All sports until you pick one. Later chips narrow the list." />
+    <div className="flex flex-1 flex-col gap-4">
+      <PageHeader title="Fixtures" />
       <EventFilters
         championshipId={selected.id}
         onChange={(value) => {
@@ -153,7 +154,28 @@ export default function FixturesPage() {
             <p className="text-2xl font-semibold tabular-nums">{drawCount}</p>
           </div>
         </SoftCard>
-        <TableCard title="Sports">
+        <TableCard
+          title="Sports"
+          count={visibleSports.length}
+          exportMenu={
+            <TableExport
+              count={visibleSports.length}
+              onExport={(format) =>
+                exportTable(
+                  visibleSports,
+                  [
+                    { header: "Sport", value: (row) => row.name },
+                    { header: "Code", value: (row) => row.code },
+                    { header: "Mode", value: (row) => row.eventMode },
+                    { header: "Categories", value: (row) => offerings.find((item) => item.sportId === row.id)?.categoryIds.length ?? 0 },
+                  ],
+                  "fixture sports",
+                  format,
+                )
+              }
+            />
+          }
+        >
           <table>
             <thead>
               <tr>

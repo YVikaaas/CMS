@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useChampionship } from "@/app/providers/ChampionshipProvider";
 import { IconCircleCheck, IconMedal, IconTrophy, IconUsers } from "@tabler/icons-react";
 import { useCurrentUser } from "@/app/providers/CurrentUserProvider";
-import { TableCard } from "@/components/table";
+import { TableCard, TableExport } from "@/components/table";
+import { exportTable } from "@/lib/utils/exportTable";
 import {
   EmptyState,
   ErrorBanner,
@@ -262,7 +263,27 @@ export default function DashboardPage() {
 
 
       {ready && s ? (
-        <TableCard title="Detail">
+        <TableCard
+          title="Detail"
+          exportMenu={
+            <TableExport
+              count={detailRows(s, sportsHref).length}
+              onExport={(format) =>
+                exportTable(
+                  detailRows(s, sportsHref),
+                  [
+                    { header: "Group", value: (row) => row.group },
+                    { header: "Metric", value: (row) => row.label },
+                    { header: "Value", value: (row) => row.value },
+                    { header: "Note", value: (row) => row.hint },
+                  ],
+                  `${selected.name} dashboard`,
+                  format,
+                )
+              }
+            />
+          }
+        >
           <table>
             <thead>
               <tr>

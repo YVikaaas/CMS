@@ -22,7 +22,7 @@ type Pending = ConfirmOptions & { resolve: (ok: boolean) => void };
 
 const ConfirmContext = createContext<((options: ConfirmOptions) => Promise<boolean>) | null>(null);
 
-/** NiceAdmin-style confirm dialog. Replaces window.confirm: `if (!(await confirm({...}))) return;` */
+/** Themed confirm dialog. Replaces window.confirm: `if (!(await confirm({...}))) return;` */
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
