@@ -291,15 +291,41 @@ export type Team = {
   createdAt: string;
 };
 
+export type Athlete = {
+  id: string;
+  name: string;
+  phone: string;
+  gender: Gender;
+};
+
+export type AthleteParticipation = {
+  championshipId: string;
+  championshipName: string;
+  teamId: string;
+  teamName: string;
+  cscId: string;
+  sportId: string;
+  sportName: string;
+  categoryId: string;
+  categoryLabel: string;
+  teamSize: number;
+};
+
+export type ChampionshipAthlete = Athlete & {
+  participations: AthleteParticipation[];
+};
+
 export type TeamMember = {
   id: string;
   teamId: string;
+  athleteId: string;
   name: string;
   phone: string;
   gender: Gender;
 };
 
 export type TeamMemberInput = {
+  athleteId?: string | null;
   name: string;
   phone: string;
   gender: Gender;

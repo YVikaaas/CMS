@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
-import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
-import { NameInput, PhoneInput } from "@/components/fields";
+import { IconTrash } from "@tabler/icons-react";
+import { AthletePicker, emptyAthleteDraft, type AthleteDraft } from "@/components/AthletePicker";
+import { Modal } from "@/components/Modal";
 import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
 import { exportTable } from "@/lib/utils/exportTable";
 import {
@@ -25,13 +25,10 @@ import {
   createTeamMember,
   getTeam,
   listTeamMembers,
-  updateTeamMember,
 } from "@/lib/services";
 import type { Team, TeamMember } from "@/lib/types/cms";
 import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError, phoneError } from "@/lib/utils/validation";
-
-const emptyForm = { name: "", phone: "" };
 
 export default function ChampionshipTeamMembersPage() {
   const confirm = useConfirm();
@@ -52,9 +49,8 @@ export default function ChampionshipTeamMembersPage() {
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<AthleteDraft>(emptyAthleteDraft("male"));
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string }>({});
 
   const sportsHref = `/events/${championshipId}/sports`;
@@ -95,21 +91,12 @@ export default function ChampionshipTeamMembersPage() {
 
   const closeForm = () => {
     setFormOpen(false);
-    setEditingId(null);
-    setForm(emptyForm);
+    setForm(emptyAthleteDraft(team?.gender ?? "male"));
     setFieldErrors({});
   };
 
   const openCreate = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setFieldErrors({});
-    setFormOpen(true);
-  };
-
-  const openEdit = (member: TeamMember) => {
-    setEditingId(member.id);
-    setForm({ name: member.name, phone: member.phone });
+    setForm(emptyAthleteDraft(team?.gender ?? "male"));
     setFieldErrors({});
     setFormOpen(true);
   };
@@ -121,21 +108,26 @@ export default function ChampionshipTeamMembersPage() {
     if (memberNameErr) nextErrors.name = memberNameErr;
     const memberPhoneErr = phoneError(form.phone, "Member phone");
     if (memberPhoneErr) nextErrors.phone = memberPhoneErr;
+    if (form.existing && team && form.gender !== team.gender) {
+      nextErrors.phone = `${form.name} is listed as ${form.gender}, this category is ${team.gender}.`;
+    }
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       toast.error("Fill the highlighted fields.");
       return;
     }
     setSaving(true);
-    const result = editingId
-      ? await updateTeamMember(editingId, form)
-      : await createTeamMember(teamId, form);
+    const result = await createTeamMember(teamId, {
+      athleteId: form.athleteId,
+      name: form.name,
+      phone: form.phone,
+    });
     setSaving(false);
     if (result.error) {
       toast.error(result.error.message);
       return;
     }
-    toast.success(editingId ? "Member updated." : "Member added.");
+    toast.success("Member added.");
     closeForm();
     await load();
   };
@@ -238,9 +230,6 @@ export default function ChampionshipTeamMembersPage() {
                   <StatusBadge>{member.gender}</StatusBadge>
                 </td>
                 <td className="text-right whitespace-nowrap">
-                  <IconButton color="success" aria-label={`Edit ${member.name}`} title="Edit" onClick={() => openEdit(member)}>
-                    <IconPencil size={18} />
-                  </IconButton>
                   <IconButton
                     color="error"
                     aria-label={`Remove ${member.name}`}
@@ -269,44 +258,21 @@ export default function ChampionshipTeamMembersPage() {
         </table>
       </TableCard>
 
-      <Modal
-        open={formOpen}
-        title={editingId ? "Edit member" : "Add member"}
-        onClose={closeForm}
-      >
+      <Modal open={formOpen} title="Add member" onClose={closeForm}>
         <form onSubmit={onSave} className="grid gap-4">
-          <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            <span>
-              Name
-              <RequiredMark />
-            </span>
-            <NameInput
-              value={form.name}
-              onChange={(name) => {
-                setForm((current) => ({ ...current, name }));
-                setFieldErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              className={fieldErrors.name ? fieldErrorClass : fieldClass}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            <span>
-              Phone
-              <RequiredMark />
-            </span>
-            <PhoneInput
-              value={form.phone}
-              onChange={(phone) => {
-                setForm((current) => ({ ...current, phone }));
-                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
-              }}
-              className={fieldErrors.phone ? fieldErrorClass : fieldClass}
-            />
-          </label>
+          <AthletePicker
+            value={form}
+            expectedGender={team.gender}
+            onChange={(next) => {
+              setForm(next);
+              setFieldErrors({});
+            }}
+            errors={fieldErrors}
+          />
           <p className="text-sm text-[var(--ops-text-muted)]">Gender is {team.gender} for this category.</p>
           <div className="flex gap-2">
             <SoftButton type="submit" variant="primary" loading={saving}>
-              {editingId ? "Save changes" : "Add member"}
+              Add member
             </SoftButton>
             <SoftButton type="button" onClick={closeForm}>
               Cancel

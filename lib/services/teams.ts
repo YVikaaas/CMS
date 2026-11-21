@@ -3,6 +3,7 @@ import { categoryLabel } from "@/lib/utils/labels";
 import { parseFixtureConfig } from "@/lib/utils/fixtures";
 import { nameError, optionalNameError, phoneError } from "@/lib/utils/validation";
 import type {
+  Athlete,
   CscAthlete,
   CscOption,
   Gender,
@@ -11,6 +12,7 @@ import type {
   TeamMember,
   TeamMemberInput,
 } from "@/lib/types/cms";
+import { ensureAthlete, updateAthlete } from "./athletes";
 import { toServiceError } from "./errors";
 
 const TEAM_SELECT = `
@@ -132,9 +134,9 @@ function validateMembers(
     if (member.gender !== gender) {
       return `All members must be ${gender}.`;
     }
-    const key = `${member.name.trim().toLowerCase()}|${member.phone.trim()}`;
+    const key = member.phone.trim();
     if (seen.has(key)) {
-      return "Each member name and phone combination must be unique.";
+      return "Each member phone must be unique.";
     }
     seen.add(key);
   }
@@ -256,16 +258,22 @@ export async function createTeam(input: {
     await archiveTeam(data.id);
     return { data: null, error: saved.error };
   }
+  if (rosterData.teamSize === 1 && rosterData.maxTeamSize === 1) {
+    await syncSoloTeamName(data.id);
+  }
   return listTeamById(data.id);
 }
 
 function teamWriteError(error: { message?: string } | null, name: string) {
   const message = error?.message ?? "";
+  if (/athlete_phone_live_idx/i.test(message)) {
+    return { message: "This phone is already an athlete." };
+  }
+  if (/team_member_athlete_team_live_idx/i.test(message)) {
+    return { message: "This athlete is already on this team." };
+  }
   if (/team_csc_name_live_idx|duplicate key/i.test(message)) {
     return { message: `${name} is already in this category.` };
-  }
-  if (/team_member_name_phone_live_idx/i.test(message)) {
-    return { message: "A player on this row is already on a team." };
   }
   return toServiceError(error);
 }
@@ -353,6 +361,9 @@ export async function updateTeam(
       gender: team.gender,
     });
     if (saved.error) return { data: null, error: saved.error };
+    if (team.teamSize === 1 && team.maxTeamSize === 1) {
+      await syncSoloTeamName(id);
+    }
   }
 
   return listTeamById(id);
@@ -360,6 +371,14 @@ export async function updateTeam(
 
 export async function getTeam(id: string): Promise<ServiceResult<Team>> {
   return listTeamById(id);
+}
+
+async function syncSoloTeamName(teamId: string): Promise<void> {
+  const members = await listTeamMembers(teamId);
+  const athleteName = members.data?.[0]?.name?.trim();
+  if (!athleteName) return;
+  const supabase = createClient();
+  await supabase.from("team").update({ name: athleteName }).eq("id", teamId);
 }
 
 async function listTeamById(id: string): Promise<ServiceResult<Team>> {
@@ -378,6 +397,7 @@ async function listTeamById(id: string): Promise<ServiceResult<Team>> {
 type MemberRow = {
   id: string;
   team_id: string;
+  athlete_id: string;
   name: string;
   phone: string;
   gender: Gender;
@@ -387,29 +407,36 @@ function toMember(row: MemberRow): TeamMember {
   return {
     id: row.id,
     teamId: row.team_id,
+    athleteId: row.athlete_id,
     name: row.name,
     phone: row.phone,
     gender: row.gender,
   };
 }
 
-async function namePhoneTaken(
-  name: string,
-  phone: string,
-  excludeId?: string,
-): Promise<ServiceResult<boolean>> {
+async function athleteAlreadyInCsc(
+  athleteId: string,
+  cscId: string,
+  excludeTeamId?: string,
+): Promise<ServiceResult<string | null>> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("team_member")
-    .select("id, name, phone")
-    .eq("phone", phone)
+    .select("id, name, team_id, team:team_id (id, deleted_at, competition_sport_category_map_id)")
+    .eq("athlete_id", athleteId)
     .is("deleted_at", null);
   if (error) return { data: null, error: toServiceError(error) };
-  const taken = (data ?? []).some(
-    (row) =>
-      row.id !== excludeId && row.name.toLowerCase() === name.toLowerCase(),
-  );
-  return { data: taken, error: null };
+  const clash = (data ?? []).find((row) => {
+    const team = unwrap(row.team) as {
+      id: string;
+      deleted_at: string | null;
+      competition_sport_category_map_id: string;
+    } | null;
+    if (!team || team.deleted_at) return false;
+    if (excludeTeamId && team.id === excludeTeamId) return false;
+    return team.competition_sport_category_map_id === cscId;
+  });
+  return { data: clash ? clash.name : null, error: null };
 }
 
 export async function listCscAthletes(
@@ -443,7 +470,7 @@ export async function listTeamMembers(
   const supabase = createClient();
   const { data, error } = await supabase
     .from("team_member")
-    .select("id, team_id, name, phone, gender")
+    .select("id, team_id, athlete_id, name, phone, gender")
     .eq("team_id", teamId)
     .is("deleted_at", null)
     .order("name");
@@ -456,7 +483,7 @@ export async function listTeamMembers(
 
 export async function createTeamMember(
   teamId: string,
-  input: { name: string; phone: string },
+  input: { athleteId?: string | null; name: string; phone: string },
 ): Promise<ServiceResult<TeamMember>> {
   const nameErr = nameError(input.name, "Member name");
   if (nameErr) return { data: null, error: { message: nameErr } };
@@ -474,14 +501,20 @@ export async function createTeamMember(
     };
   }
 
-  const name = input.name.trim();
-  const phone = input.phone.trim();
-  const taken = await namePhoneTaken(name, phone);
-  if (taken.error) return { data: null, error: taken.error };
-  if (taken.data) {
+  const athlete = await ensureAthlete({
+    athleteId: input.athleteId,
+    name: input.name,
+    phone: input.phone,
+    gender: team.data.gender,
+  });
+  if (athlete.error || !athlete.data) return { data: null, error: athlete.error };
+
+  const clash = await athleteAlreadyInCsc(athlete.data.id, team.data.cscId, teamId);
+  if (clash.error) return { data: null, error: clash.error };
+  if (clash.data) {
     return {
       data: null,
-      error: { message: `${name} / ${phone} is already on a team.` },
+      error: { message: `${athlete.data.name} is already in this category.` },
     };
   }
 
@@ -490,11 +523,12 @@ export async function createTeamMember(
     .from("team_member")
     .insert({
       team_id: teamId,
-      name,
-      phone,
-      gender: team.data.gender,
+      athlete_id: athlete.data.id,
+      name: athlete.data.name,
+      phone: athlete.data.phone,
+      gender: athlete.data.gender,
     })
-    .select("id, team_id, name, phone, gender")
+    .select("id, team_id, athlete_id, name, phone, gender")
     .single();
   if (error || !data) return { data: null, error: toServiceError(error) };
   return { data: toMember(data as MemberRow), error: null };
@@ -504,15 +538,10 @@ export async function updateTeamMember(
   id: string,
   input: { name: string; phone: string },
 ): Promise<ServiceResult<TeamMember>> {
-  const nameErr = nameError(input.name, "Member name");
-  if (nameErr) return { data: null, error: { message: nameErr } };
-  const phoneErr = phoneError(input.phone, "Member phone");
-  if (phoneErr) return { data: null, error: { message: phoneErr } };
-
   const supabase = createClient();
   const { data: current, error: currentError } = await supabase
     .from("team_member")
-    .select("id, team_id, deleted_at")
+    .select("id, team_id, athlete_id, deleted_at")
     .eq("id", id)
     .maybeSingle();
   if (currentError) return { data: null, error: toServiceError(currentError) };
@@ -523,22 +552,17 @@ export async function updateTeamMember(
   const team = await listTeamById(current.team_id);
   if (team.error || !team.data) return { data: null, error: team.error };
 
-  const name = input.name.trim();
-  const phone = input.phone.trim();
-  const taken = await namePhoneTaken(name, phone, id);
-  if (taken.error) return { data: null, error: taken.error };
-  if (taken.data) {
-    return {
-      data: null,
-      error: { message: `${name} / ${phone} is already on a team.` },
-    };
-  }
+  const athlete = await updateAthlete(current.athlete_id, {
+    name: input.name,
+    phone: input.phone,
+    gender: team.data.gender,
+  });
+  if (athlete.error || !athlete.data) return { data: null, error: athlete.error };
 
   const { data, error } = await supabase
     .from("team_member")
-    .update({ name, phone, gender: team.data.gender })
+    .select("id, team_id, athlete_id, name, phone, gender")
     .eq("id", id)
-    .select("id, team_id, name, phone, gender")
     .single();
   if (error || !data) return { data: null, error: toServiceError(error) };
   return { data: toMember(data as MemberRow), error: null };
@@ -583,7 +607,7 @@ export async function saveTeamMembers(
   const supabase = createClient();
   const { data: team, error: teamError } = await supabase
     .from("team")
-    .select("gender")
+    .select("gender, competition_sport_category_map_id")
     .eq("id", teamId)
     .maybeSingle();
   if (teamError) return { data: null, error: toServiceError(teamError) };
@@ -595,48 +619,48 @@ export async function saveTeamMembers(
     if (membersErr) return { data: null, error: { message: membersErr } };
   }
 
-  const normalized = stamped.map((member) => ({
-    name: member.name.trim(),
-    phone: member.phone.trim(),
-    gender,
-  }));
+  const resolved: Athlete[] = [];
+  for (const member of stamped) {
+    const athlete = await ensureAthlete({
+      athleteId: member.athleteId,
+      name: member.name,
+      phone: member.phone,
+      gender,
+    });
+    if (athlete.error || !athlete.data) return { data: null, error: athlete.error };
+    resolved.push(athlete.data);
+  }
 
-  const { data: liveByPhone, error: liveError } = await supabase
-    .from("team_member")
-    .select("id, team_id, name, phone")
-    .in(
-      "phone",
-      normalized.map((member) => member.phone),
-    )
-    .is("deleted_at", null);
-  if (liveError) return { data: null, error: toServiceError(liveError) };
+  if (new Set(resolved.map((athlete) => athlete.id)).size !== resolved.length) {
+    return { data: null, error: { message: "Each member phone must be unique." } };
+  }
 
-  for (const member of normalized) {
-    const clash = (liveByPhone ?? []).find(
-      (row) =>
-        row.phone === member.phone &&
-        row.name.toLowerCase() === member.name.toLowerCase() &&
-        row.team_id !== teamId,
+  for (const athlete of resolved) {
+    const clash = await athleteAlreadyInCsc(
+      athlete.id,
+      team.competition_sport_category_map_id,
+      teamId,
     );
-    if (clash) {
+    if (clash.error) return { data: null, error: clash.error };
+    if (clash.data) {
       return {
         data: null,
-        error: {
-          message: `${member.name} / ${member.phone} is already on another team.`,
-        },
+        error: { message: `${athlete.name} is already in this category.` },
       };
     }
   }
 
   const { data: existing, error: existingError } = await supabase
     .from("team_member")
-    .select("id, name, phone, deleted_at")
+    .select("id, athlete_id, phone, deleted_at")
     .eq("team_id", teamId);
   if (existingError) return { data: null, error: toServiceError(existingError) };
 
-  if (roster && roster.min === 1 && roster.max === 1 && normalized.length === 1) {
-    const next = normalized[0];
-    const live = (existing ?? []).filter((item) => !item.deleted_at);
+  const rows = existing ?? [];
+
+  if (roster && roster.min === 1 && roster.max === 1 && resolved.length === 1) {
+    const next = resolved[0];
+    const live = rows.filter((item) => !item.deleted_at);
     const keep = live[0];
     const now = new Date().toISOString();
     for (const row of live.slice(1)) {
@@ -650,6 +674,7 @@ export async function saveTeamMembers(
       const { error } = await supabase
         .from("team_member")
         .update({
+          athlete_id: next.id,
           name: next.name,
           phone: next.phone,
           gender: next.gender,
@@ -660,6 +685,7 @@ export async function saveTeamMembers(
     } else {
       const { error } = await supabase.from("team_member").insert({
         team_id: teamId,
+        athlete_id: next.id,
         name: next.name,
         phone: next.phone,
         gender: next.gender,
@@ -669,43 +695,40 @@ export async function saveTeamMembers(
     return { data: true, error: null };
   }
 
-  const keepKeys = new Set(
-    normalized.map((member) => `${member.name.toLowerCase()}|${member.phone}`),
-  );
+  const keepIds = new Set(resolved.map((athlete) => athlete.id));
 
-  for (const member of normalized) {
-    const key = `${member.name.toLowerCase()}|${member.phone}`;
-    const row = (existing ?? []).find(
-      (item) => `${item.name.toLowerCase()}|${item.phone}` === key,
-    );
+  for (const athlete of resolved) {
+    const row =
+      rows.find((item) => item.athlete_id === athlete.id) ??
+      rows.find((item) => item.phone === athlete.phone);
     if (!row) {
       const { error } = await supabase.from("team_member").insert({
         team_id: teamId,
-        name: member.name,
-        phone: member.phone,
-        gender: member.gender,
+        athlete_id: athlete.id,
+        name: athlete.name,
+        phone: athlete.phone,
+        gender: athlete.gender,
       });
-      if (error) return { data: null, error: toServiceError(error) };
-    } else if (row.deleted_at) {
-      const { error } = await supabase
-        .from("team_member")
-        .update({ deleted_at: null, gender: member.gender, name: member.name })
-        .eq("id", row.id);
       if (error) return { data: null, error: toServiceError(error) };
     } else {
       const { error } = await supabase
         .from("team_member")
-        .update({ gender: member.gender, name: member.name })
+        .update({
+          athlete_id: athlete.id,
+          name: athlete.name,
+          phone: athlete.phone,
+          gender: athlete.gender,
+          deleted_at: null,
+        })
         .eq("id", row.id);
       if (error) return { data: null, error: toServiceError(error) };
     }
   }
 
   const now = new Date().toISOString();
-  for (const row of existing ?? []) {
+  for (const row of rows) {
     if (row.deleted_at) continue;
-    const key = `${row.name.toLowerCase()}|${row.phone}`;
-    if (!keepKeys.has(key)) {
+    if (!keepIds.has(row.athlete_id)) {
       const { error } = await supabase
         .from("team_member")
         .update({ deleted_at: now })

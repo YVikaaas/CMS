@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import IconButton from "@mui/material/IconButton";
 import { IconPencil, IconTrash } from "@tabler/icons-react";
 import { EntrySheetModal } from "@/components/EntrySheetModal";
+import { AthletePicker, emptyAthleteDraft, type AthleteDraft } from "@/components/AthletePicker";
 import { Modal, fieldClass, fieldErrorClass, RequiredMark } from "@/components/Modal";
-import { NameInput, PhoneInput } from "@/components/fields";
+import { NameInput } from "@/components/fields";
 import { SortTh, TableCard, TableExport, TablePager, TableSearch } from "@/components/table";
 import { exportTable } from "@/lib/utils/exportTable";
 import {
@@ -38,21 +39,19 @@ import { categoryLabel } from "@/lib/utils/labels";
 import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError, optionalNameError, phoneError } from "@/lib/utils/validation";
 
-const emptyMember = (gender: Gender = "male"): TeamMemberInput => ({
-  name: "",
-  phone: "",
-  gender,
-});
-
-function padMembers(
-  members: TeamMemberInput[],
-  min: number,
-  max: number,
-  gender: Gender,
-): TeamMemberInput[] {
+function padMembers(members: AthleteDraft[], min: number, max: number, gender: Gender): AthleteDraft[] {
   const next = members.slice(0, max);
-  while (next.length < min) next.push(emptyMember(gender));
+  while (next.length < min) next.push(emptyAthleteDraft(gender));
   return next;
+}
+
+function toMemberInput(draft: AthleteDraft, gender: Gender): TeamMemberInput {
+  return {
+    athleteId: draft.athleteId,
+    name: draft.name,
+    phone: draft.phone,
+    gender: draft.existing ? draft.gender : gender,
+  };
 }
 
 export default function ChampionshipCategoryTeamsPage() {
@@ -84,8 +83,8 @@ export default function ChampionshipCategoryTeamsPage() {
   const [teamName, setTeamName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [city, setCity] = useState("");
-  const [athletePhone, setAthletePhone] = useState("");
-  const [members, setMembers] = useState<TeamMemberInput[]>([emptyMember()]);
+  const [athlete, setAthlete] = useState<AthleteDraft>(emptyAthleteDraft("male"));
+  const [members, setMembers] = useState<AthleteDraft[]>([emptyAthleteDraft("male")]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
   const [ready, setReady] = useState(false);
 
@@ -140,7 +139,7 @@ export default function ChampionshipCategoryTeamsPage() {
     setTeamName("");
     setOrgName("");
     setCity("");
-    setAthletePhone("");
+    setAthlete(emptyAthleteDraft(memberGender));
     setMembers(padMembers([], minMembers, maxMembers, memberGender));
     setFieldErrors({});
   };
@@ -160,18 +159,22 @@ export default function ChampionshipCategoryTeamsPage() {
     setTeamName(team.name);
     setOrgName(team.orgName ?? "");
     setCity(team.city ?? "");
-    setAthletePhone("");
     setFieldErrors({});
     if (solo) {
       const membersRes = await listTeamMembers(team.id);
       if (membersRes.error) toast.error(membersRes.error.message);
-      const athlete = membersRes.data?.[0];
-      setTeamName(athlete?.name || team.name);
-      setAthletePhone(athlete?.phone ?? "");
-      setMembers(
-        athlete
-          ? [{ name: athlete.name, phone: athlete.phone, gender: memberGender }]
-          : padMembers([], 1, 1, memberGender),
+      const row = membersRes.data?.[0];
+      setTeamName(row?.name || team.name);
+      setAthlete(
+        row
+          ? {
+              athleteId: row.athleteId,
+              name: row.name,
+              phone: row.phone,
+              gender: row.gender,
+              existing: true,
+            }
+          : emptyAthleteDraft(memberGender),
       );
     }
     setFormOpen(true);
@@ -184,31 +187,41 @@ export default function ChampionshipCategoryTeamsPage() {
       return;
     }
     const nextErrors: Record<string, string> = {};
-    const teamErr = nameError(teamName, solo ? "Athlete name" : "Team name");
-    if (teamErr) nextErrors.teamName = teamErr;
     const orgErr = optionalNameError(orgName, "Organization");
     if (orgErr) nextErrors.orgName = orgErr;
     const cityErr = optionalNameError(city, "City");
     if (cityErr) nextErrors.city = cityErr;
-    const roster = solo
-      ? [{ name: teamName, phone: athletePhone, gender: memberGender }]
-      : members;
+    const drafts = solo ? [athlete] : members;
     if (solo) {
-      const phoneErr = phoneError(athletePhone, "Phone");
+      const phoneErr = phoneError(athlete.phone, "Phone");
       if (phoneErr) nextErrors.athletePhone = phoneErr;
-    } else if (!editingId) {
-      roster.forEach((member, index) => {
-        const memberNameErr = nameError(member.name, "Member name");
-        if (memberNameErr) nextErrors[`memberName-${index}`] = memberNameErr;
-        const memberPhoneErr = phoneError(member.phone, "Member phone");
-        if (memberPhoneErr) nextErrors[`memberPhone-${index}`] = memberPhoneErr;
-      });
+      const athleteNameErr = nameError(athlete.name, "Athlete name");
+      if (athleteNameErr) nextErrors.athleteName = athleteNameErr;
+      if (athlete.existing && athlete.gender !== memberGender) {
+        nextErrors.athletePhone = `${athlete.name} is listed as ${athlete.gender}, this category is ${memberGender}.`;
+      }
+    } else {
+      const teamErr = nameError(teamName, "Team name");
+      if (teamErr) nextErrors.teamName = teamErr;
+      if (!editingId) {
+        drafts.forEach((member, index) => {
+          const memberNameErr = nameError(member.name, "Member name");
+          if (memberNameErr) nextErrors[`memberName-${index}`] = memberNameErr;
+          const memberPhoneErr = phoneError(member.phone, "Member phone");
+          if (memberPhoneErr) nextErrors[`memberPhone-${index}`] = memberPhoneErr;
+          if (member.existing && member.gender !== memberGender) {
+            nextErrors[`memberPhone-${index}`] =
+              `${member.name} is listed as ${member.gender}, this category is ${memberGender}.`;
+          }
+        });
+      }
     }
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       toast.error("Fill the highlighted fields.");
       return;
     }
+    const roster = drafts.map((draft) => toMemberInput(draft, memberGender));
     if (solo || !editingId) {
       if (roster.length < minMembers || roster.length > maxMembers) {
         toast.error(
@@ -218,32 +231,28 @@ export default function ChampionshipCategoryTeamsPage() {
         );
         return;
       }
-      const keys = roster.map(
-        (member) => `${member.name.trim().toLowerCase()}|${member.phone.trim()}`,
-      );
+      const keys = roster.map((member) => member.phone.trim());
       if (new Set(keys).size !== keys.length) {
-        toast.error("Each member name and phone combination must be unique.");
+        toast.error("Each member phone must be unique.");
         return;
       }
     }
 
     setSaving(true);
     const payload = {
-      name: teamName,
+      name: solo ? athlete.name : teamName,
       orgName: orgName || null,
       city: city || null,
     };
     const result = editingId
       ? await updateTeam(editingId, {
           ...payload,
-          ...(solo
-            ? { members: roster.map((member) => ({ ...member, gender: memberGender })) }
-            : {}),
+          ...(solo ? { members: roster } : {}),
         })
       : await createTeam({
           ...payload,
           cscId: csc.id,
-          members: roster.map((member) => ({ ...member, gender: memberGender })),
+          members: roster,
         });
     setSaving(false);
     if (result.error) {
@@ -486,36 +495,38 @@ export default function ChampionshipCategoryTeamsPage() {
         wide={!solo && !editingId}
       >
         <form onSubmit={onSave} className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            <span>
-              {solo ? "Athlete name" : "Team name"}
-              <RequiredMark />
-            </span>
-            <NameInput
-              value={teamName}
-              onChange={(value) => {
-                setTeamName(value);
-                setFieldErrors((prev) => ({ ...prev, teamName: undefined }));
-              }}
-              className={fieldErrors.teamName ? fieldErrorClass : fieldClass}
-            />
-          </label>
           {solo ? (
+            <AthletePicker
+              value={athlete}
+              expectedGender={memberGender}
+              nameLabel="Athlete name"
+              onChange={(next) => {
+                setAthlete(next);
+                setTeamName(next.name);
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  athleteName: undefined,
+                  athletePhone: undefined,
+                }));
+              }}
+              errors={{ name: fieldErrors.athleteName, phone: fieldErrors.athletePhone }}
+            />
+          ) : (
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
               <span>
-                Phone
+                Team name
                 <RequiredMark />
               </span>
-              <PhoneInput
-                value={athletePhone}
+              <NameInput
+                value={teamName}
                 onChange={(value) => {
-                  setAthletePhone(value);
-                  setFieldErrors((prev) => ({ ...prev, athletePhone: undefined }));
+                  setTeamName(value);
+                  setFieldErrors((prev) => ({ ...prev, teamName: undefined }));
                 }}
-                className={fieldErrors.athletePhone ? fieldErrorClass : fieldClass}
+                className={fieldErrors.teamName ? fieldErrorClass : fieldClass}
               />
             </label>
-          ) : null}
+          )}
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
             Organization
             <NameInput
@@ -550,7 +561,7 @@ export default function ChampionshipCategoryTeamsPage() {
                     setMembers((current) =>
                       current.length >= maxMembers
                         ? current
-                        : [...current, emptyMember(memberGender)],
+                        : [...current, emptyAthleteDraft(memberGender)],
                     )
                   }
                 >
@@ -562,38 +573,22 @@ export default function ChampionshipCategoryTeamsPage() {
                   key={index}
                   className="grid gap-3 rounded-xl border border-[var(--ops-line)] p-3 sm:col-span-2 sm:grid-cols-2"
                 >
-                  <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                    <span>
-                      Name
-                      <RequiredMark />
-                    </span>
-                    <NameInput
-                      value={member.name}
-                      onChange={(value) => {
-                        setMembers((current) =>
-                          current.map((row, i) => (i === index ? { ...row, name: value } : row)),
-                        );
-                        setFieldErrors((prev) => ({ ...prev, [`memberName-${index}`]: undefined }));
-                      }}
-                      className={fieldErrors[`memberName-${index}`] ? fieldErrorClass : fieldClass}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5 text-sm font-semibold">
-                    <span>
-                      Phone
-                      <RequiredMark />
-                    </span>
-                    <PhoneInput
-                      value={member.phone}
-                      onChange={(value) => {
-                        setMembers((current) =>
-                          current.map((row, i) => (i === index ? { ...row, phone: value } : row)),
-                        );
-                        setFieldErrors((prev) => ({ ...prev, [`memberPhone-${index}`]: undefined }));
-                      }}
-                      className={fieldErrors[`memberPhone-${index}`] ? fieldErrorClass : fieldClass}
-                    />
-                  </label>
+                  <AthletePicker
+                    value={member}
+                    expectedGender={memberGender}
+                    onChange={(next) => {
+                      setMembers((current) => current.map((row, i) => (i === index ? next : row)));
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        [`memberName-${index}`]: undefined,
+                        [`memberPhone-${index}`]: undefined,
+                      }));
+                    }}
+                    errors={{
+                      name: fieldErrors[`memberName-${index}`],
+                      phone: fieldErrors[`memberPhone-${index}`],
+                    }}
+                  />
                   {members.length > minMembers ? (
                     <SoftButton
                       variant="ghost"

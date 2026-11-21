@@ -44,6 +44,13 @@ export {
   listCscAthletes,
 } from "./teams";
 export {
+  findAthleteByPhone,
+  createAthlete,
+  updateAthlete,
+  listAthletes,
+  listChampionshipAthletes,
+} from "./athletes";
+export {
   listFixtures,
   getFixture,
   createFixture,

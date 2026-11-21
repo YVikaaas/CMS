@@ -10,6 +10,7 @@ import {
   IconTrophy,
   IconUserCheck,
   IconUserCircle,
+  IconUsers,
   type TablerIcon,
 } from "@tabler/icons-react";
 
@@ -90,6 +91,13 @@ export const ADMIN_NAV: NavItem[] = [
     icon: IconStack2,
   },
   {
+    href: "/masters/athletes",
+    label: "Athletes",
+    pageRole: "masters.manage",
+    section: "catalog",
+    icon: IconUsers,
+  },
+  {
     href: "/account",
     label: "Account Setting",
     pageRole: "account.self",
@@ -115,6 +123,7 @@ export function pathTitle(pathname: string): string {
   if (pathname.startsWith("/events")) return "Events";
   if (pathname.startsWith("/masters/sports")) return "Sport";
   if (pathname.startsWith("/masters/categories")) return "Category";
+  if (pathname.startsWith("/masters/athletes")) return "Athletes";
   if (pathname.startsWith("/masters")) return "Catalog";
   if (pathname.startsWith("/account")) return "Account Setting";
   if (pathname.startsWith("/ui-kit")) return "UI Kit";

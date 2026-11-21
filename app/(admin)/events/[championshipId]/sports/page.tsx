@@ -173,7 +173,12 @@ export default function ChampionshipSportsPage() {
           { href: "/events", label: "Events" },
           { label: championship.name },
         ]}
-        title="Sports" hint="Pick one or more sports, then assign categories." />
+        title="Sports"
+        hint="Pick one or more sports, then assign categories."
+        action={
+          <SoftButton href={`/events/${championshipId}/athletes`}>Athletes</SoftButton>
+        }
+      />
 
       <TableCard
         title="Sports"
