@@ -24,6 +24,7 @@ import {
 import { getDashboardSummary } from "@/lib/services";
 import type { Championship, CompetitionStatus, DashboardSummary } from "@/lib/types/cms";
 import { cn } from "@/lib/utils/cn";
+import { formatDateRange } from "@/lib/utils/dates";
 
 const statusTone: Record<CompetitionStatus, "warning" | "success" | "neutral"> = {
   draft: "warning",
@@ -43,7 +44,7 @@ function firstName(fullName: string | null | undefined): string | null {
 function championshipHint(row: Championship): string {
   const bits = [
     row.location || "No location",
-    row.startDate && row.endDate ? `${row.startDate} – ${row.endDate}` : row.startDate || row.endDate,
+    formatDateRange(row.startDate, row.endDate, ""),
   ].filter(Boolean);
   return bits.join(" · ");
 }

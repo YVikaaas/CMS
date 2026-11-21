@@ -111,6 +111,8 @@ export default function FixturesPage() {
       <PageHeader title="Fixtures" />
       <EventFilters
         championshipId={selected.id}
+        remember={false}
+        unlockInOrder={false}
         onChange={(value) => {
           setFilter({ ...value });
           if (skipFilterNav.current) {

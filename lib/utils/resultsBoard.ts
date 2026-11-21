@@ -1,4 +1,5 @@
 import type { FixtureMatch, FixtureRoundType } from "@/lib/types/cms";
+import { formatDateTime } from "@/lib/utils/dates";
 import { KNOCKOUT_ROUND_TYPES, roundNumber } from "@/lib/utils/fixtures";
 
 export const RESULTS_CARD_MIN_HEIGHT = 168;
@@ -10,12 +11,7 @@ export const RESULTS_ROUND_HEADER_HEIGHT = 36;
 const KNOCKOUT_THREAD: FixtureRoundType[] = ["quarter_final", "semi_final", "final"];
 
 export function formatMatchWhen(iso: string | null | undefined): string {
-  if (!iso) return "Time TBA";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Time TBA";
-  const day = date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${day} · ${time}`;
+  return formatDateTime(iso, "Time TBA");
 }
 
 export function formatMatchId(label: string, matchNumber: number): string {

@@ -23,6 +23,7 @@ import {
   updateChampionship,
 } from "@/lib/services";
 import type { Championship, CompetitionStatus } from "@/lib/types/cms";
+import { formatDate, formatDateRange } from "@/lib/utils/dates";
 import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError } from "@/lib/utils/validation";
 
@@ -182,8 +183,8 @@ export default function ChampionshipsPage() {
                 [
                   { header: "Name", value: (row) => row.name },
                   { header: "Location", value: (row) => row.location },
-                  { header: "Start date", value: (row) => row.startDate },
-                  { header: "End date", value: (row) => row.endDate },
+                  { header: "Start date", value: (row) => formatDate(row.startDate) },
+                  { header: "End date", value: (row) => formatDate(row.endDate) },
                   { header: "Status", value: (row) => row.status },
                 ],
                 "events",
@@ -226,10 +227,7 @@ export default function ChampionshipsPage() {
                   </button>
                 </td>
                 <td>{row.location || "No location"}</td>
-                <td className="whitespace-nowrap">
-                  {row.startDate || "—"}
-                  {row.endDate ? ` – ${row.endDate}` : ""}
-                </td>
+                <td className="whitespace-nowrap">{formatDateRange(row.startDate, row.endDate)}</td>
                 <td>
                   <StatusBadge tone={statusTone[row.status]}>{row.status}</StatusBadge>
                 </td>

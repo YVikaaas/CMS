@@ -125,6 +125,7 @@ export function EventFilters({
   lockSportId,
   unlockInOrder = true,
   requireEvent = onlyWithExistingFixture,
+  remember = true,
   aside,
   onChange,
 }: {
@@ -132,8 +133,10 @@ export function EventFilters({
   onlyWithExistingFixture?: boolean;
   lockSportId?: string;
   unlockInOrder?: boolean;
-  /** The page needs a full event (sport → event). No "All" chips; folds away once picked. */
+  /** The page needs a full event (sport → event). No "All" chips. */
   requireEvent?: boolean;
+  /** Restore the last sport / gender / age / category. Off = start on All. */
+  remember?: boolean;
   /** Right side of the event strip, e.g. a view switch. */
   aside?: ReactNode;
   onChange?: (
@@ -145,7 +148,6 @@ export function EventFilters({
   const [categories, setCategories] = useState<Category[]>([]);
   const [value, setValue] = useState<EventFilterValue>(() => emptyEventFilter(championshipId));
   const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(true);
   const [openField, setOpenField] = useState<StepId | null>(null);
   const advancingTo = useRef<StepId | null>(null);
   const openTimer = useRef<number | null>(null);
@@ -188,7 +190,7 @@ export function EventFilters({
       }
       setSports(offered);
       setCategories(cats);
-      const stored = readEventFilter(championshipId);
+      const stored = remember ? readEventFilter(championshipId) : emptyEventFilter(championshipId);
       let next = stored.championshipId === championshipId ? stored : emptyEventFilter(championshipId);
       if (lockSportId && offered.some((row) => row.id === lockSportId)) {
         if (next.sportId !== lockSportId) next = applySport({ ...next, championshipId }, lockSportId);
@@ -213,14 +215,12 @@ export function EventFilters({
       }
       if (requireEvent) next = settleEventFilter(next, cats);
       emit(next, offered, cats);
-      // a remembered event opens folded: on the ground you pick once, then work
-      setOpen(!isEventFilterComplete(next));
       setReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [championshipId, emit, lockSportId, onlyWithExistingFixture, requireEvent]);
+  }, [championshipId, emit, lockSportId, onlyWithExistingFixture, remember, requireEvent]);
 
   useEffect(() => {
     if (!ready) return;
@@ -284,7 +284,6 @@ export function EventFilters({
             : null;
     if (requireEvent && isEventFilterComplete(next)) {
       advancingTo.current = null;
-      setOpen(false);
       setOpenField(null);
       return;
     }
@@ -324,26 +323,15 @@ export function EventFilters({
   return (
     <Card className="overflow-hidden">
       <div className="flex min-h-12 items-center gap-2 bg-[var(--ops-primary)] px-4 py-1 text-[var(--ops-on-primary)]">
-        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpen(!open)}>
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] leading-4 font-medium tracking-[0.5px] uppercase opacity-80">{eyebrow || "Category"}</p>
           <p className="truncate text-base leading-6 font-medium">
             {title || (requireEvent ? "Pick a category" : "All sports")}
           </p>
         </div>
         {aside ? <div className="flex shrink-0 items-center gap-2">{aside}</div> : null}
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-label={open ? "Hide category picker" : "Change category"}
-          onClick={() => setOpen(!open)}
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-sm leading-5 font-medium hover:bg-white/15"
-        >
-          <span className="hidden sm:inline">{open ? "Done" : "Change"}</span>
-          <IconChevronDown size={18} aria-hidden className={cn("transition-transform", open && "rotate-180")} />
-        </button>
       </div>
-      {open ? (
-        <div className="p-3">
+      <div className="p-3">
           {liveSports.length === 0 ? (
             <p className="text-sm leading-5 text-[var(--ops-text-muted)]">
               {onlyWithExistingFixture ? "No category has a draw yet." : "No sports offered in this event."}
@@ -400,8 +388,7 @@ export function EventFilters({
               />
             </div>
           )}
-        </div>
-      ) : null}
+      </div>
     </Card>
   );
 }

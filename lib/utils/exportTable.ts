@@ -1,3 +1,4 @@
+import { formatDateStamp } from "./dates";
 import { workbook } from "./entrySheet";
 import { slugify } from "./slug";
 
@@ -25,6 +26,6 @@ export async function exportTable<T>(
   sheet["!cols"] = columns.map((column) => ({ wch: Math.max(12, column.header.length + 4) }));
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Export");
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = formatDateStamp();
   XLSX.writeFile(book, `${slugify(name) || "export"}-${stamp}.${format}`, { bookType: format });
 }

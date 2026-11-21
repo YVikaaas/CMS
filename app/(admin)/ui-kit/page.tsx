@@ -166,7 +166,7 @@ export default function UiKitPage() {
       <GreetingBanner
         title="Hello, Vikas"
         badge={<StatusBadge tone="success">active</StatusBadge>}
-        text="BB Championship December · Lucknow · 2026-12-16 – 2026-12-29"
+        text="BB Championship December · Lucknow · 16 12 2026 – 29 12 2026"
         stats={[
           { label: "Matches done", value: "100%" },
           { label: "Athletes", value: 87 },

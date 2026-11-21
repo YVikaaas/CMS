@@ -7,6 +7,7 @@ Pure helpers and cross-cutting utilities live under `lib/utils/`. **Do not** dup
 | Module | Responsibility |
 |--------|----------------|
 | `cn.ts` | Minimal className merge — filters falsy segments. |
+| `dates.ts` | Display dates as `dd mm yyyy` (`formatDate`, `formatDateRange`, `formatDateTime`). Filename stamp `dd-mm-yyyy` (`formatDateStamp`). Calendar `YYYY-MM-DD` strings are parsed as local dates, not UTC. |
 | `fetchWithTimeout.ts` | `fetch` with timeout + `isTimeoutError`. Used by the browser Supabase client. |
 | `routes.ts` | `safeNextPathAfterLogin`, `isPublicPath`, onboarding/waiting path helpers. Default after login is `/dashboard`. |
 | `slug.ts` | `slugify` for event slugs. |
@@ -21,4 +22,4 @@ Pure helpers and cross-cutting utilities live under `lib/utils/`. **Do not** dup
 | `resultsBoard.ts` | Public-style results board helpers: match id/when labels, score visibility, knockout column layout and connector paths. |
 | `validation.ts` | Name = letters only; category/event name = letters, numbers, and spaces (`100m`); phone = 10 digits starting with 6–9; `passwordError` = required, at least `PASSWORD_MIN_LENGTH` (8) characters. Score points/fouls = digits only. |
 | `entrySheet.ts` | Sample Excel + parse for athlete/team import; `workbook()` lazy-loads SheetJS. Athlete file: one row per athlete. Team file: How to fill + Teams sheet; one row per member, same Team name groups the roster. Organization and city are separate columns. |
-| `exportTable.ts` | `exportTable(rows, columns, name, "csv" \| "xlsx")` downloads the filtered + sorted rows (file `name-YYYY-MM-DD.ext`); `toExportMatrix(rows, columns)` → header + cell rows. Uses `workbook()` from `entrySheet.ts` (lazy SheetJS). |
+| `exportTable.ts` | `exportTable(rows, columns, name, "csv" \| "xlsx")` downloads the filtered + sorted rows (file `name-dd-mm-yyyy.ext`); `toExportMatrix(rows, columns)` → header + cell rows. Uses `workbook()` from `entrySheet.ts` (lazy SheetJS). |
