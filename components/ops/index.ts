@@ -12,6 +12,7 @@ export { EventIdentity } from "./EventIdentity";
 export { EventFilters } from "./EventFilters";
 export { EventSetupWizard } from "./EventSetupWizard";
 export { FixtureSportHops } from "./FixtureSportHops";
+export { SetupChecklist } from "./SetupChecklist";
 export { PageHeader } from "./PageHeader";
 export { EmptyState, ErrorBanner, NotificationBanner } from "./Banners";
 export { GreetingBanner, type BannerStat } from "./GreetingBanner";

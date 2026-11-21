@@ -115,7 +115,10 @@ export default function PodiumPage() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
+        <EmptyState
+          title="Pick the event"
+          hint="Choose sport, then boys/girls, age, and the race or match."
+        />
       ) : !fixture ? (
         <EmptyState title="No draw for this filter" hint="Create a fixture first." />
       ) : !fixture.rankingLockedAt ? (

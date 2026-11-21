@@ -35,7 +35,7 @@ const STEPS: { title: string; explanation: string }[] = [
   {
     title: "Which sport?",
     explanation:
-      "Pick a sport already on this championship to add more events or open it to edit. Or pick a new sport to add.",
+      "Pick a sport already on this event to add more races or matches, or open it to edit. Or pick a new sport to add.",
   },
   {
     title: "Who is competing?",
@@ -404,7 +404,7 @@ export function EventSetupWizard({
         return "This sport has no events in the catalog yet. Add them under Catalog → Sports first.";
       }
       if (sportLeftover.length === 0) {
-        return `Every ${sport?.name ?? "this sport"} event is already on this championship. Open it to review or edit.`;
+        return `Every ${sport?.name ?? "this sport"} race or match is already on this event. Open it to review or edit.`;
       }
       return offeredSportIds.has(sportId)
         ? `${sport?.name ?? "This sport"} is already here — continue to add more events.`
@@ -413,7 +413,7 @@ export function EventSetupWizard({
     if (step === 2) {
       if (genders.size === 0) return "Tap Boys, Girls, or both.";
       if (!sportLeftover.some((row) => genders.has(row.gender))) {
-        return "Every event for that group is already on this championship. Pick the other group, or go back.";
+        return "Every race or match for that group is already on this event. Pick the other group, or go back.";
       }
       return genders.size === 2
         ? "Boys and Girls — continue to pick ages."
@@ -460,7 +460,7 @@ export function EventSetupWizard({
     const count = selectedIds.size;
     const name = sport?.name ?? "This sport";
     toast.success(`Added ${count} ${count === 1 ? "event" : "events"}.`);
-    setSuccess(`${name} is on this championship. Add another sport, or you’re done.`);
+    setSuccess(`${name} is on this event. Add another sport, or you’re done.`);
     setStep(1);
     setSportId("");
     resetBelowSport();
@@ -482,7 +482,7 @@ export function EventSetupWizard({
           Set up {eventName} — 4 easy steps
         </h2>
         <p className="mt-1 text-sm opacity-90">
-          This is the form that puts sports on the championship. Add a new sport, or add more events to one already here.
+          This is the form that puts sports on the event. Add a new sport, or add more races or matches to one already here.
         </p>
       </header>
 
@@ -537,12 +537,12 @@ export function EventSetupWizard({
                 {onChampionship.length > 0 ? (
                   <div className="flex flex-col gap-2">
                     <div>
-                      <p className="text-sm font-semibold">Already on this championship</p>
+                      <p className="text-sm font-semibold">Already on this event</p>
                       <p className="text-xs text-[var(--ops-text-muted)]">
                         Add more events, or open a sport to edit if everything is already added.
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="tablist" aria-label="Sports already on this championship">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="tablist" aria-label="Sports already on this event">
                       {onChampionship.map((row) => (
                         <TabCard
                           key={row.id}
@@ -568,7 +568,7 @@ export function EventSetupWizard({
                 {notOnChampionship.length > 0 ? (
                   <div className="flex flex-col gap-2">
                     <div>
-                      <p className="text-sm font-semibold">Not on this championship yet</p>
+                      <p className="text-sm font-semibold">Not on this event yet</p>
                       <p className="text-xs text-[var(--ops-text-muted)]">Pick one of these to add it.</p>
                     </div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="tablist" aria-label="Sports you can add">
@@ -608,7 +608,7 @@ export function EventSetupWizard({
                       title={genderLabel(gender)}
                       hint={
                         noneLeft
-                          ? "All events already on this championship"
+                          ? "All races or matches already on this event"
                           : `${genderBlurb(gender)} · ${leftoverCount} ${leftoverCount === 1 ? "event" : "events"} to add`
                       }
                       selected={genders.has(gender)}
@@ -652,7 +652,7 @@ export function EventSetupWizard({
             {step === 4 ? (
               leftover.length === 0 ? (
                 <p className="text-sm text-[var(--ops-text-muted)]">
-                  Every matching event is already on this championship.
+                  Every matching race or match is already on this event.
                 </p>
               ) : (
                 <PickList className="max-h-[28rem] border-2 border-[var(--ops-text)] bg-white">
@@ -705,8 +705,8 @@ export function EventSetupWizard({
               ) : (
                 <FormAction loading={saving} disabled={!canContinue} onClick={() => void onAdd()}>
                   {selectedIds.size > 0
-                    ? `Add ${selectedIds.size} ${selectedIds.size === 1 ? "event" : "events"} to championship`
-                    : "Add to championship"}
+                    ? `Add ${selectedIds.size} ${selectedIds.size === 1 ? "race or match" : "races or matches"} to event`
+                    : "Add to event"}
                 </FormAction>
               )}
           </div>

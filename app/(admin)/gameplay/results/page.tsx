@@ -118,7 +118,10 @@ export default function ResultsPage() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
+        <EmptyState
+          title="Pick the event"
+          hint="Choose sport, then boys/girls, age, and the race or match."
+        />
       ) : fixtures.length === 0 ? (
         <EmptyState title="No draws yet" hint="Create a fixture first." />
       ) : boards.length === 0 ? (

@@ -35,6 +35,7 @@ import type {
   FixtureStatus,
 } from "@/lib/types/cms";
 import { cn } from "@/lib/utils/cn";
+import { fixtureStatusLabel } from "@/lib/utils/labels";
 import {
   cscPassesEventFilter,
   emptyEventFilter,
@@ -365,7 +366,13 @@ export default function FixtureSportPage() {
                   visibleCscs,
                   [
                     { header: "Category", value: (row) => row.categoryLabel },
-                    { header: "Status", value: (row) => fixtures.find((item) => item.cscId === row.id)?.status.replace("_", " ") ?? "No draw" },
+                    {
+                      header: "Status",
+                      value: (row) => {
+                        const status = fixtures.find((item) => item.cscId === row.id)?.status;
+                        return status ? fixtureStatusLabel(status) : "No draw";
+                      },
+                    },
                     {
                       header: "Draw",
                       value: (row) => {
@@ -411,7 +418,7 @@ export default function FixtureSportPage() {
                     <td>
                       {fixture ? (
                         <StatusBadge tone={statusTone[fixture.status]}>
-                          {fixture.status.replace("_", " ")}
+                          {fixtureStatusLabel(fixture.status)}
                         </StatusBadge>
                       ) : (
                         <StatusBadge>No draw</StatusBadge>
@@ -433,7 +440,14 @@ export default function FixtureSportPage() {
                             aria-label={`Delete fixture for ${csc.categoryLabel}`}
                             title="Delete"
                             onClick={async () => {
-                              if (!(await confirm({ title: `Delete fixture for ${csc.categoryLabel}?`, message: "Its draw and matches are removed.", confirmLabel: "Delete" }))) return;
+                              if (
+                                !(await confirm({
+                                  title: `Delete fixture for ${csc.categoryLabel}?`,
+                                  message: `Remove the draw and matches for ${csc.categoryLabel}.`,
+                                  confirmLabel: "Delete",
+                                }))
+                              )
+                                return;
                               const { error } = await archiveFixture(fixture.id);
                               if (error) toast.error(error.message);
                               else await load();
@@ -476,8 +490,8 @@ export default function FixtureSportPage() {
                 }
                 className={fieldClass}
               >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
+                <option value="draft">{fixtureStatusLabel("draft")}</option>
+                <option value="published">{fixtureStatusLabel("published")}</option>
               </select>
             </label>
           ) : (

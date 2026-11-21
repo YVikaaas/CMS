@@ -31,6 +31,7 @@ import {
 } from "@/lib/utils/eventFilter";
 import { heatQueueHint, heatQueueTitle, isHeatMatch } from "@/lib/utils/athletics";
 import { displayScore, uniqueRoundLabelsInOrder } from "@/lib/utils/fixtures";
+import { matchStatusLabel } from "@/lib/utils/labels";
 import { formatMatchWhen } from "@/lib/utils/resultsBoard";
 
 const RANKING_TAB = "ranking";
@@ -52,12 +53,12 @@ function matchMarker(row: FixtureMatch) {
 }
 
 const STATUS_TEXT: Record<FixtureMatch["status"], string> = {
-  draft: "Draft",
-  scheduled: "Scheduled",
-  in_progress: "Live",
-  completed: "Scored",
-  cancelled: "Cancelled",
-  no_show: "No show",
+  draft: matchStatusLabel("draft"),
+  scheduled: matchStatusLabel("scheduled"),
+  in_progress: matchStatusLabel("in_progress"),
+  completed: matchStatusLabel("completed"),
+  cancelled: matchStatusLabel("cancelled"),
+  no_show: matchStatusLabel("no_show"),
 };
 
 function ScoringDesk() {
@@ -179,7 +180,10 @@ function ScoringDesk() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
+        <EmptyState
+          title="Pick the event"
+          hint="Choose sport, then boys/girls, age, and the race or match."
+        />
       ) : fixtures.length === 0 && matches.length === 0 ? (
         <EmptyState title="No matches yet" hint="Create a draw first." />
       ) : !fixture ? (

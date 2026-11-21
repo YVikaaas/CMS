@@ -311,7 +311,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           {gated ? (
             <EmptyState
               title="Create an event to get started"
-              hint="Floor pages need an event picked at the top right."
+              hint="Add an event, then pick it at the top right."
               action={
                 <Link href="/events">
                   <SoftButton variant="primary">Events</SoftButton>

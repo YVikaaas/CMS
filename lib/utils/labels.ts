@@ -1,4 +1,9 @@
-import type { Gender } from "@/lib/types/cms";
+import type {
+  CompetitionStatus,
+  FixtureMatchStatus,
+  FixtureStatus,
+  Gender,
+} from "@/lib/types/cms";
 
 const GENERIC_CATEGORY_NAMES = new Set(["basketball", "athletics"]);
 
@@ -48,4 +53,38 @@ export function orgCityLine(orgName?: string | null, city?: string | null): stri
   const place = city?.trim() ?? "";
   if (org && place) return `${org} · ${place}`;
   return org || place || null;
+}
+
+const COMPETITION_STATUS_LABEL: Record<CompetitionStatus, string> = {
+  draft: "Not ready",
+  active: "Live",
+  archived: "Hidden",
+};
+
+const FIXTURE_STATUS_LABEL: Record<FixtureStatus, string> = {
+  draft: "Not ready",
+  published: "Ready",
+  in_progress: "Under way",
+  completed: "Done",
+};
+
+const MATCH_STATUS_LABEL: Record<FixtureMatchStatus, string> = {
+  draft: "Not ready",
+  scheduled: "Scheduled",
+  in_progress: "Under way",
+  completed: "Done",
+  cancelled: "Cancelled",
+  no_show: "Did not start",
+};
+
+export function competitionStatusLabel(status: CompetitionStatus): string {
+  return COMPETITION_STATUS_LABEL[status];
+}
+
+export function fixtureStatusLabel(status: FixtureStatus): string {
+  return FIXTURE_STATUS_LABEL[status];
+}
+
+export function matchStatusLabel(status: FixtureMatchStatus): string {
+  return MATCH_STATUS_LABEL[status];
 }

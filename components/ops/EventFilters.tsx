@@ -313,7 +313,7 @@ export function EventFilters({
   const title = eventIdentityTitle(value.gender, value.ageGroup, eventName, selectedSport?.name);
   // the title already says "Boys U16 100m"; the eyebrow only adds the sport
   const eyebrow = title && selectedSport ? selectedSport.name : "";
-  const all = requireEvent ? undefined : "All";
+  const all = requireEvent ? undefined : "Showing all";
 
   // One card: the category strip on top, then four outlined selects.
   const genderLocked = unlockInOrder && !value.sportId;

@@ -265,7 +265,10 @@ function CallRoomDesk() {
         }}
       />
       {!filtersReady ? (
-        <EmptyState title="Pick the event" hint="Choose sport, then gender, age and event. Each menu opens the next." />
+        <EmptyState
+          title="Pick the event"
+          hint="Choose sport, then boys/girls, age, and the race or match."
+        />
       ) : matches.length === 0 ? (
         <EmptyState title="No matches yet" hint="Create a draw first." />
       ) : categoryMatches.length === 0 ? (

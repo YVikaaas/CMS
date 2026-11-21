@@ -110,7 +110,7 @@ Staff do the same thing on Floor:
 6. **StickyActionBar** — Save / Complete. Disabled rules unchanged.
 7. Status is **derived** from data (`draft` / `scheduled` / `in_progress` / `completed`). No fake KPIs.
 
-Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Category until Age. Choosing a value opens the next menu. Fixtures: empty = All. Scoring and Results wait until all four are set. Round chips have no All. Results also has a Ranking tab (manual places).
+Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Category until Age. Choosing a value opens the next menu. Fixtures: empty = Showing all. Scoring and Results wait until all four are set. Round chips have no All. Results also has a Ranking tab (manual places).
 
 ---
 
@@ -120,11 +120,11 @@ Filters **unlock in order**: Gender disabled until Sport; Age until Gender; Cate
 
 `app/(admin)/layout.tsx` — black sidebar (logo, nav); white top app bar with toggle, location, event select and account. Floor + dashboard gated until an event exists (`EmptyState` → Events).
 
-Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Events) · Catalog (Sport, Category) · Pages (Account Setting, UI Kit). `aria-current="page"` on the active link.
+Nav groups (`lib/utils/nav.ts`): Dashboard · Floor (Call Room, Fixtures, Scoring, Results, Podium) · Setup (Events) · Catalog (Sport, Category) · Pages (Account Setting). UI Kit is not in the sidebar (`/ui-kit` still works by URL). `aria-current="page"` on the active link.
 
 ### Dashboard (`/dashboard`)
 
-Greeting banner with event name and status, four overview `StatCard`s, then a **Setup wizard** always on the selected event (one sport as tab cards → Boys | Girls columns → age cards → leftover discipline cards, all preselected → Add), then a **Fixtures** hop listing offered sports (opens the sport’s fixtures board with sport locked and Gender prompted), then one detail table (setup through podium), a by-sport table, and a short next-step list for the floor. Links land on the first hop of each flow.
+Greeting banner with event name and status, then a **Setup checklist** (Event → Sports → Athletes → Schedule → Floor) that soft-locks later steps until earlier ones are done, four overview `StatCard`s, then a **Setup wizard** always on the selected event (one sport as tab cards → Boys | Girls columns → age cards → leftover discipline cards, all preselected → Add), then a **Fixtures** hop listing offered sports (opens the sport’s fixtures board with sport locked and Gender prompted), then one detail table and a by-sport table. Checklist links land on the first hop of each flow.
 
 ### Setup (nested hops — do not flatten)
 
@@ -172,7 +172,7 @@ Account page. `PageHeader` title row, then a card with MUI `Tabs` (Account · Se
 
 ### UI Kit (`/ui-kit`)
 
-Living reference of every kit part and themed MUI component (alert, accordion, avatar, chip, dialog, list, popover, menu, rating, tabs, tooltip, transfer list, typography, form elements, table, Tabler icons) plus the blocks. Copy from it; never import from it.
+Living reference of every kit part and themed MUI component (alert, accordion, avatar, chip, dialog, list, popover, menu, rating, tabs, tooltip, transfer list, typography, form elements, table, Tabler icons) plus the blocks. Not linked in the sidebar. Copy from it; never import from it.
 
 ### Catalog (`/masters/sports`, `/masters/categories`)
 
@@ -203,6 +203,7 @@ All in `components/ops/`. Import from `@/components/ops`. The kit wraps MUI; pag
 | `PageHeader` | Hidden h1 + (nested pages) one breadcrumb line + optional action. `hint` is accepted but not shown. |
 | `EmptyState` / `ErrorBanner` / `NotificationBanner` | Centred card, tinted icon circle (primary / danger / info), title, hint, action. `ErrorBanner` has `role="alert"`; use it when a load fails, with a Try again action. |
 | `GreetingBanner` | Dashboard title row: greeting + badge, line, headline numbers, action. |
+| `SetupChecklist` | Dashboard setup progress (Event → Sports → Athletes → Schedule → Floor). Soft-locks later steps; primary “Do this next” on the current unfinished step. |
 | `StatCard` | Kit stat card: label, 36px value, hint, optional outlined icon and `LinearProgress` bar, optional `href`. |
 | `PageHeader crumbs` | Nested setup path, shown as the banner breadcrumb (no separate crumb row). |
 | `PageLoader` / `PageSkeleton` / `Shimmer` / `Spinner` | CSS loaders. Use skeletons for page waits, spinner for compact/inline, shimmer bars for unknown values. |

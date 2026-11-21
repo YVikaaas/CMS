@@ -15,9 +15,9 @@ import {
   FixtureSportHops,
   GreetingBanner,
   PageSkeleton,
+  SetupChecklist,
   Shimmer,
   SoftButton,
-  SoftCard,
   StatCard,
   StatusBadge,
 } from "@/components/ops";
@@ -25,6 +25,7 @@ import { getDashboardSummary } from "@/lib/services";
 import type { Championship, CompetitionStatus, DashboardSummary } from "@/lib/types/cms";
 import { cn } from "@/lib/utils/cn";
 import { formatDateRange } from "@/lib/utils/dates";
+import { competitionStatusLabel } from "@/lib/utils/labels";
 
 const statusTone: Record<CompetitionStatus, "warning" | "success" | "neutral"> = {
   draft: "warning",
@@ -156,7 +157,7 @@ export default function DashboardPage() {
     return (
       <EmptyState
         title="Create an event to get started"
-        hint="Setup starts with an event, then sports, then the floor."
+        hint="Add an event, then pick it at the top right."
         action={
           <Link href="/events">
             <SoftButton variant="primary">Events</SoftButton>
@@ -173,44 +174,16 @@ export default function DashboardPage() {
   const medalPct = s
     ? Math.round(((s.medalsDelivered || 0) / Math.max(1, s.medalsDelivered + s.medalsWaiting)) * 100)
     : 0;
-  const steps = [
-    {
-      n: "1",
-      title: "Create draws",
-      hint: "All sports until you filter, then a category, then the match workspace.",
-      href: "/gameplay/fixtures",
-    },
-    {
-      n: "2",
-      title: "Call room",
-      hint: "Pick sport, gender, age, then category, then mark present and absent.",
-      href: "/gameplay/call-room",
-    },
-    {
-      n: "3",
-      title: "Score matches",
-      hint: "Pick sport, gender, age, then category, then the scoreboard.",
-      href: "/gameplay/scoring",
-    },
-    {
-      n: "4",
-      title: "Publish results",
-      hint: "Pick sport, gender, age, then category to open the board.",
-      href: "/gameplay/results",
-    },
-    {
-      n: "5",
-      title: "Podium",
-      hint: "Lock 1st, 2nd and 3rd on scoring, then mark medal delivery.",
-      href: "/gameplay/podium",
-    },
-  ];
 
   return (
     <div className="flex flex-col gap-6">
       <GreetingBanner
         title={`Hello, ${firstName(appUser?.fullName) ?? "there"}`}
-        badge={<StatusBadge tone={statusTone[selected.status]}>{selected.status}</StatusBadge>}
+        badge={
+          <StatusBadge tone={statusTone[selected.status]}>
+            {competitionStatusLabel(selected.status)}
+          </StatusBadge>
+        }
         text={`${selected.name} · ${championshipHint(selected)}`}
         stats={[
           { label: "Matches done", value: ready ? `${matchCompletePct}%` : "–" },
@@ -223,6 +196,8 @@ export default function DashboardPage() {
           </Link>
         }
       />
+
+      <SetupChecklist eventId={selected.id} summary={s ?? null} ready={ready} />
 
       {loadError ? (
         <ErrorBanner
@@ -386,23 +361,6 @@ export default function DashboardPage() {
           </tbody>
         </table>
       </TableCard>
-
-      <SoftCard>
-        <p className="text-base font-semibold">Next</p>
-        <ol className="mt-2 divide-y divide-[var(--ops-line)]">
-          {steps.map((step) => (
-            <li key={step.n}>
-              <Link href={step.href} className="flex items-baseline gap-3 py-3">
-                <span className="w-5 shrink-0 text-sm font-semibold text-[var(--ops-primary)]">{step.n}</span>
-                <span className="min-w-0">
-                  <span className="font-semibold">{step.title}</span>
-                  <span className="mt-0.5 block text-sm text-[var(--ops-text-muted)]">{step.hint}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-      </SoftCard>
 
     </div>
   );

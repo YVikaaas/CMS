@@ -24,6 +24,7 @@ import {
 } from "@/lib/services";
 import type { Championship, CompetitionStatus } from "@/lib/types/cms";
 import { formatDate, formatDateRange } from "@/lib/utils/dates";
+import { competitionStatusLabel } from "@/lib/utils/labels";
 import { compareText, matchesQuery, pageRows, type SortState } from "@/lib/utils/table";
 import { nameError } from "@/lib/utils/validation";
 
@@ -121,7 +122,17 @@ export default function ChampionshipsPage() {
   };
 
   const onArchive = async (id: string) => {
-    if (!(await confirm({ title: "Archive this event?", message: "It leaves the header picker. Its data stays.", confirmLabel: "Archive" }))) return;
+    const row = championships.find((item) => item.id === id);
+    if (
+      !(await confirm({
+        title: row ? `Hide ${row.name}?` : "Hide this event?",
+        message: row
+          ? `Hide ${row.name} from the top picker. Its data stays.`
+          : "Hide this event from the top picker. Its data stays.",
+        confirmLabel: "Hide",
+      }))
+    )
+      return;
     const { error } = await archiveChampionship(id);
     if (error) {
       toast.error(error.message);
@@ -163,9 +174,9 @@ export default function ChampionshipsPage() {
             label: "Status",
             value: statusFilter,
             options: [
-              { value: "draft", label: "Draft" },
-              { value: "active", label: "Active" },
-              { value: "archived", label: "Archived" },
+              { value: "draft", label: competitionStatusLabel("draft") },
+              { value: "active", label: competitionStatusLabel("active") },
+              { value: "archived", label: competitionStatusLabel("archived") },
             ],
             onChange: (value) => setStatusFilter(value as "" | CompetitionStatus),
           },
@@ -185,7 +196,7 @@ export default function ChampionshipsPage() {
                   { header: "Location", value: (row) => row.location },
                   { header: "Start date", value: (row) => formatDate(row.startDate) },
                   { header: "End date", value: (row) => formatDate(row.endDate) },
-                  { header: "Status", value: (row) => row.status },
+                  { header: "Status", value: (row) => competitionStatusLabel(row.status) },
                 ],
                 "events",
                 format,
@@ -229,7 +240,9 @@ export default function ChampionshipsPage() {
                 <td>{row.location || "No location"}</td>
                 <td className="whitespace-nowrap">{formatDateRange(row.startDate, row.endDate)}</td>
                 <td>
-                  <StatusBadge tone={statusTone[row.status]}>{row.status}</StatusBadge>
+                  <StatusBadge tone={statusTone[row.status]}>
+                    {competitionStatusLabel(row.status)}
+                  </StatusBadge>
                 </td>
                 <td className="text-right whitespace-nowrap">
                   <IconButton color="success" aria-label={`Edit ${row.name}`} title="Edit" onClick={() => openEdit(row)}>

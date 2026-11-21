@@ -51,7 +51,7 @@ import {
   sortByRoundOrder,
   toDatetimeLocal,
 } from "@/lib/utils/fixtures";
-import { orgCityLine } from "@/lib/utils/labels";
+import { matchStatusLabel, orgCityLine } from "@/lib/utils/labels";
 
 const emptyForm = {
   roundId: "",
@@ -417,7 +417,7 @@ export default function FixtureWorkspacePage() {
                         : row.matchLabel || `${row.team1Name} vs ${row.team2Name}`}
                     </p>
                     <StatusBadge tone={statusTone(row.status)}>
-                      {row.status.replace("_", " ")}
+                      {matchStatusLabel(row.status)}
                     </StatusBadge>
                   </div>
                   <p className="mt-1 text-sm text-[var(--ops-text-muted)]">
@@ -564,9 +564,9 @@ export default function FixtureWorkspacePage() {
                   }
                   className={fieldClass}
                 >
-                  <option value="draft">Draft</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="draft">{matchStatusLabel("draft")}</option>
+                  <option value="scheduled">{matchStatusLabel("scheduled")}</option>
+                  <option value="cancelled">{matchStatusLabel("cancelled")}</option>
                 </SoftSelect>
               </label>
               <StickyActionBar>

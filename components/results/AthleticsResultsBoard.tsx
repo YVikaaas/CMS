@@ -7,7 +7,7 @@ import {
   heatQueueTitle,
   isRelayEvent,
 } from "@/lib/utils/athletics";
-import { categoryNameFromLabel, orgCityLine } from "@/lib/utils/labels";
+import { categoryNameFromLabel, matchStatusLabel, orgCityLine } from "@/lib/utils/labels";
 import { isResultScoreVisible } from "@/lib/utils/resultsBoard";
 import { StatusBadge } from "@/components/ops";
 
@@ -47,7 +47,7 @@ function HeatTable({
                 : "neutral"
           }
         >
-          {match.status.replace("_", " ")}
+          {matchStatusLabel(match.status)}
         </StatusBadge>
       </div>
       <table>

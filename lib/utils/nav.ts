@@ -2,7 +2,6 @@ import {
   IconAward,
   IconCalendarEvent,
   IconClipboardList,
-  IconComponents,
   IconFlag,
   IconLayoutDashboard,
   IconMedal,
@@ -103,13 +102,6 @@ export const ADMIN_NAV: NavItem[] = [
     pageRole: "account.self",
     section: "pages",
     icon: IconUserCircle,
-  },
-  {
-    href: "/ui-kit",
-    label: "UI Kit",
-    pageRole: "dashboard.view",
-    section: "pages",
-    icon: IconComponents,
   },
 ];
 
